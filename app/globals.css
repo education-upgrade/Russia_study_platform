@@ -56,7 +56,8 @@ select {
 button:focus-visible,
 a:focus-visible,
 textarea:focus-visible,
-select:focus-visible {
+select:focus-visible,
+summary:focus-visible {
   outline: 3px solid rgba(36, 54, 87, 0.25);
   outline-offset: 3px;
 }
@@ -325,6 +326,10 @@ h2 {
   border: 1px solid rgba(213, 226, 235, 0.9);
 }
 
+.step-link:hover {
+  border-color: var(--navy-2);
+}
+
 .step-number {
   display: inline-flex;
   align-items: center;
@@ -355,13 +360,76 @@ h2 {
   justify-content: space-between;
   gap: 18px;
   align-items: flex-start;
-  margin-bottom: 18px;
+  margin-bottom: 0;
 }
 
 .activity-summary {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.activity-disclosure {
+  padding: 0;
+  overflow: hidden;
+}
+
+.activity-disclosure summary {
+  list-style: none;
+}
+
+.activity-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.activity-summary-header {
+  cursor: pointer;
+  padding: 22px;
+  display: block;
+}
+
+.activity-summary-header:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.activity-title-block {
+  position: relative;
+  padding-left: 26px;
+}
+
+.activity-title-block::before {
+  content: '+';
+  position: absolute;
+  left: 0;
+  top: 30px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--navy);
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 900;
+}
+
+.activity-disclosure[open] .activity-title-block::before {
+  content: '−';
+}
+
+.activity-disclosure[open] .disclosure-badge {
+  background: var(--navy);
+  color: white;
+}
+
+.activity-body {
+  padding: 0 22px 22px;
+  border-top: 1px solid rgba(22, 33, 63, 0.08);
+}
+
+.activity-body > *:first-child {
+  margin-top: 18px;
 }
 
 .lesson-section-grid {
@@ -580,5 +648,11 @@ h2 {
 
   .button {
     width: 100%;
+  }
+
+  .activity-summary-header,
+  .activity-body {
+    padding-left: 18px;
+    padding-right: 18px;
   }
 }
