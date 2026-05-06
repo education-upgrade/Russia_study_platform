@@ -10,12 +10,15 @@ type QuizQuestion = {
 };
 
 type QuizActivityProps = {
+  activityId: string;
   questions: QuizQuestion[];
 };
 
-export default function QuizActivity({ questions }: QuizActivityProps) {
+export default function QuizActivity({ activityId, questions }: QuizActivityProps) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveMessage, setSaveMessage] = useState('');
 
   const questionKeys = useMemo(
     () => questions.map((question, index) => question.id ?? `question-${index}`),
@@ -30,15 +33,54 @@ export default function QuizActivity({ questions }: QuizActivityProps) {
 
   const percentage = questions.length > 0 ? Math.round((score / questions.length) * 100) : 0;
   const allAnswered = answeredCount === questions.length;
+  const incorrectQuestionIds = questions
+    .map((question, index) => ({ question, key: question.id ?? `question-${index}` }))
+    .filter(({ question, key }) => answers[key] !== question.correct)
+    .map(({ question, key }) => question.id ?? key);
 
   function selectAnswer(questionKey: string, option: string) {
     if (submitted) return;
     setAnswers((current) => ({ ...current, [questionKey]: option }));
   }
 
+  async function submitQuiz() {
+    setSubmitted(true);
+    setSaveStatus('saving');
+    setSaveMessage('Saving quiz result...');
+
+    try {
+      const response = await fetch('/api/student-responses/quiz', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activityId,
+          answers,
+          score,
+          maxScore: questions.length,
+          percentage,
+          incorrectQuestionIds,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error ?? 'Quiz result could not be saved.');
+      }
+
+      setSaveStatus('saved');
+      setSaveMessage(`Saved at ${new Date(result.savedAt).toLocaleTimeString()}`);
+    } catch (error) {
+      setSaveStatus('error');
+      setSaveMessage(error instanceof Error ? error.message : 'Quiz result could not be saved.');
+    }
+  }
+
   function resetQuiz() {
     setAnswers({});
     setSubmitted(false);
+    setSaveStatus('idle');
+    setSaveMessage('');
   }
 
   return (
@@ -48,6 +90,9 @@ export default function QuizActivity({ questions }: QuizActivityProps) {
         <h3>Answer all questions, then submit your quiz.</h3>
         <p><strong>Answered:</strong> {answeredCount}/{questions.length}</p>
         {submitted && <p><strong>Score:</strong> {score}/{questions.length} ({percentage}%)</p>}
+        {saveMessage && (
+          <p><strong>Save status:</strong> {saveMessage}</p>
+        )}
       </div>
 
       {questions.map((question, qIndex) => {
@@ -98,11 +143,11 @@ export default function QuizActivity({ questions }: QuizActivityProps) {
           <button
             type="button"
             className="button"
-            onClick={() => setSubmitted(true)}
-            disabled={!allAnswered}
+            onClick={submitQuiz}
+            disabled={!allAnswered || saveStatus === 'saving'}
             style={{ opacity: allAnswered ? 1 : 0.5, border: 0 }}
           >
-            Submit quiz
+            {saveStatus === 'saving' ? 'Saving...' : 'Submit quiz'}
           </button>
         ) : (
           <button type="button" className="button secondary" onClick={resetQuiz}>
