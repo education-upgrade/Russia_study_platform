@@ -90,6 +90,15 @@ function getRiskClass(risk: string) {
   return 'neutral';
 }
 
+function getPriorityAction(row: StudentResponseRow) {
+  const risk = getRiskFlag(row);
+  if (risk === 'Intervention') return 'Set recap quiz or reteach causes/consequences.';
+  if (risk === 'Needs development') return 'Review PEEL structure and ask for a stronger explain/link section.';
+  if (risk === 'Low confidence') return 'Check least secure area and assign targeted flashcards.';
+  if (risk === 'Check understanding') return 'Ask student to correct missed quiz questions.';
+  return 'No urgent action.';
+}
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -134,25 +143,29 @@ export default async function TeacherProgressPage() {
     : null;
 
   return (
-    <main className="page-shell">
-      <div className="page-header-row">
+    <main className="page-shell teacher-shell">
+      <div className="page-header-row app-topbar">
         <span className="breadcrumb">Teacher dashboard / Live progress / 1905 Revolution</span>
-        <Link className="button secondary" href="/student/lesson/1905">Open student pathway</Link>
+        <div className="button-row compact">
+          <Link className="button secondary" href="/teacher/dashboard">Teacher home</Link>
+          <Link className="button secondary" href="/student/lesson/1905">Student view</Link>
+        </div>
       </div>
 
-      <section className="hero">
-        <p className="eyebrow">Teacher dashboard · Live from Supabase</p>
-        <h1>1905 MVP Progress</h1>
-        <p>
-          A cleaner progress view for the first teacher-facing loop: completion evidence, quiz outcomes,
-          PEEL submissions, confidence reflection and intervention flags. This is still using the demo student
-          and demo assignment while authentication is being built.
-        </p>
-        <div className="button-row">
-          <Link className="button secondary" href="/teacher/dashboard">Back to teacher dashboard</Link>
-          <span className="badge">Responses: {rows.length}</span>
-          <span className="badge">Intervention flags: {interventionRows.length}</span>
+      <section className="teacher-hero">
+        <div>
+          <p className="eyebrow">Live progress board · Supabase</p>
+          <h1>1905 pathway overview</h1>
+          <p>
+            A teacher-first view of the pilot learning loop: retrieval performance, PEEL evidence,
+            confidence reflection and simple next-action flags.
+          </p>
         </div>
+        <aside className="teacher-hero-actions">
+          <p className="eyebrow">Next teaching decision</p>
+          <h2>{interventionRows.length ? 'Target support needed' : 'Class looks secure so far'}</h2>
+          <p>{interventionRows.length ? 'Start with the flagged response cards below.' : 'Keep monitoring as more students submit.'}</p>
+        </aside>
       </section>
 
       {error && (
@@ -163,93 +176,105 @@ export default async function TeacherProgressPage() {
         </section>
       )}
 
-      <section className="metric-grid">
-        <article className="card metric-card teal">
-          <p className="eyebrow">Responses saved</p>
-          <h2>{rows.length}</h2>
-          <p>Saved response records visible to the dashboard.</p>
+      <section className="teacher-metric-strip">
+        <article className="teacher-metric teal">
+          <span>Responses</span>
+          <strong>{rows.length}</strong>
+          <small>saved records</small>
         </article>
-
-        <article className="card metric-card lavender">
-          <p className="eyebrow">Average quiz</p>
-          <h2>{averageQuizPercentage === null ? '-' : `${averageQuizPercentage}%`}</h2>
-          <p>Mean retrieval score for submitted 1905 quizzes.</p>
+        <article className="teacher-metric lavender">
+          <span>Average quiz</span>
+          <strong>{averageQuizPercentage === null ? '-' : `${averageQuizPercentage}%`}</strong>
+          <small>retrieval accuracy</small>
         </article>
-
-        <article className="card metric-card warm">
-          <p className="eyebrow">PEEL submissions</p>
-          <h2>{peelRows.length}</h2>
-          <p>Written responses available for teacher review.</p>
+        <article className="teacher-metric warm">
+          <span>PEEL</span>
+          <strong>{peelRows.length}</strong>
+          <small>written submissions</small>
         </article>
-
-        <article className={`card metric-card ${confidenceRows.length ? 'lavender' : 'green'}`}>
-          <p className="eyebrow">Exit tickets</p>
-          <h2>{confidenceRows.length}</h2>
-          <p>Confidence reflections submitted after the pathway.</p>
+        <article className="teacher-metric lavender">
+          <span>Confidence</span>
+          <strong>{confidenceRows.length}</strong>
+          <small>exit tickets</small>
         </article>
-
-        <article className={`card metric-card ${interventionRows.length ? 'rose' : 'green'}`}>
-          <p className="eyebrow">Need attention</p>
-          <h2>{interventionRows.length}</h2>
-          <p>Low quiz scores, underdeveloped writing or low confidence.</p>
+        <article className={`teacher-metric ${interventionRows.length ? 'rose' : 'green'}`}>
+          <span>Attention</span>
+          <strong>{interventionRows.length}</strong>
+          <small>priority flags</small>
         </article>
       </section>
 
-      <section className="card" style={{ marginTop: 24 }}>
-        <div className="page-header-row">
-          <div>
-            <p className="eyebrow">Live progress table</p>
-            <h2>Student responses</h2>
+      <section className="teacher-board-grid">
+        <article className="card teacher-panel-main">
+          <div className="page-header-row">
+            <div>
+              <p className="eyebrow">Class progress</p>
+              <h2>Response tracker</h2>
+            </div>
+            <span className="badge">Newest first</span>
           </div>
-          <span className="badge">Auto-sorted by newest first</span>
-        </div>
 
-        {rows.length === 0 ? (
-          <div className="empty-state">
-            <h3>No student responses found yet</h3>
-            <p>Complete and save the quiz, PEEL task or exit ticket as the demo student first.</p>
-          </div>
-        ) : (
-          <div className="table-wrap">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th>Activity</th>
-                  <th>Outcome</th>
-                  <th>Status</th>
-                  <th>Submitted</th>
-                  <th>Teacher flag</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => {
-                  const risk = getRiskFlag(row);
-                  return (
-                    <tr key={row.id}>
-                      <td><strong>Demo Student</strong><br /><span className="step-meta">1905 MVP pathway</span></td>
-                      <td>{getActivityLabel(row)}<br /><span className="step-meta">{row.response_type}</span></td>
-                      <td>{getScoreLabel(row)}</td>
-                      <td>{row.status}</td>
-                      <td>{formatDate(row.submitted_at)}</td>
-                      <td><span className={`status-pill ${getRiskClass(risk)}`}>{risk}</span></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+          {rows.length === 0 ? (
+            <div className="empty-state">
+              <h3>No student responses found yet</h3>
+              <p>Complete and save the quiz, PEEL task or exit ticket as the demo student first.</p>
+            </div>
+          ) : (
+            <div className="teacher-response-list">
+              {rows.map((row) => {
+                const risk = getRiskFlag(row);
+                return (
+                  <article className="teacher-response-row" key={row.id}>
+                    <div>
+                      <strong>Demo Student</strong>
+                      <small>1905 MVP pathway</small>
+                    </div>
+                    <div>
+                      <strong>{getActivityLabel(row)}</strong>
+                      <small>{formatDate(row.submitted_at)}</small>
+                    </div>
+                    <div>
+                      <strong>{getScoreLabel(row)}</strong>
+                      <small>{row.status}</small>
+                    </div>
+                    <span className={`status-pill ${getRiskClass(risk)}`}>{risk}</span>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </article>
+
+        <aside className="card teacher-panel-side lavender">
+          <p className="eyebrow">Priority queue</p>
+          <h2>What needs teacher attention?</h2>
+          {interventionRows.length === 0 ? (
+            <p>No urgent intervention flags yet. This panel will become the quick planning list once more students submit.</p>
+          ) : (
+            <div className="priority-list">
+              {interventionRows.map((row) => {
+                const risk = getRiskFlag(row);
+                return (
+                  <div className="priority-card" key={`${row.id}-priority`}>
+                    <span className={`status-pill ${getRiskClass(risk)}`}>{risk}</span>
+                    <h3>{getActivityLabel(row)}</h3>
+                    <p>{getPriorityAction(row)}</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </aside>
       </section>
 
       {rows.length > 0 && (
-        <section className="response-detail-grid">
+        <section className="response-detail-grid improved-details">
           {rows.map((row) => {
             const risk = getRiskFlag(row);
             return (
               <article className="card response-detail-card" key={`${row.id}-detail`}>
                 <aside>
-                  <p className="eyebrow">Response detail</p>
+                  <p className="eyebrow">Evidence detail</p>
                   <h2>Demo Student</h2>
                   <p>{getActivityLabel(row)}</p>
                   <span className={`status-pill ${getRiskClass(risk)}`}>{risk}</span>
