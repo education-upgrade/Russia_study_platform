@@ -35,6 +35,7 @@ export default function PeelResponseActivity({
   }, [point, evidence, explain, link]);
 
   const wordCount = countWords(fullResponse);
+  const completedSections = [point, evidence, explain, link].filter((part) => part.trim().length > 0).length;
   const hasWriting = wordCount > 0;
 
   async function submitResponse() {
@@ -73,18 +74,25 @@ export default function PeelResponseActivity({
   }
 
   return (
-    <div>
-      <div className="card teal" style={{ marginTop: 12 }}>
-        <p className="eyebrow">Written exam practice</p>
-        <h3>{question}</h3>
-        {stretchQuestion && <p><strong>Stretch:</strong> {stretchQuestion}</p>}
+    <div className="peel-shell">
+      <div className="panel teal">
+        <div className="peel-toolbar">
+          <div>
+            <p className="eyebrow">Written exam practice</p>
+            <h3>{question}</h3>
+            {stretchQuestion && <p><strong>Stretch:</strong> {stretchQuestion}</p>}
+          </div>
+          <div className="activity-summary">
+            <span className="badge">{completedSections}/4 sections</span>
+            <span className="badge">{wordCount} words</span>
+          </div>
+        </div>
         <p><strong>Scaffold:</strong> {scaffold.join(' → ')}</p>
-        <p><strong>Word count:</strong> {wordCount}</p>
         {saveMessage && <p><strong>Save status:</strong> {saveMessage}</p>}
       </div>
 
-      <div className="grid">
-        <label className="card" style={{ display: 'grid', gap: 10 }}>
+      <div className="peel-grid">
+        <label className="panel" style={{ display: 'grid', gap: 10 }}>
           <span className="eyebrow">Point</span>
           <span><strong>Make a clear argument.</strong> What is one way 1905 weakened Tsarist authority?</span>
           <textarea
@@ -92,11 +100,11 @@ export default function PeelResponseActivity({
             onChange={(event) => setPoint(event.target.value)}
             rows={5}
             placeholder="The 1905 Revolution weakened Tsarist authority because..."
-            style={textareaStyle}
+            className="textarea"
           />
         </label>
 
-        <label className="card" style={{ display: 'grid', gap: 10 }}>
+        <label className="panel" style={{ display: 'grid', gap: 10 }}>
           <span className="eyebrow">Evidence</span>
           <span><strong>Add precise knowledge.</strong> Use dates, events or key terms.</span>
           <textarea
@@ -104,11 +112,11 @@ export default function PeelResponseActivity({
             onChange={(event) => setEvidence(event.target.value)}
             rows={5}
             placeholder="For example, Bloody Sunday in January 1905..."
-            style={textareaStyle}
+            className="textarea"
           />
         </label>
 
-        <label className="card" style={{ display: 'grid', gap: 10 }}>
+        <label className="panel" style={{ display: 'grid', gap: 10 }}>
           <span className="eyebrow">Explain</span>
           <span><strong>Show the impact.</strong> How did this weaken the regime?</span>
           <textarea
@@ -116,11 +124,11 @@ export default function PeelResponseActivity({
             onChange={(event) => setExplain(event.target.value)}
             rows={5}
             placeholder="This mattered because it damaged legitimacy by..."
-            style={textareaStyle}
+            className="textarea"
           />
         </label>
 
-        <label className="card" style={{ display: 'grid', gap: 10 }}>
+        <label className="panel" style={{ display: 'grid', gap: 10 }}>
           <span className="eyebrow">Link judgement</span>
           <span><strong>Return to the question.</strong> Was this significant, limited or temporary?</span>
           <textarea
@@ -128,16 +136,16 @@ export default function PeelResponseActivity({
             onChange={(event) => setLink(event.target.value)}
             rows={5}
             placeholder="Therefore, this weakened Tsarist authority to a significant/limited extent because..."
-            style={textareaStyle}
+            className="textarea"
           />
         </label>
       </div>
 
-      <section className="card lavender" style={{ marginTop: 18 }}>
+      <section className="panel lavender">
         <p className="eyebrow">Preview</p>
         <h3>Your PEEL paragraph</h3>
         {hasWriting ? (
-          <p style={{ whiteSpace: 'pre-wrap' }}>{fullResponse}</p>
+          <p className="preview-box">{fullResponse}</p>
         ) : (
           <p>Your paragraph preview will appear here as you type.</p>
         )}
@@ -149,7 +157,7 @@ export default function PeelResponseActivity({
           className="button"
           onClick={submitResponse}
           disabled={!hasWriting || saveStatus === 'saving'}
-          style={{ opacity: hasWriting ? 1 : 0.5, border: 0 }}
+          style={{ opacity: hasWriting ? 1 : 0.5 }}
         >
           {saveStatus === 'saving' ? 'Saving...' : submitted ? 'Update PEEL response' : 'Submit PEEL response'}
         </button>
@@ -157,14 +165,3 @@ export default function PeelResponseActivity({
     </div>
   );
 }
-
-const textareaStyle = {
-  width: '100%',
-  borderRadius: 16,
-  border: '1px solid #d8e4ec',
-  padding: 14,
-  font: 'inherit',
-  color: '#17233d',
-  background: '#ffffff',
-  resize: 'vertical' as const,
-};
