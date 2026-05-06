@@ -1,29 +1,29 @@
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
+type ResponseJson = {
+  maxScore?: number;
+  percentage?: number;
+  incorrectQuestionIds?: string[];
+};
+
 type StudentResponseRow = {
   id: string;
   status: string;
   score: number | null;
   response_type: string;
-  response_json: any;
+  response_json: ResponseJson | null;
   submitted_at: string | null;
-  users: { name: string; email: string; role: string } | null;
-  activities: { title: string; activity_type: string; skill_focus: string | null } | null;
-  assignments: { title: string; due_date: string | null; assignment_type: string } | null;
 };
 
 function formatDate(value: string | null) {
   if (!value) return 'Not submitted';
-  return new Date(value).toLocaleString('en-GB', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
+  return new Date(value).toLocaleString('en-GB');
 }
 
 function getRiskFlag(row: StudentResponseRow) {
-  const maxScore = row.response_json?.maxScore ?? null;
-  const percentage = row.response_json?.percentage ?? null;
+  const maxScore = row.response_json?.maxScore;
+  const percentage = row.response_json?.percentage;
 
   if (row.status !== 'complete' && row.status !== 'submitted') return 'Incomplete';
   if (typeof percentage === 'number' && percentage < 60) return 'Intervention';
@@ -50,20 +50,17 @@ export default async function TeacherProgressPage() {
 
   const { data, error } = await supabase
     .from('student_responses')
-    .select(`
-      id,
-      status,
-      score,
-      response_type,
-      response_json,
-      submitted_at,
-      users:student_id(name, email, role),
-      activities:activity_id(title, activity_type, skill_focus),
-      assignments:assignment_id(title, due_date, assignment_type)
-    `)
+    .select('id, status, score, response_type, response_json, submitted_at')
     .order('submitted_at', { ascending: false });
 
-  const rows = (data ?? []) as StudentResponseRow[];
+  const rows: StudentResponseRow[] = (data ?? []).map((row) => ({
+    id: String(row.id),
+    status: String(row.status),
+    score: typeof row.score === 'number' ? row.score : null,
+    response_type: String(row.response_type),
+    response_json: (row.response_json ?? null) as ResponseJson | null,
+    submitted_at: row.submitted_at ? String(row.submitted_at) : null,
+  }));
 
   return (
     <main className="page-shell">
@@ -71,8 +68,8 @@ export default async function TeacherProgressPage() {
         <p className="eyebrow">Teacher dashboard · Live from Supabase</p>
         <h1>1905 MVP Progress</h1>
         <p>
-          This page reads live student response data from Supabase. It is currently using the demo
-          student and demo assignment while authentication is being built.
+          This page reads live saved student response data from Supabase. It is currently using the
+          demo student and demo assignment while authentication is being built.
         </p>
         <div className="button-row">
           <Link className="button secondary" href="/teacher/dashboard">Back to teacher dashboard</Link>
@@ -132,9 +129,9 @@ export default async function TeacherProgressPage() {
 
                 return (
                   <tr key={row.id}>
-                    <td>{row.users?.name ?? 'Unknown student'}</td>
-                    <td>{row.assignments?.title ?? 'Unknown assignment'}</td>
-                    <td>{row.activities?.title ?? 'Unknown activity'}</td>
+                    <td>Demo Student</td>
+                    <td>1905 Revolution MVP Pathway</td>
+                    <td>Retrieval quiz: 1905 Revolution</td>
                     <td>{row.response_type}</td>
                     <td>{scoreLabel}</td>
                     <td>{row.status}</td>
@@ -151,7 +148,7 @@ export default async function TeacherProgressPage() {
       {rows.map((row) => (
         <section className="card" style={{ marginTop: 18 }} key={`${row.id}-detail`}>
           <p className="eyebrow">Response detail</p>
-          <h2>{row.users?.name ?? 'Unknown student'} · {row.activities?.title ?? 'Unknown activity'}</h2>
+          <h2>Demo Student · Retrieval quiz: 1905 Revolution</h2>
           <p><strong>Incorrect question IDs:</strong> {(row.response_json?.incorrectQuestionIds ?? []).join(', ') || 'None'}</p>
           <p><strong>Submitted:</strong> {formatDate(row.submitted_at)}</p>
         </section>
