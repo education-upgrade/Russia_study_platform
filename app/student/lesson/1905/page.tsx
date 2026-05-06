@@ -1,3 +1,4 @@
+import ConfidenceExitTicketActivity from '@/components/ConfidenceExitTicketActivity';
 import PeelResponseActivity from '@/components/PeelResponseActivity';
 import QuizActivity from '@/components/QuizActivity';
 import { supabase } from '@/lib/supabase';
@@ -100,17 +101,12 @@ function ActivityCard({ activity, index }: { activity: Activity; index: number }
       )}
 
       {activity.activity_type === 'confidence_exit_ticket' && (
-        <div className="callout">
-          <span className="callout-icon">?</span>
-          <div>
-            <p className="eyebrow">Reflection placeholder</p>
-            <h3>{content.prompt}</h3>
-            <p><strong>Confidence scale:</strong> {(content.scale ?? []).join(' · ')}</p>
-            {Array.isArray(content.leastSecureOptions) && (
-              <p><strong>Least secure areas:</strong> {content.leastSecureOptions.join(', ')}</p>
-            )}
-          </div>
-        </div>
+        <ConfidenceExitTicketActivity
+          activityId={activity.id}
+          prompt={content.prompt ?? 'How confident are you with this topic?'}
+          scale={Array.isArray(content.scale) ? content.scale : undefined}
+          leastSecureOptions={Array.isArray(content.leastSecureOptions) ? content.leastSecureOptions : undefined}
+        />
       )}
     </article>
   );
@@ -176,7 +172,7 @@ export default async function Russia1905LessonPage() {
         <div className="button-row">
           <span className="badge">Estimated time: {totalMinutes || lesson.estimated_minutes || 45} minutes</span>
           <span className="badge">Activities: {orderedActivities.length}</span>
-          <span className="badge">Trackable: quiz and PEEL</span>
+          <span className="badge">Trackable: quiz, PEEL and confidence</span>
         </div>
       </section>
 
@@ -199,9 +195,9 @@ export default async function Russia1905LessonPage() {
           <aside className="card pathway-nav">
             <p className="eyebrow">Study sequence</p>
             <h2>Your route</h2>
-            <p>Work down the pathway. Save the quiz and PEEL response so your teacher can see progress.</p>
+            <p>Work down the pathway. Save the quiz, PEEL response and exit ticket so your teacher can see progress.</p>
             <div className="progress-bar" aria-label="Pathway prototype progress">
-              <div className="progress-fill" style={{ '--progress': '66%' } as React.CSSProperties} />
+              <div className="progress-fill" style={{ '--progress': '80%' } as React.CSSProperties} />
             </div>
             <div className="step-list">
               {orderedActivities.map((activity, index) => (
