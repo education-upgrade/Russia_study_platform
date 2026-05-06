@@ -84,12 +84,22 @@ export default function QuizActivity({ activityId, questions }: QuizActivityProp
   }
 
   return (
-    <div>
-      <div className="card teal" style={{ marginTop: 12 }}>
-        <p className="eyebrow">Interactive retrieval</p>
-        <h3>Answer all questions, then submit your quiz.</h3>
-        <p><strong>Answered:</strong> {answeredCount}/{questions.length}</p>
-        {submitted && <p><strong>Score:</strong> {score}/{questions.length} ({percentage}%)</p>}
+    <div className="quiz-shell">
+      <div className="panel teal">
+        <div className="quiz-toolbar">
+          <div>
+            <p className="eyebrow">Interactive retrieval</p>
+            <h3>Answer all questions, then submit your quiz.</h3>
+            <p>Use this as a quick knowledge check before moving into exam-writing.</p>
+          </div>
+          <div className="activity-summary">
+            <span className="badge">Answered {answeredCount}/{questions.length}</span>
+            {submitted && <span className="badge">Score {score}/{questions.length} · {percentage}%</span>}
+          </div>
+        </div>
+        <div className="progress-bar">
+          <div className="progress-fill" style={{ '--progress': `${questions.length ? (answeredCount / questions.length) * 100 : 0}%` } as React.CSSProperties} />
+        </div>
         {saveMessage && (
           <p><strong>Save status:</strong> {saveMessage}</p>
         )}
@@ -100,7 +110,7 @@ export default function QuizActivity({ activityId, questions }: QuizActivityProp
         const selected = answers[key];
 
         return (
-          <section className="card lavender" style={{ marginTop: 12 }} key={key}>
+          <section className="panel" key={key}>
             <p className="eyebrow">Question {qIndex + 1}</p>
             <h3>{question.question}</h3>
             <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
@@ -115,24 +125,16 @@ export default function QuizActivity({ activityId, questions }: QuizActivityProp
                     type="button"
                     key={option}
                     onClick={() => selectAnswer(key, option)}
-                    style={{
-                      textAlign: 'left',
-                      borderRadius: 16,
-                      border: isSelected ? '2px solid #17233d' : '1px solid #d8e4ec',
-                      padding: '12px 14px',
-                      background: showCorrect ? '#e3f3f1' : showIncorrect ? '#f7efd9' : '#ffffff',
-                      color: '#17233d',
-                      fontWeight: isSelected || showCorrect ? 700 : 500,
-                      cursor: submitted ? 'default' : 'pointer',
-                    }}
+                    className={`option-button${isSelected ? ' selected' : ''}${showCorrect ? ' correct' : ''}${showIncorrect ? ' incorrect' : ''}`}
+                    disabled={submitted}
                   >
-                    {option}{showCorrect ? ' correct' : ''}{showIncorrect ? ' check this' : ''}
+                    {option}{showCorrect ? ' ✓ correct' : ''}{showIncorrect ? ' · check this' : ''}
                   </button>
                 );
               })}
             </div>
             {submitted && selected && selected !== question.correct && (
-              <p style={{ marginTop: 12 }}><strong>Correct answer:</strong> {question.correct}</p>
+              <p><strong>Correct answer:</strong> {question.correct}</p>
             )}
           </section>
         );
@@ -145,7 +147,7 @@ export default function QuizActivity({ activityId, questions }: QuizActivityProp
             className="button"
             onClick={submitQuiz}
             disabled={!allAnswered || saveStatus === 'saving'}
-            style={{ opacity: allAnswered ? 1 : 0.5, border: 0 }}
+            style={{ opacity: allAnswered ? 1 : 0.5 }}
           >
             {saveStatus === 'saving' ? 'Saving...' : 'Submit quiz'}
           </button>
