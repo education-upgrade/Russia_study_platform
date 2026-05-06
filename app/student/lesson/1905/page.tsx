@@ -1,3 +1,4 @@
+import PeelResponseActivity from '@/components/PeelResponseActivity';
 import QuizActivity from '@/components/QuizActivity';
 import { supabase } from '@/lib/supabase';
 
@@ -58,14 +59,12 @@ function ActivityCard({ activity, index }: { activity: Activity; index: number }
       )}
 
       {activity.activity_type === 'peel_response' && (
-        <div className="card teal" style={{ marginTop: 12 }}>
-          <p className="eyebrow">Written practice</p>
-          <h3>{content.question}</h3>
-          {content.stretchQuestion && <p><strong>Stretch:</strong> {content.stretchQuestion}</p>}
-          {Array.isArray(content.scaffold) && (
-            <p><strong>Scaffold:</strong> {content.scaffold.join(' → ')}</p>
-          )}
-        </div>
+        <PeelResponseActivity
+          activityId={activity.id}
+          question={content.question ?? 'Write a PEEL response.'}
+          stretchQuestion={content.stretchQuestion}
+          scaffold={Array.isArray(content.scaffold) ? content.scaffold : undefined}
+        />
       )}
 
       {activity.activity_type === 'confidence_exit_ticket' && (
