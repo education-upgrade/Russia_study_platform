@@ -1,3 +1,4 @@
+import QuizActivity from '@/components/QuizActivity';
 import { supabase } from '@/lib/supabase';
 
 type Activity = {
@@ -41,19 +42,7 @@ function ActivityCard({ activity, index }: { activity: Activity; index: number }
       )}
 
       {activity.activity_type === 'quiz' && Array.isArray(content.questions) && (
-        <div>
-          <p className="badge">Prototype display: quiz will become interactive next</p>
-          {content.questions.map((question: any, qIndex: number) => (
-            <section className="card lavender" style={{ marginTop: 12 }} key={question.id ?? qIndex}>
-              <h3>{qIndex + 1}. {question.question}</h3>
-              <ul>
-                {(question.options ?? []).map((option: string) => (
-                  <li key={option}>{option}</li>
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
+        <QuizActivity questions={content.questions} />
       )}
 
       {activity.activity_type === 'flashcards' && Array.isArray(content.cards) && (
