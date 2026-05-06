@@ -47,68 +47,73 @@ function ActivityCard({ activity, index }: { activity: Activity; index: number }
   const tone = getActivityTone(activity.activity_type);
 
   return (
-    <article className={`card activity-card ${tone}`} id={`activity-${index + 1}`}>
-      <div className="activity-header">
-        <div>
-          <p className="eyebrow">Step {index + 1} · {formatActivityType(activity.activity_type)}</p>
-          <h2>{activity.title}</h2>
-          <p>{getActivityPurpose(activity.activity_type)}</p>
+    <details className={`card activity-card activity-disclosure ${tone}`} id={`activity-${index + 1}`} open={index === 0}>
+      <summary className="activity-summary-header">
+        <div className="activity-header">
+          <div className="activity-title-block">
+            <p className="eyebrow">Step {index + 1} · {formatActivityType(activity.activity_type)}</p>
+            <h2>{activity.title}</h2>
+            <p>{getActivityPurpose(activity.activity_type)}</p>
+          </div>
+          <div className="activity-summary">
+            <span className="badge">{activity.estimated_minutes ?? '?'} mins</span>
+            <span className="badge">{activity.skill_focus ?? 'Core knowledge'}</span>
+            {activity.difficulty && <span className="badge">{activity.difficulty}</span>}
+            <span className="badge disclosure-badge">Open / close</span>
+          </div>
         </div>
-        <div className="activity-summary">
-          <span className="badge">{activity.estimated_minutes ?? '?'} mins</span>
-          <span className="badge">{activity.skill_focus ?? 'Core knowledge'}</span>
-          {activity.difficulty && <span className="badge">{activity.difficulty}</span>}
-        </div>
+      </summary>
+
+      <div className="activity-body">
+        {activity.activity_type === 'lesson_content' && Array.isArray(content.sections) && (
+          <div className="lesson-section-grid">
+            {content.sections.map((section: { heading: string; body: string }, sectionIndex: number) => (
+              <section className="panel" key={section.heading}>
+                <p className="eyebrow">Lesson note {sectionIndex + 1}</p>
+                <h3>{section.heading}</h3>
+                <p>{section.body}</p>
+              </section>
+            ))}
+          </div>
+        )}
+
+        {activity.activity_type === 'quiz' && Array.isArray(content.questions) && (
+          <QuizActivity activityId={activity.id} questions={content.questions} />
+        )}
+
+        {activity.activity_type === 'flashcards' && Array.isArray(content.cards) && (
+          <div className="flashcard-grid">
+            {content.cards.map((card: any, cardIndex: number) => (
+              <section className="panel flashcard" key={card.id ?? card.front}>
+                <div>
+                  <p className="eyebrow">Flashcard {cardIndex + 1}</p>
+                  <h3>{card.front}</h3>
+                </div>
+                <p className="flashcard-back">{card.back}</p>
+              </section>
+            ))}
+          </div>
+        )}
+
+        {activity.activity_type === 'peel_response' && (
+          <PeelResponseActivity
+            activityId={activity.id}
+            question={content.question ?? 'Write a PEEL response.'}
+            stretchQuestion={content.stretchQuestion}
+            scaffold={Array.isArray(content.scaffold) ? content.scaffold : undefined}
+          />
+        )}
+
+        {activity.activity_type === 'confidence_exit_ticket' && (
+          <ConfidenceExitTicketActivity
+            activityId={activity.id}
+            prompt={content.prompt ?? 'How confident are you with this topic?'}
+            scale={Array.isArray(content.scale) ? content.scale : undefined}
+            leastSecureOptions={Array.isArray(content.leastSecureOptions) ? content.leastSecureOptions : undefined}
+          />
+        )}
       </div>
-
-      {activity.activity_type === 'lesson_content' && Array.isArray(content.sections) && (
-        <div className="lesson-section-grid">
-          {content.sections.map((section: { heading: string; body: string }, sectionIndex: number) => (
-            <section className="panel" key={section.heading}>
-              <p className="eyebrow">Lesson note {sectionIndex + 1}</p>
-              <h3>{section.heading}</h3>
-              <p>{section.body}</p>
-            </section>
-          ))}
-        </div>
-      )}
-
-      {activity.activity_type === 'quiz' && Array.isArray(content.questions) && (
-        <QuizActivity activityId={activity.id} questions={content.questions} />
-      )}
-
-      {activity.activity_type === 'flashcards' && Array.isArray(content.cards) && (
-        <div className="flashcard-grid">
-          {content.cards.map((card: any, cardIndex: number) => (
-            <section className="panel flashcard" key={card.id ?? card.front}>
-              <div>
-                <p className="eyebrow">Flashcard {cardIndex + 1}</p>
-                <h3>{card.front}</h3>
-              </div>
-              <p className="flashcard-back">{card.back}</p>
-            </section>
-          ))}
-        </div>
-      )}
-
-      {activity.activity_type === 'peel_response' && (
-        <PeelResponseActivity
-          activityId={activity.id}
-          question={content.question ?? 'Write a PEEL response.'}
-          stretchQuestion={content.stretchQuestion}
-          scaffold={Array.isArray(content.scaffold) ? content.scaffold : undefined}
-        />
-      )}
-
-      {activity.activity_type === 'confidence_exit_ticket' && (
-        <ConfidenceExitTicketActivity
-          activityId={activity.id}
-          prompt={content.prompt ?? 'How confident are you with this topic?'}
-          scale={Array.isArray(content.scale) ? content.scale : undefined}
-          leastSecureOptions={Array.isArray(content.leastSecureOptions) ? content.leastSecureOptions : undefined}
-        />
-      )}
-    </article>
+    </details>
   );
 }
 
@@ -195,7 +200,7 @@ export default async function Russia1905LessonPage() {
           <aside className="card pathway-nav">
             <p className="eyebrow">Study sequence</p>
             <h2>Your route</h2>
-            <p>Work down the pathway. Save the quiz, PEEL response and exit ticket so your teacher can see progress.</p>
+            <p>Work down the pathway. Open one task at a time to reduce scrolling and stay focused.</p>
             <div className="progress-bar" aria-label="Pathway prototype progress">
               <div className="progress-fill" style={{ '--progress': '80%' } as React.CSSProperties} />
             </div>
