@@ -12,6 +12,10 @@ type ResponseJson = {
   link?: string;
   fullResponse?: string;
   wordCount?: number;
+  prompt?: string;
+  confidence?: number;
+  leastSecureArea?: string;
+  reflection?: string;
 };
 
 type StudentResponseRow = {
@@ -31,6 +35,7 @@ function formatDate(value: string | null) {
 function getActivityLabel(row: StudentResponseRow) {
   if (row.response_type === 'peel_response') return 'PEEL response: weakening Tsarist authority';
   if (row.response_type === 'quiz') return 'Retrieval quiz: 1905 Revolution';
+  if (row.response_type === 'confidence_exit_ticket') return 'Confidence exit ticket: 1905 Revolution';
   return row.response_type.replaceAll('_', ' ');
 }
 
@@ -38,6 +43,12 @@ function getScoreLabel(row: StudentResponseRow) {
   if (row.response_type === 'peel_response') {
     const wordCount = row.response_json?.wordCount;
     return typeof wordCount === 'number' ? `${wordCount} words` : 'Submitted';
+  }
+
+  if (row.response_type === 'confidence_exit_ticket') {
+    const confidence = row.response_json?.confidence ?? row.score;
+    const area = row.response_json?.leastSecureArea;
+    return `${confidence ?? '-'}/5${area ? ` · ${area}` : ''}`;
   }
 
   const maxScore = row.response_json?.maxScore;
@@ -55,6 +66,13 @@ function getRiskFlag(row: StudentResponseRow) {
     return 'Written evidence submitted';
   }
 
+  if (row.response_type === 'confidence_exit_ticket') {
+    const confidence = row.response_json?.confidence ?? row.score ?? 0;
+    if (confidence <= 2) return 'Low confidence';
+    if (confidence === 3) return 'Moderate confidence';
+    return 'Confident';
+  }
+
   const percentage = row.response_json?.percentage;
 
   if (row.status !== 'complete' && row.status !== 'submitted') return 'Incomplete';
@@ -65,9 +83,9 @@ function getRiskFlag(row: StudentResponseRow) {
 }
 
 function getRiskClass(risk: string) {
-  if (risk === 'Secure') return 'secure';
-  if (risk === 'Intervention' || risk === 'Needs development') return 'intervention';
-  if (risk === 'Check understanding') return 'check';
+  if (risk === 'Secure' || risk === 'Confident') return 'secure';
+  if (risk === 'Intervention' || risk === 'Needs development' || risk === 'Low confidence') return 'intervention';
+  if (risk === 'Check understanding' || risk === 'Moderate confidence') return 'check';
   if (risk === 'Written evidence submitted' || risk === 'Completed') return 'submitted';
   return 'neutral';
 }
@@ -104,9 +122,10 @@ export default async function TeacherProgressPage() {
 
   const quizRows = rows.filter((row) => row.response_type === 'quiz');
   const peelRows = rows.filter((row) => row.response_type === 'peel_response');
+  const confidenceRows = rows.filter((row) => row.response_type === 'confidence_exit_ticket');
   const interventionRows = rows.filter((row) => {
     const risk = getRiskFlag(row);
-    return risk === 'Intervention' || risk === 'Needs development';
+    return risk === 'Intervention' || risk === 'Needs development' || risk === 'Low confidence';
   });
   const averageQuizPercentage = quizRows.length
     ? Math.round(
@@ -126,8 +145,8 @@ export default async function TeacherProgressPage() {
         <h1>1905 MVP Progress</h1>
         <p>
           A cleaner progress view for the first teacher-facing loop: completion evidence, quiz outcomes,
-          PEEL submissions and intervention flags. This is still using the demo student and demo assignment
-          while authentication is being built.
+          PEEL submissions, confidence reflection and intervention flags. This is still using the demo student
+          and demo assignment while authentication is being built.
         </p>
         <div className="button-row">
           <Link className="button secondary" href="/teacher/dashboard">Back to teacher dashboard</Link>
@@ -163,10 +182,16 @@ export default async function TeacherProgressPage() {
           <p>Written responses available for teacher review.</p>
         </article>
 
+        <article className={`card metric-card ${confidenceRows.length ? 'lavender' : 'green'}`}>
+          <p className="eyebrow">Exit tickets</p>
+          <h2>{confidenceRows.length}</h2>
+          <p>Confidence reflections submitted after the pathway.</p>
+        </article>
+
         <article className={`card metric-card ${interventionRows.length ? 'rose' : 'green'}`}>
           <p className="eyebrow">Need attention</p>
           <h2>{interventionRows.length}</h2>
-          <p>Low quiz scores or underdeveloped written work.</p>
+          <p>Low quiz scores, underdeveloped writing or low confidence.</p>
         </article>
       </section>
 
@@ -182,7 +207,7 @@ export default async function TeacherProgressPage() {
         {rows.length === 0 ? (
           <div className="empty-state">
             <h3>No student responses found yet</h3>
-            <p>Complete and save the quiz or PEEL task as the demo student first.</p>
+            <p>Complete and save the quiz, PEEL task or exit ticket as the demo student first.</p>
           </div>
         ) : (
           <div className="table-wrap">
@@ -238,6 +263,17 @@ export default async function TeacherProgressPage() {
                       <div className="panel lavender" style={{ marginTop: 12 }}>
                         <p className="preview-box">{row.response_json?.fullResponse ?? 'No written response saved.'}</p>
                       </div>
+                    </>
+                  ) : row.response_type === 'confidence_exit_ticket' ? (
+                    <>
+                      <p><strong>Prompt:</strong> {row.response_json?.prompt ?? 'Not recorded'}</p>
+                      <p><strong>Confidence:</strong> {row.response_json?.confidence ?? row.score ?? '-'}/5</p>
+                      <p><strong>Least secure area:</strong> {row.response_json?.leastSecureArea ?? 'Not recorded'}</p>
+                      {row.response_json?.reflection && (
+                        <div className="panel lavender" style={{ marginTop: 12 }}>
+                          <p className="preview-box">{row.response_json.reflection}</p>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <>
