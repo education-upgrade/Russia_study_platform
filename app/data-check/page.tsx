@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function DataCheckPage() {
   let coursesCount = 0;
@@ -9,6 +10,9 @@ export default async function DataCheckPage() {
   let activitiesCount = 0;
   let status = 'Database not checked yet.';
   let details = 'Supabase may not be configured.';
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  const supabaseHost = supabaseUrl ? new URL(supabaseUrl).host : 'missing';
 
   if (supabase) {
     const [courses, units, lessons, activities] = await Promise.all([
@@ -46,6 +50,13 @@ export default async function DataCheckPage() {
           <p className="eyebrow">Status</p>
           <h2>{status}</h2>
           <p>{details}</p>
+        </article>
+
+        <article className="card">
+          <p className="eyebrow">Supabase project</p>
+          <h2>Connected host</h2>
+          <p><strong>Host:</strong> {supabaseHost}</p>
+          <p>This must match the project where you ran the seed SQL.</p>
         </article>
 
         <article className="card">
