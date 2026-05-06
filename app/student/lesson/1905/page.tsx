@@ -42,7 +42,7 @@ function ActivityCard({ activity, index }: { activity: Activity; index: number }
       )}
 
       {activity.activity_type === 'quiz' && Array.isArray(content.questions) && (
-        <QuizActivity questions={content.questions} />
+        <QuizActivity activityId={activity.id} questions={content.questions} />
       )}
 
       {activity.activity_type === 'flashcards' && Array.isArray(content.cards) && (
