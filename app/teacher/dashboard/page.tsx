@@ -1,57 +1,77 @@
 import Link from 'next/link';
 
-const prototypeRows = [
-  { student: 'Student A', progress: '6/6', quiz: '8/10', flashcards: '4/4', peel: 'Submitted', confidence: '4', risk: 'Secure' },
-  { student: 'Student B', progress: '4/6', quiz: '5/10', flashcards: '2/4', peel: 'Missing', confidence: '2', risk: 'Intervention' },
-  { student: 'Student C', progress: '0/6', quiz: '-', flashcards: '-', peel: '-', confidence: '-', risk: 'Not started' },
+const teacherActions = [
+  {
+    title: 'Open live progress',
+    body: 'See saved quiz scores, PEEL responses and confidence exit tickets from the 1905 pathway.',
+    href: '/teacher/progress',
+    tone: 'teal',
+  },
+  {
+    title: 'Preview student pathway',
+    body: 'Check exactly what students see before setting or refining guided study.',
+    href: '/student/lesson/1905',
+    tone: 'lavender',
+  },
+  {
+    title: 'Build the next assignment',
+    body: 'Next phase: add teacher-set tasks, deadlines and class groups once the pilot loop is stable.',
+    href: '/teacher/progress',
+    tone: 'warm',
+  },
 ];
 
 export default function TeacherDashboardPage() {
   return (
-    <main className="page-shell">
-      <section className="hero">
-        <p className="eyebrow">Teacher dashboard</p>
-        <h1>Year 12 Russia: 1905 Revolution pathway</h1>
-        <p>
-          Prototype view of the first MVP loop: completion, quiz scores, flashcard progress,
-          PEEL submission, confidence and intervention flags.
-        </p>
-        <div className="button-row">
-          <Link className="button" href="/teacher/progress">View live progress</Link>
-          <Link className="button secondary" href="/student/lesson/1905">Open student pathway</Link>
+    <main className="page-shell teacher-shell">
+      <section className="teacher-hero">
+        <div>
+          <p className="eyebrow">Teacher command centre</p>
+          <h1>Year 12 Russia guided study</h1>
+          <p>
+            Start with the 1905 Revolution pilot pathway. The aim is simple: set meaningful study,
+            capture useful student evidence, and make the next teaching decision faster.
+          </p>
+          <div className="button-row">
+            <Link className="button" href="/teacher/progress">View live progress</Link>
+            <Link className="button secondary" href="/student/lesson/1905">Open student pathway</Link>
+          </div>
         </div>
+        <aside className="teacher-hero-actions">
+          <p className="eyebrow">Current pilot</p>
+          <h2>1905 Revolution</h2>
+          <p>Lesson content, retrieval quiz, flashcards, PEEL paragraph and confidence exit ticket.</p>
+        </aside>
+      </section>
+
+      <section className="grid three-fixed">
+        {teacherActions.map((action) => (
+          <Link className={`card ${action.tone}`} href={action.href} key={action.title}>
+            <p className="eyebrow">Teacher workflow</p>
+            <h2>{action.title}</h2>
+            <p>{action.body}</p>
+            <span className="badge">Open</span>
+          </Link>
+        ))}
       </section>
 
       <section className="card" style={{ marginTop: 24 }}>
-        <p className="eyebrow">Prototype class progress</p>
-        <h2>Assignment overview</h2>
-        <p>This table is still illustrative. Use the live progress page for real Supabase response data.</p>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Student</th>
-              <th>Progress</th>
-              <th>Quiz</th>
-              <th>Flashcards</th>
-              <th>PEEL</th>
-              <th>Confidence</th>
-              <th>Risk</th>
-            </tr>
-          </thead>
-          <tbody>
-            {prototypeRows.map((row) => (
-              <tr key={row.student}>
-                <td>{row.student}</td>
-                <td>{row.progress}</td>
-                <td>{row.quiz}</td>
-                <td>{row.flashcards}</td>
-                <td>{row.peel}</td>
-                <td>{row.confidence}</td>
-                <td><span className="badge">{row.risk}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <p className="eyebrow">Build logic</p>
+        <h2>What this dashboard is becoming</h2>
+        <div className="lesson-section-grid improved">
+          <article className="panel teal">
+            <h3>1. Set guided study</h3>
+            <p>Teachers choose a pathway, select activities, set deadlines and decide whether it is recap, exam practice or full guided study.</p>
+          </article>
+          <article className="panel lavender">
+            <h3>2. Monitor evidence</h3>
+            <p>The dashboard turns activity completion into useful evidence: quiz accuracy, written response quality and confidence.</p>
+          </article>
+          <article className="panel warm">
+            <h3>3. Intervene quickly</h3>
+            <p>The priority queue highlights who needs reteaching, feedback, reassurance or additional retrieval practice.</p>
+          </article>
+        </div>
       </section>
     </main>
   );
