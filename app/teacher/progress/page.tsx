@@ -55,14 +55,21 @@ function getRiskFlag(row: StudentResponseRow) {
     return 'Written evidence submitted';
   }
 
-  const maxScore = row.response_json?.maxScore;
   const percentage = row.response_json?.percentage;
 
   if (row.status !== 'complete' && row.status !== 'submitted') return 'Incomplete';
   if (typeof percentage === 'number' && percentage < 60) return 'Intervention';
   if (typeof percentage === 'number' && percentage < 80) return 'Check understanding';
-  if (typeof maxScore === 'number' && row.score === maxScore) return 'Secure';
+  if (typeof percentage === 'number' && percentage >= 80) return 'Secure';
   return 'Completed';
+}
+
+function getRiskClass(risk: string) {
+  if (risk === 'Secure') return 'secure';
+  if (risk === 'Intervention' || risk === 'Needs development') return 'intervention';
+  if (risk === 'Check understanding') return 'check';
+  if (risk === 'Written evidence submitted' || risk === 'Completed') return 'submitted';
+  return 'neutral';
 }
 
 export const dynamic = 'force-dynamic';
@@ -95,18 +102,37 @@ export default async function TeacherProgressPage() {
     submitted_at: row.submitted_at ? String(row.submitted_at) : null,
   }));
 
+  const quizRows = rows.filter((row) => row.response_type === 'quiz');
+  const peelRows = rows.filter((row) => row.response_type === 'peel_response');
+  const interventionRows = rows.filter((row) => {
+    const risk = getRiskFlag(row);
+    return risk === 'Intervention' || risk === 'Needs development';
+  });
+  const averageQuizPercentage = quizRows.length
+    ? Math.round(
+        quizRows.reduce((total, row) => total + (row.response_json?.percentage ?? 0), 0) / quizRows.length
+      )
+    : null;
+
   return (
     <main className="page-shell">
+      <div className="page-header-row">
+        <span className="breadcrumb">Teacher dashboard / Live progress / 1905 Revolution</span>
+        <Link className="button secondary" href="/student/lesson/1905">Open student pathway</Link>
+      </div>
+
       <section className="hero">
         <p className="eyebrow">Teacher dashboard · Live from Supabase</p>
         <h1>1905 MVP Progress</h1>
         <p>
-          This page reads live saved student response data from Supabase. It is currently using the
-          demo student and demo assignment while authentication is being built.
+          A cleaner progress view for the first teacher-facing loop: completion evidence, quiz outcomes,
+          PEEL submissions and intervention flags. This is still using the demo student and demo assignment
+          while authentication is being built.
         </p>
         <div className="button-row">
           <Link className="button secondary" href="/teacher/dashboard">Back to teacher dashboard</Link>
-          <Link className="button" href="/student/lesson/1905">Open student pathway</Link>
+          <span className="badge">Responses: {rows.length}</span>
+          <span className="badge">Intervention flags: {interventionRows.length}</span>
         </div>
       </section>
 
@@ -118,79 +144,114 @@ export default async function TeacherProgressPage() {
         </section>
       )}
 
-      <section className="grid">
-        <article className="card teal">
+      <section className="metric-grid">
+        <article className="card metric-card teal">
           <p className="eyebrow">Responses saved</p>
           <h2>{rows.length}</h2>
-          <p>Number of saved student response records currently visible to the teacher dashboard.</p>
+          <p>Saved response records visible to the dashboard.</p>
         </article>
 
-        <article className="card lavender">
-          <p className="eyebrow">Current MVP focus</p>
-          <h2>Quiz and PEEL visibility</h2>
-          <p>The teacher dashboard now shows both retrieval scores and written PEEL submissions.</p>
+        <article className="card metric-card lavender">
+          <p className="eyebrow">Average quiz</p>
+          <h2>{averageQuizPercentage === null ? '-' : `${averageQuizPercentage}%`}</h2>
+          <p>Mean retrieval score for submitted 1905 quizzes.</p>
+        </article>
+
+        <article className="card metric-card warm">
+          <p className="eyebrow">PEEL submissions</p>
+          <h2>{peelRows.length}</h2>
+          <p>Written responses available for teacher review.</p>
+        </article>
+
+        <article className={`card metric-card ${interventionRows.length ? 'rose' : 'green'}`}>
+          <p className="eyebrow">Need attention</p>
+          <h2>{interventionRows.length}</h2>
+          <p>Low quiz scores or underdeveloped written work.</p>
         </article>
       </section>
 
-      <section className="card" style={{ marginTop: 24, overflowX: 'auto' }}>
-        <p className="eyebrow">Live progress table</p>
-        <h2>Student responses</h2>
+      <section className="card" style={{ marginTop: 24 }}>
+        <div className="page-header-row">
+          <div>
+            <p className="eyebrow">Live progress table</p>
+            <h2>Student responses</h2>
+          </div>
+          <span className="badge">Auto-sorted by newest first</span>
+        </div>
 
         {rows.length === 0 ? (
-          <p>No student responses found yet. Complete and save the quiz or PEEL task as the demo student first.</p>
+          <div className="empty-state">
+            <h3>No student responses found yet</h3>
+            <p>Complete and save the quiz or PEEL task as the demo student first.</p>
+          </div>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Student</th>
-                <th>Assignment</th>
-                <th>Activity</th>
-                <th>Type</th>
-                <th>Outcome</th>
-                <th>Status</th>
-                <th>Submitted</th>
-                <th>Risk</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id}>
-                  <td>Demo Student</td>
-                  <td>1905 Revolution MVP Pathway</td>
-                  <td>{getActivityLabel(row)}</td>
-                  <td>{row.response_type}</td>
-                  <td>{getScoreLabel(row)}</td>
-                  <td>{row.status}</td>
-                  <td>{formatDate(row.submitted_at)}</td>
-                  <td><span className="badge">{getRiskFlag(row)}</span></td>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Activity</th>
+                  <th>Outcome</th>
+                  <th>Status</th>
+                  <th>Submitted</th>
+                  <th>Teacher flag</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map((row) => {
+                  const risk = getRiskFlag(row);
+                  return (
+                    <tr key={row.id}>
+                      <td><strong>Demo Student</strong><br /><span className="step-meta">1905 MVP pathway</span></td>
+                      <td>{getActivityLabel(row)}<br /><span className="step-meta">{row.response_type}</span></td>
+                      <td>{getScoreLabel(row)}</td>
+                      <td>{row.status}</td>
+                      <td>{formatDate(row.submitted_at)}</td>
+                      <td><span className={`status-pill ${getRiskClass(risk)}`}>{risk}</span></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
-      {rows.map((row) => (
-        <section className="card" style={{ marginTop: 18 }} key={`${row.id}-detail`}>
-          <p className="eyebrow">Response detail</p>
-          <h2>Demo Student · {getActivityLabel(row)}</h2>
+      {rows.length > 0 && (
+        <section className="response-detail-grid">
+          {rows.map((row) => {
+            const risk = getRiskFlag(row);
+            return (
+              <article className="card response-detail-card" key={`${row.id}-detail`}>
+                <aside>
+                  <p className="eyebrow">Response detail</p>
+                  <h2>Demo Student</h2>
+                  <p>{getActivityLabel(row)}</p>
+                  <span className={`status-pill ${getRiskClass(risk)}`}>{risk}</span>
+                </aside>
 
-          {row.response_type === 'peel_response' ? (
-            <>
-              <p><strong>Question:</strong> {row.response_json?.question ?? 'Not recorded'}</p>
-              <p><strong>Word count:</strong> {row.response_json?.wordCount ?? 0}</p>
-              <div className="card lavender" style={{ marginTop: 12 }}>
-                <p style={{ whiteSpace: 'pre-wrap' }}>{row.response_json?.fullResponse ?? 'No written response saved.'}</p>
-              </div>
-            </>
-          ) : (
-            <>
-              <p><strong>Incorrect question IDs:</strong> {(row.response_json?.incorrectQuestionIds ?? []).join(', ') || 'None'}</p>
-              <p><strong>Submitted:</strong> {formatDate(row.submitted_at)}</p>
-            </>
-          )}
+                <section>
+                  {row.response_type === 'peel_response' ? (
+                    <>
+                      <p><strong>Question:</strong> {row.response_json?.question ?? 'Not recorded'}</p>
+                      <p><strong>Word count:</strong> {row.response_json?.wordCount ?? 0}</p>
+                      <div className="panel lavender" style={{ marginTop: 12 }}>
+                        <p className="preview-box">{row.response_json?.fullResponse ?? 'No written response saved.'}</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p><strong>Outcome:</strong> {getScoreLabel(row)}</p>
+                      <p><strong>Incorrect question IDs:</strong> {(row.response_json?.incorrectQuestionIds ?? []).join(', ') || 'None'}</p>
+                      <p><strong>Submitted:</strong> {formatDate(row.submitted_at)}</p>
+                    </>
+                  )}
+                </section>
+              </article>
+            );
+          })}
         </section>
-      ))}
+      )}
     </main>
   );
 }
