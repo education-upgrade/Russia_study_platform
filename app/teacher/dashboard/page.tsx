@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 const prototypeRows = [
   { student: 'Student A', progress: '6/6', quiz: '8/10', flashcards: '4/4', peel: 'Submitted', confidence: '4', risk: 'Secure' },
   { student: 'Student B', progress: '4/6', quiz: '5/10', flashcards: '2/4', peel: 'Missing', confidence: '2', risk: 'Intervention' },
@@ -14,11 +16,16 @@ export default function TeacherDashboardPage() {
           Prototype view of the first MVP loop: completion, quiz scores, flashcard progress,
           PEEL submission, confidence and intervention flags.
         </p>
+        <div className="button-row">
+          <Link className="button" href="/teacher/progress">View live progress</Link>
+          <Link className="button secondary" href="/student/lesson/1905">Open student pathway</Link>
+        </div>
       </section>
 
       <section className="card" style={{ marginTop: 24 }}>
-        <p className="eyebrow">Class progress</p>
+        <p className="eyebrow">Prototype class progress</p>
         <h2>Assignment overview</h2>
+        <p>This table is still illustrative. Use the live progress page for real Supabase response data.</p>
         <table className="table">
           <thead>
             <tr>
