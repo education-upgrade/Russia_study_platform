@@ -1,0 +1,123 @@
+.shell {
+  width: min(100%, 880px);
+  margin: 0 auto;
+  min-height: min(780px, calc(100svh - 170px));
+  display: grid;
+  grid-template-rows: auto 8px auto auto 1fr auto;
+  gap: 10px;
+  padding: clamp(10px, 2vw, 18px);
+  border-radius: 28px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 18px 48px rgba(22, 33, 63, 0.1);
+}
+.topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+.topbar h3 { margin: 0; font-size: clamp(1.45rem, 3vw, 2.1rem); }
+.stats { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: 430px; }
+.stats span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  border-radius: 999px;
+  padding: 5px 9px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--navy);
+  font-size: 0.78rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.progress { height: 8px; overflow: hidden; border-radius: 999px; background: #d8e4ec; }
+.progress div { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--navy), #4f7194); transition: width 180ms ease; }
+.panel, .areaPanel, .textPanel {
+  border-radius: 24px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: linear-gradient(135deg, rgba(255,255,255,.98), rgba(239,235,247,.74));
+}
+.panel { display: grid; gap: 10px; padding: clamp(14px, 2.5vw, 22px); }
+.promptBlock { display: grid; gap: 4px; }
+.promptBlock h2 { margin: 0; font-size: clamp(1.35rem, 3.4vw, 2rem); line-height: 1.08; letter-spacing: -0.035em; }
+.promptBlock p:not(.eyebrow) { margin: 0; color: var(--muted); font-weight: 720; line-height: 1.35; }
+.scaleRow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.scaleButton {
+  min-height: 54px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--navy);
+  font-size: clamp(1.2rem, 3vw, 1.7rem);
+  font-weight: 950;
+  cursor: pointer;
+}
+.selected { border: 3px solid var(--navy); background: var(--teal); }
+.scaleHint { margin: 0; color: var(--muted); font-weight: 800; text-align: center; font-size: 0.9rem; }
+.areaPanel { display: grid; gap: 8px; padding: clamp(12px, 2vw, 18px); background: linear-gradient(135deg, rgba(255,255,255,.98), rgba(225,242,240,.78)); }
+.optionGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.optionButton {
+  min-height: 48px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--navy);
+  font-weight: 900;
+  cursor: pointer;
+  padding: 8px 10px;
+}
+.optionSelected { border: 3px solid var(--navy); background: var(--teal); }
+.textGrid { min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.textPanel { min-height: 0; display: grid; grid-template-rows: auto 1fr; gap: 8px; padding: clamp(12px, 2vw, 18px); background: rgba(255,255,255,.88); }
+.textPanel span { color: var(--navy); font-weight: 950; font-size: clamp(1rem, 2.3vw, 1.25rem); line-height: 1.15; }
+.textPanel textarea {
+  min-height: 120px;
+  resize: none;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 12px;
+  color: var(--navy);
+  font: inherit;
+  font-weight: 650;
+  background: #fff;
+}
+.submitRow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 260px); gap: 10px; align-items: center; }
+.submitButton { min-height: 54px; }
+.saveMessage { margin: 0; color: var(--muted); font-weight: 900; text-align: center; }
+.saved { color: #1f6f3d !important; }
+.error { color: #9c3c3c !important; }
+@media (max-width: 700px) {
+  .shell { min-height: calc(100svh - 132px); border-radius: 20px; gap: 8px; padding: 9px; grid-template-rows: auto 8px auto auto 1fr auto; }
+  .topbar { grid-template-columns: 1fr; gap: 6px; }
+  .stats { justify-content: flex-start; display: grid; grid-template-columns: repeat(3, 1fr); max-width: none; }
+  .stats span { min-height: 26px; padding: 4px 5px; font-size: 0.66rem; }
+  .panel, .areaPanel, .textPanel { border-radius: 18px; }
+  .panel { padding: 12px; }
+  .promptBlock h2 { font-size: clamp(1.25rem, 6vw, 1.75rem); }
+  .promptBlock p:not(.eyebrow) { font-size: 0.86rem; }
+  .scaleRow, .optionGrid { gap: 6px; }
+  .scaleButton { min-height: 44px; border-radius: 14px; }
+  .scaleHint { font-size: 0.78rem; }
+  .areaPanel { padding: 10px; }
+  .optionGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .optionButton { min-height: 40px; font-size: 0.78rem; padding: 6px 8px; }
+  .textGrid { grid-template-columns: 1fr; gap: 8px; }
+  .textPanel { padding: 10px; }
+  .textPanel span { font-size: 0.9rem; }
+  .textPanel textarea { min-height: 76px; border-radius: 14px; padding: 9px; font-size: 0.86rem; }
+  .submitRow { grid-template-columns: 1fr; gap: 6px; }
+  .submitButton { min-height: 48px; }
+  .saveMessage { font-size: 0.82rem; }
+}
+@media (max-height: 760px) and (max-width: 700px) {
+  .shell { min-height: calc(100svh - 116px); }
+  .promptBlock p:not(.eyebrow), .scaleHint { display: none; }
+  .scaleButton { min-height: 40px; }
+  .optionButton { min-height: 36px; }
+  .textPanel textarea { min-height: 64px; }
+  .submitButton { min-height: 44px; }
+}
