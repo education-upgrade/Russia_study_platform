@@ -1,6 +1,7 @@
 -- Multi-class guided study platform foundation
 -- Run this in Supabase SQL Editor after the existing 1905 and guided-study seed files.
 -- It is deliberately backwards-compatible with the current demo app and safe to rerun.
+-- Development note: this recreates class_memberships because an earlier prototype may have linked it to the wrong classes table.
 
 create extension if not exists "pgcrypto";
 
@@ -36,7 +37,33 @@ alter table teacher_classes add column if not exists teacher_id uuid references 
 alter table teacher_classes add column if not exists status text not null default 'active';
 alter table teacher_classes add column if not exists created_at timestamptz not null default now();
 
-create table if not exists class_memberships (
+insert into app_profiles (id, display_name, role, year_group, email)
+values
+  ('11111111-1111-1111-1111-111111111111', 'Demo Teacher', 'teacher', null, 'teacher@example.com'),
+  ('22222222-2222-2222-2222-222222222222', 'Demo Student', 'student', 'Y12', 'student@example.com'),
+  ('33333333-3333-3333-3333-333333333333', 'Year 12 Student 2', 'student', 'Y12', null),
+  ('44444444-4444-4444-4444-444444444444', 'Year 13 Student 1', 'student', 'Y13', null)
+on conflict (id) do update set
+  display_name = excluded.display_name,
+  role = excluded.role,
+  year_group = excluded.year_group,
+  email = excluded.email;
+
+insert into teacher_classes (id, class_name, year_group, course_code, teacher_id, status)
+values
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Year 12 Russia demo class', 'Y12', 'AQA-7042-1H', '11111111-1111-1111-1111-111111111111', 'active'),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Year 13 Russia demo class', 'Y13', 'AQA-7042-1H', '11111111-1111-1111-1111-111111111111', 'active')
+on conflict (id) do update set
+  class_name = excluded.class_name,
+  year_group = excluded.year_group,
+  course_code = excluded.course_code,
+  teacher_id = excluded.teacher_id,
+  status = excluded.status;
+
+-- Recreate this table to remove any old foreign key pointing at a legacy "classes" table.
+drop table if exists class_memberships cascade;
+
+create table class_memberships (
   id uuid primary key default gen_random_uuid(),
   class_id uuid not null references teacher_classes(id) on delete cascade,
   student_id uuid not null references app_profiles(id) on delete cascade,
@@ -45,10 +72,6 @@ create table if not exists class_memberships (
   unique (class_id, student_id)
 );
 
-alter table class_memberships add column if not exists class_id uuid references teacher_classes(id) on delete cascade;
-alter table class_memberships add column if not exists student_id uuid references app_profiles(id) on delete cascade;
-alter table class_memberships add column if not exists status text not null default 'active';
-alter table class_memberships add column if not exists created_at timestamptz not null default now();
 create unique index if not exists ux_class_memberships_class_student on class_memberships(class_id, student_id);
 
 create table if not exists course_units (
@@ -110,29 +133,6 @@ create index if not exists idx_guided_study_assignments_class_id on guided_study
 create index if not exists idx_guided_study_assignments_student_id on guided_study_assignments(assigned_student_id);
 create index if not exists idx_student_responses_student_id on student_responses(student_id);
 create index if not exists idx_student_responses_activity_id on student_responses(activity_id);
-
-insert into app_profiles (id, display_name, role, year_group, email)
-values
-  ('11111111-1111-1111-1111-111111111111', 'Demo Teacher', 'teacher', null, 'teacher@example.com'),
-  ('22222222-2222-2222-2222-222222222222', 'Demo Student', 'student', 'Y12', 'student@example.com'),
-  ('33333333-3333-3333-3333-333333333333', 'Year 12 Student 2', 'student', 'Y12', null),
-  ('44444444-4444-4444-4444-444444444444', 'Year 13 Student 1', 'student', 'Y13', null)
-on conflict (id) do update set
-  display_name = excluded.display_name,
-  role = excluded.role,
-  year_group = excluded.year_group,
-  email = excluded.email;
-
-insert into teacher_classes (id, class_name, year_group, course_code, teacher_id, status)
-values
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Year 12 Russia demo class', 'Y12', 'AQA-7042-1H', '11111111-1111-1111-1111-111111111111', 'active'),
-  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Year 13 Russia demo class', 'Y13', 'AQA-7042-1H', '11111111-1111-1111-1111-111111111111', 'active')
-on conflict (id) do update set
-  class_name = excluded.class_name,
-  year_group = excluded.year_group,
-  course_code = excluded.course_code,
-  teacher_id = excluded.teacher_id,
-  status = excluded.status;
 
 insert into class_memberships (class_id, student_id, status)
 values
