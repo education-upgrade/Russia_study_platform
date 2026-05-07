@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import FlashcardActivity from '@/components/FlashcardActivity';
 import { supabase } from '@/lib/supabase';
+import styles from './page.module.css';
 
 type Activity = {
   id: string;
@@ -39,14 +40,14 @@ export default async function FlashcardsPage() {
   const { activity, error } = await getActivity('flashcards');
 
   return (
-    <main className="page-shell activity-focus-shell flashcard-page-shell">
-      <div className="flashcard-page-topbar">
-        <Link className="flashcard-back-link" href="/student/lesson/1905">← Pathway</Link>
-        <div>
-          <p className="eyebrow">Flashcards</p>
+    <main className={styles.shell}>
+      <div className={styles.topbar}>
+        <Link className={styles.backLink} href="/student/lesson/1905">← Pathway</Link>
+        <div className={styles.titleBlock}>
+          <p>Flashcards</p>
           <h1>{activity?.title ?? '1905 Revolution key knowledge'}</h1>
         </div>
-        <Link className="flashcard-dashboard-link" href="/student/dashboard">Dashboard</Link>
+        <Link className={styles.dashboardLink} href="/student/dashboard">Dashboard</Link>
       </div>
 
       {error && (
@@ -57,12 +58,12 @@ export default async function FlashcardsPage() {
       )}
 
       {activity && Array.isArray(activity.content_json?.cards) && (
-        <section className="flashcard-fullscreen-panel">
+        <section className={styles.panel}>
           <FlashcardActivity activityId={activity.id} cards={activity.content_json.cards} />
         </section>
       )}
 
-      <section className="flashcard-route-footer">
+      <section className={styles.footer}>
         <Link href="/student/lesson/1905/quiz">Previous: quiz</Link>
         <Link href="/student/lesson/1905/peel">Next: PEEL response →</Link>
       </section>
