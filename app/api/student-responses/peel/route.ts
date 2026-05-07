@@ -13,6 +13,7 @@ type PeelSaveRequest = {
   link: string;
   fullResponse: string;
   wordCount: number;
+  status?: 'draft' | 'submitted';
 };
 
 export async function POST(request: Request) {
@@ -33,8 +34,11 @@ export async function POST(request: Request) {
     .some((value) => value && value.trim().length > 0);
 
   if (!hasAnyWriting) {
-    return NextResponse.json({ error: 'Write something before submitting your PEEL response.' }, { status: 400 });
+    return NextResponse.json({ error: 'Write something before saving your PEEL response.' }, { status: 400 });
   }
+
+  const responseStatus = body.status === 'submitted' ? 'submitted' : 'draft';
+  const now = new Date().toISOString();
 
   const responsePayload = {
     question: body.question,
@@ -44,36 +48,37 @@ export async function POST(request: Request) {
     link: body.link,
     fullResponse: body.fullResponse,
     wordCount: body.wordCount,
+    status: responseStatus,
   };
 
   const { data: existing } = await supabase
     .from('student_responses')
-    .select('id')
+    .select('id, started_at')
     .eq('student_id', DEMO_STUDENT_ID)
     .eq('assignment_id', DEMO_ASSIGNMENT_ID)
     .eq('activity_id', body.activityId)
     .maybeSingle();
 
-  const now = new Date().toISOString();
+  const rowPayload = {
+    response_type: 'peel_response',
+    response_json: responsePayload,
+    score: null,
+    status: responseStatus,
+    last_saved_at: now,
+    submitted_at: responseStatus === 'submitted' ? now : null,
+  };
 
   if (existing?.id) {
     const { error } = await supabase
       .from('student_responses')
-      .update({
-        response_type: 'peel_response',
-        response_json: responsePayload,
-        score: null,
-        status: 'submitted',
-        last_saved_at: now,
-        submitted_at: now,
-      })
+      .update(rowPayload)
       .eq('id', existing.id);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ status: 'updated', savedAt: now });
+    return NextResponse.json({ status: 'updated', savedAt: now, responseStatus });
   }
 
   const { error } = await supabase
@@ -82,18 +87,13 @@ export async function POST(request: Request) {
       student_id: DEMO_STUDENT_ID,
       assignment_id: DEMO_ASSIGNMENT_ID,
       activity_id: body.activityId,
-      response_type: 'peel_response',
-      response_json: responsePayload,
-      score: null,
-      status: 'submitted',
       started_at: now,
-      last_saved_at: now,
-      submitted_at: now,
+      ...rowPayload,
     });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ status: 'created', savedAt: now });
+  return NextResponse.json({ status: 'created', savedAt: now, responseStatus });
 }
