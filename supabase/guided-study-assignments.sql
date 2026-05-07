@@ -22,6 +22,33 @@ create index if not exists guided_study_assignments_student_idx
 create index if not exists guided_study_assignments_pathway_idx
   on guided_study_assignments (pathway_slug, status);
 
+-- Demo policies for the MVP build.
+-- These allow the browser-based demo to read and create guided study assignments using the publishable key.
+-- For the production version, replace these with authenticated teacher/student policies.
+alter table guided_study_assignments enable row level security;
+
+drop policy if exists "Demo can read guided study assignments" on guided_study_assignments;
+create policy "Demo can read guided study assignments"
+on guided_study_assignments
+for select
+to anon, authenticated
+using (true);
+
+drop policy if exists "Demo can create guided study assignments" on guided_study_assignments;
+create policy "Demo can create guided study assignments"
+on guided_study_assignments
+for insert
+to anon, authenticated
+with check (true);
+
+drop policy if exists "Demo can update guided study assignments" on guided_study_assignments;
+create policy "Demo can update guided study assignments"
+on guided_study_assignments
+for update
+to anon, authenticated
+using (true)
+with check (true);
+
 insert into guided_study_assignments (
   pathway_slug,
   lesson_title,
