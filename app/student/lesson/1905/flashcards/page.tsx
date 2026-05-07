@@ -33,19 +33,25 @@ async function getActivity(activityType: string) {
   return { activity, error: error?.message ?? '' };
 }
 
+function cleanFlashcardTitle(title: string | undefined | null) {
+  if (!title) return '1905 Revolution key knowledge';
+  return title.replace(/^Flashcards:\s*/i, '');
+}
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function FlashcardsPage() {
   const { activity, error } = await getActivity('flashcards');
+  const pageTitle = cleanFlashcardTitle(activity?.title);
 
   return (
     <main className={styles.shell}>
       <div className={styles.topbar}>
         <Link className={styles.backLink} href="/student/lesson/1905">← Pathway</Link>
         <div className={styles.titleBlock}>
-          <p>Flashcards</p>
-          <h1>{activity?.title ?? '1905 Revolution key knowledge'}</h1>
+          <p>Recall deck</p>
+          <h1>{pageTitle}</h1>
         </div>
         <Link className={styles.dashboardLink} href="/student/dashboard">Dashboard</Link>
       </div>
