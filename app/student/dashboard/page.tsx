@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
 const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
+const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
 
 const activityLabels: Record<string, string> = {
   lesson_content: 'Lesson content',
@@ -40,6 +41,16 @@ function formatMode(mode: string) {
 function formatDate(value: string | null) {
   if (!value) return 'No deadline set';
   return new Date(value).toLocaleString('en-GB');
+}
+
+function orderActivityTypes(activityTypes: string[]) {
+  return [...activityTypes].sort((first, second) => {
+    const firstIndex = PATHWAY_ACTIVITY_ORDER.indexOf(first);
+    const secondIndex = PATHWAY_ACTIVITY_ORDER.indexOf(second);
+    const safeFirstIndex = firstIndex === -1 ? 999 : firstIndex;
+    const safeSecondIndex = secondIndex === -1 ? 999 : secondIndex;
+    return safeFirstIndex - safeSecondIndex;
+  });
 }
 
 function isActivityComplete(activityType: string, response: StudentResponse | undefined) {
@@ -109,7 +120,7 @@ export default async function StudentDashboardPage() {
           return acc;
         }, {});
 
-        activityStates = assignment.required_activity_types.map((activityType) => ({
+        activityStates = orderActivityTypes(assignment.required_activity_types).map((activityType) => ({
           type: activityType,
           label: activityLabels[activityType] ?? activityType.replaceAll('_', ' '),
           complete: isActivityComplete(activityType, responseByActivityType[activityType]),
@@ -124,6 +135,11 @@ export default async function StudentDashboardPage() {
   }
 
   const hasAssignment = Boolean(assignment);
+  const fallbackActivityStates = orderActivityTypes(PATHWAY_ACTIVITY_ORDER).map((type) => ({
+    type,
+    label: activityLabels[type],
+    complete: false,
+  }));
 
   return (
     <main className="page-shell">
@@ -168,7 +184,7 @@ export default async function StudentDashboardPage() {
           <p className="eyebrow">Exam skill focus</p>
           <h2>How far did the 1905 Revolution weaken Tsarist authority?</h2>
           <p>Use Point, Evidence, Explain and Link judgement to build one focused paragraph.</p>
-          <Link className="button secondary" href="/student/lesson/1905#activity-4">Go to PEEL task</Link>
+          <Link className="button secondary" href="/student/lesson/1905/peel">Go to PEEL task</Link>
         </article>
       </section>
 
@@ -176,18 +192,12 @@ export default async function StudentDashboardPage() {
         <p className="eyebrow">Assignment map</p>
         <h2>What you need to complete</h2>
         <div className="step-list">
-          {(activityStates.length ? activityStates : [
-            { type: 'lesson_content', label: 'Lesson content', complete: false },
-            { type: 'quiz', label: 'Retrieval quiz', complete: false },
-            { type: 'flashcards', label: 'Flashcards', complete: false },
-            { type: 'peel_response', label: 'PEEL response', complete: false },
-            { type: 'confidence_exit_ticket', label: 'Confidence exit ticket', complete: false },
-          ]).map((activity, index) => (
+          {(activityStates.length ? activityStates : fallbackActivityStates).map((activity, index) => (
             <div className={`step-chip ${activity.complete ? 'complete' : ''}`} key={activity.type}>
               <span className="step-number">{activity.complete ? '✓' : index + 1}</span>
               <span>
                 <strong>{activity.label}</strong><br />
-                <span className="step-meta">{activity.complete ? 'Complete' : 'Required 1905 activity'}</span>
+                <span className="step-meta">{activity.complete ? 'Complete' : activity.type === 'confidence_exit_ticket' ? 'Final required activity' : 'Required 1905 activity'}</span>
               </span>
             </div>
           ))}
