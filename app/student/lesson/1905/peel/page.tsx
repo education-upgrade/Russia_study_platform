@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import PeelResponseActivity from '@/components/PeelResponseActivity';
 import { supabase } from '@/lib/supabase';
+import styles from './page.module.css';
 
 type Activity = {
   id: string;
@@ -32,35 +33,29 @@ async function getActivity(activityType: string) {
   return { activity, error: error?.message ?? '' };
 }
 
+function cleanPeelTitle(title: string | undefined | null) {
+  if (!title) return '1905 Revolution writing practice';
+  return title.replace(/^PEEL response:\s*/i, '').replace(/^PEEL:\s*/i, '');
+}
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function PeelPage() {
   const { activity, error } = await getActivity('peel_response');
   const content = activity?.content_json ?? {};
+  const pageTitle = cleanPeelTitle(activity?.title);
 
   return (
-    <main className="page-shell activity-focus-shell">
-      <div className="page-header-row app-topbar">
-        <span className="breadcrumb">1905 pathway / PEEL response</span>
-        <div className="button-row compact">
-          <Link className="button secondary" href="/student/lesson/1905">Back to pathway</Link>
-          <Link className="button secondary" href="/student/dashboard">Dashboard</Link>
+    <main className={styles.shell}>
+      <div className={styles.topbar}>
+        <Link className={styles.backLink} href="/student/lesson/1905">← Pathway</Link>
+        <div className={styles.titleBlock}>
+          <p>Writing task</p>
+          <h1>{pageTitle}</h1>
         </div>
+        <Link className={styles.dashboardLink} href="/student/dashboard">Dashboard</Link>
       </div>
-
-      <section className="activity-focus-hero teal">
-        <div>
-          <p className="eyebrow">Focused activity screen</p>
-          <h1>{activity?.title ?? '1905 PEEL response'}</h1>
-          <p>Use Point, Evidence, Explain and Link judgement to turn your 1905 knowledge into exam-ready analysis.</p>
-        </div>
-        <aside className="activity-focus-meta">
-          <span className="badge">{activity?.estimated_minutes ?? 15} mins</span>
-          <span className="badge">{activity?.skill_focus ?? 'AO1 explanation'}</span>
-          {activity?.difficulty && <span className="badge">{activity.difficulty}</span>}
-        </aside>
-      </section>
 
       {error && (
         <section className="card warm" style={{ marginTop: 24 }}>
@@ -70,7 +65,7 @@ export default async function PeelPage() {
       )}
 
       {activity && (
-        <section className="activity-focus-card">
+        <section className={styles.panel}>
           <PeelResponseActivity
             activityId={activity.id}
             question={content.question ?? 'Write a PEEL response.'}
@@ -80,9 +75,9 @@ export default async function PeelPage() {
         </section>
       )}
 
-      <section className="activity-bottom-nav">
-        <Link className="button secondary" href="/student/lesson/1905/flashcards">Previous: flashcards</Link>
-        <Link className="button" href="/student/lesson/1905/confidence">Next: confidence check</Link>
+      <section className={styles.footer}>
+        <Link href="/student/lesson/1905/flashcards">Previous: flashcards</Link>
+        <Link href="/student/lesson/1905/confidence">Next: confidence check →</Link>
       </section>
     </main>
   );
