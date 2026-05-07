@@ -5,7 +5,27 @@ import styles from './GuidedStudyAssignmentForm.module.css';
 
 type StudyMode = 'full_guided_study' | 'exam_practice' | 'recap' | 'confidence_repair';
 
+type ClassOption = {
+  id: string;
+  className: string;
+  yearGroup: string;
+  studentCount: number;
+};
+
+type GuidedStudyAssignmentFormProps = {
+  classOptions?: ClassOption[];
+};
+
 const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
+
+const fallbackClasses: ClassOption[] = [
+  {
+    id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    className: 'Year 12 Russia demo class',
+    yearGroup: 'Y12',
+    studentCount: 1,
+  },
+];
 
 const modeOptions: { value: StudyMode; title: string; description: string }[] = [
   {
@@ -64,13 +84,16 @@ function getSelectedModeTitle(mode: StudyMode) {
   return modeOptions.find((option) => option.value === mode)?.title ?? 'Guided study';
 }
 
-export default function GuidedStudyAssignmentForm() {
+export default function GuidedStudyAssignmentForm({ classOptions = fallbackClasses }: GuidedStudyAssignmentFormProps) {
+  const usableClassOptions = classOptions.length ? classOptions : fallbackClasses;
+  const [classId, setClassId] = useState(usableClassOptions[0]?.id ?? fallbackClasses[0].id);
   const [mode, setMode] = useState<StudyMode>('full_guided_study');
   const [selectedActivities, setSelectedActivities] = useState<string[]>(defaultActivities);
   const [deadlineAt, setDeadlineAt] = useState('');
   const [instructions, setInstructions] = useState(getDefaultInstructions('full_guided_study'));
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveMessage, setSaveMessage] = useState('');
+  const selectedClass = usableClassOptions.find((option) => option.id === classId) ?? usableClassOptions[0];
 
   function updateMode(nextMode: StudyMode) {
     setMode(nextMode);
@@ -109,6 +132,7 @@ export default function GuidedStudyAssignmentForm() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          classId,
           mode,
           requiredActivityTypes: orderSelectedActivities(selectedActivities),
           deadlineAt: deadlineAt ? new Date(deadlineAt).toISOString() : undefined,
@@ -123,7 +147,7 @@ export default function GuidedStudyAssignmentForm() {
       }
 
       setSaveStatus('saved');
-      setSaveMessage('Assignment created and sent to the student dashboard.');
+      setSaveMessage(`Assignment created for ${result.recipientCount ?? selectedClass.studentCount} student${(result.recipientCount ?? selectedClass.studentCount) === 1 ? '' : 's'}.`);
     } catch (error) {
       setSaveStatus('error');
       setSaveMessage(error instanceof Error ? error.message : 'Assignment could not be created.');
@@ -136,7 +160,7 @@ export default function GuidedStudyAssignmentForm() {
         <header className={styles.header}>
           <p className={styles.eyebrow}>Set guided study</p>
           <h2>1905 Revolution</h2>
-          <p>Choose a mode, check the required route, set a deadline and send it. The student dashboard will show one clear next task.</p>
+          <p>Choose a class, select the route, set a deadline and send it. The student dashboard will show one clear next task.</p>
         </header>
 
         <div className={styles.modeStrip}>
@@ -157,6 +181,18 @@ export default function GuidedStudyAssignmentForm() {
           <section className={styles.panel}>
             <p className={styles.eyebrow}>Required student route</p>
             <h3>Activities</h3>
+
+            <label className={styles.field} style={{ marginTop: 0, marginBottom: 12 }}>
+              <span>Class</span>
+              <select value={classId} onChange={(event) => setClassId(event.target.value)}>
+                {usableClassOptions.map((option) => (
+                  <option value={option.id} key={option.id}>
+                    {option.className} · {option.yearGroup} · {option.studentCount} student{option.studentCount === 1 ? '' : 's'}
+                  </option>
+                ))}
+              </select>
+            </label>
+
             <div className={styles.activityList}>
               {activityOptions.map((activity) => {
                 const selectedIndex = selectedActivities.indexOf(activity.value);
@@ -200,6 +236,14 @@ export default function GuidedStudyAssignmentForm() {
             <p className={styles.eyebrow}>Summary</p>
             <h3>Ready to set</h3>
 
+            <div className={styles.summaryLine}>
+              <span>Class</span>
+              <strong>{selectedClass.className}</strong>
+            </div>
+            <div className={styles.summaryLine}>
+              <span>Students</span>
+              <strong>{selectedClass.studentCount}</strong>
+            </div>
             <div className={styles.summaryLine}>
               <span>Mode</span>
               <strong>{getSelectedModeTitle(mode)}</strong>
