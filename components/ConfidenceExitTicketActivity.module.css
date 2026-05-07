@@ -91,33 +91,87 @@
 .saved { color: #1f6f3d !important; }
 .error { color: #9c3c3c !important; }
 @media (max-width: 700px) {
-  .shell { min-height: calc(100svh - 132px); border-radius: 20px; gap: 8px; padding: 9px; grid-template-rows: auto 8px auto auto 1fr auto; }
-  .topbar { grid-template-columns: 1fr; gap: 6px; }
-  .stats { justify-content: flex-start; display: grid; grid-template-columns: repeat(3, 1fr); max-width: none; }
-  .stats span { min-height: 26px; padding: 4px 5px; font-size: 0.66rem; }
-  .panel, .areaPanel, .textPanel { border-radius: 18px; }
-  .panel { padding: 12px; }
-  .promptBlock h2 { font-size: clamp(1.25rem, 6vw, 1.75rem); }
-  .promptBlock p:not(.eyebrow) { font-size: 0.86rem; }
-  .scaleRow, .optionGrid { gap: 6px; }
-  .scaleButton { min-height: 44px; border-radius: 14px; }
-  .scaleHint { font-size: 0.78rem; }
-  .areaPanel { padding: 10px; }
-  .optionGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .optionButton { min-height: 40px; font-size: 0.78rem; padding: 6px 8px; }
-  .textGrid { grid-template-columns: 1fr; gap: 8px; }
-  .textPanel { padding: 10px; }
-  .textPanel span { font-size: 0.9rem; }
-  .textPanel textarea { min-height: 76px; border-radius: 14px; padding: 9px; font-size: 0.86rem; }
-  .submitRow { grid-template-columns: 1fr; gap: 6px; }
-  .submitButton { min-height: 48px; }
-  .saveMessage { font-size: 0.82rem; }
+  .shell {
+    min-height: calc(100svh - 132px);
+    border-radius: 20px;
+    gap: 7px;
+    padding: 9px;
+    grid-template-rows: auto 7px auto auto minmax(190px, 1fr) auto;
+  }
+  .topbar { grid-template-columns: 1fr; gap: 5px; }
+  .topbar h3 {
+    font-size: clamp(1.28rem, 7vw, 1.75rem);
+    letter-spacing: -0.04em;
+  }
+  .stats {
+    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    max-width: none;
+    gap: 4px;
+  }
+  .stats span {
+    min-height: 25px;
+    padding: 3px 4px;
+    font-size: 0.62rem;
+  }
+  .panel, .areaPanel, .textPanel { border-radius: 16px; }
+  .panel { padding: 10px; gap: 8px; }
+  .promptBlock h2 {
+    font-size: clamp(1.25rem, 6.4vw, 1.7rem);
+  }
+  .promptBlock p:not(.eyebrow) {
+    display: none;
+  }
+  .scaleRow, .optionGrid { gap: 5px; }
+  .scaleButton {
+    min-height: 42px;
+    border-radius: 14px;
+    font-size: 1.22rem;
+  }
+  .scaleHint { display: none; }
+  .areaPanel { padding: 10px; gap: 6px; }
+  .optionGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .optionButton {
+    min-height: 38px;
+    font-size: 0.76rem;
+    padding: 5px 8px;
+  }
+  .textGrid {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+  .textPanel {
+    padding: 9px;
+    gap: 6px;
+  }
+  .textPanel span {
+    font-size: 0.86rem;
+  }
+  .textPanel textarea {
+    min-height: 72px;
+    border-radius: 13px;
+    padding: 8px;
+    font-size: 0.84rem;
+  }
+  .submitRow {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  .submitButton { min-height: 46px; }
+  .saveMessage { font-size: 0.8rem; }
 }
 @media (max-height: 760px) and (max-width: 700px) {
-  .shell { min-height: calc(100svh - 116px); }
-  .promptBlock p:not(.eyebrow), .scaleHint { display: none; }
-  .scaleButton { min-height: 40px; }
-  .optionButton { min-height: 36px; }
-  .textPanel textarea { min-height: 64px; }
-  .submitButton { min-height: 44px; }
+  .shell {
+    min-height: calc(100svh - 116px);
+    gap: 6px;
+  }
+  .scaleButton { min-height: 38px; }
+  .areaPanel { padding: 8px; }
+  .optionButton { min-height: 34px; }
+  .textPanel textarea { min-height: 58px; }
+  .submitButton { min-height: 42px; }
 }
