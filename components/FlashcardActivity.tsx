@@ -102,8 +102,7 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
   if (!currentCard) {
     return (
       <section className="panel warm">
-        <p className="eyebrow">Flashcards</p>
-        <h3>No flashcards found</h3>
+        <h3>No cards found</h3>
         <p>This activity does not currently have any cards.</p>
       </section>
     );
@@ -113,7 +112,6 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
     <div className={styles.shell}>
       <section className={styles.topbar}>
         <div>
-          <p className="eyebrow">Active recall</p>
           <h3>Card {currentIndex + 1} of {cards.length}</h3>
         </div>
         <div className={styles.stats} aria-label="Flashcard progress statistics">
@@ -130,12 +128,10 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
 
       <section className={`${styles.card} ${isRevealed ? styles.revealed : ''}`}>
         <div className={styles.face}>
-          <p className="eyebrow">Question</p>
           <h2>{currentCard.front}</h2>
         </div>
 
         <div className={`${styles.face} ${isRevealed ? '' : styles.hiddenAnswer}`} aria-hidden={!isRevealed}>
-          <p className="eyebrow">Answer</p>
           <p>{currentCard.back}</p>
         </div>
       </section>
