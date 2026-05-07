@@ -1,0 +1,278 @@
+.builder {
+  display: grid;
+  gap: 12px;
+}
+.card {
+  overflow: hidden;
+  border-radius: 30px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(237,245,251,0.94) 60%, rgba(238,232,248,0.72));
+  box-shadow: 0 18px 48px rgba(22, 33, 63, 0.1);
+}
+.header {
+  padding: clamp(18px, 4vw, 30px);
+  border-bottom: 1px solid rgba(213, 226, 235, 0.88);
+}
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+.header h2 {
+  margin: 0;
+  color: var(--navy);
+  font-size: clamp(2rem, 6vw, 4rem);
+  line-height: 0.96;
+  letter-spacing: -0.06em;
+}
+.header p:not(.eyebrow) {
+  max-width: 660px;
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-weight: 740;
+  line-height: 1.5;
+}
+.modeStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: clamp(14px, 3vw, 22px);
+  background: rgba(255, 255, 255, 0.48);
+}
+.modeButton {
+  min-height: 64px;
+  border-radius: 18px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255,255,255,0.86);
+  color: var(--navy);
+  cursor: pointer;
+  text-align: left;
+  padding: 10px 12px;
+}
+.modeButton strong {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 950;
+}
+.modeButton span {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 760;
+  line-height: 1.2;
+}
+.modeButton.selected {
+  border: 3px solid var(--navy);
+  background: var(--teal);
+  padding: 8px 10px;
+}
+.mainGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.55fr);
+  gap: 12px;
+  padding: clamp(14px, 3vw, 22px);
+}
+.panel {
+  border-radius: 24px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255,255,255,0.78);
+  padding: clamp(14px, 3vw, 20px);
+}
+.panel h3 {
+  margin: 0 0 10px;
+  color: var(--navy);
+  font-size: clamp(1.25rem, 3vw, 1.7rem);
+  letter-spacing: -0.04em;
+}
+.activityList {
+  display: grid;
+  gap: 8px;
+}
+.activityChoice {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  border-radius: 18px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255,255,255,0.86);
+  padding: 9px 12px;
+  cursor: pointer;
+}
+.activityChoice input {
+  width: 22px;
+  height: 22px;
+  accent-color: #17213f;
+}
+.activityChoice strong {
+  display: block;
+  overflow: hidden;
+  color: var(--navy);
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activityChoice small {
+  display: block;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 760;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activityChoice.selected {
+  border: 2px solid var(--navy);
+  background: rgba(225,242,240,0.86);
+  padding: 8px 11px;
+}
+.orderBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  border-radius: 12px;
+  background: var(--navy);
+  color: #fff;
+  font-weight: 950;
+  font-size: 0.8rem;
+}
+.field {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+.field span {
+  color: var(--navy);
+  font-weight: 950;
+}
+.field input,
+.field textarea {
+  width: 100%;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--navy);
+  font: inherit;
+  font-weight: 650;
+  padding: 11px 12px;
+}
+.field textarea {
+  min-height: 118px;
+  resize: vertical;
+}
+.summaryBox {
+  display: grid;
+  gap: 10px;
+}
+.summaryBox h3 {
+  margin-bottom: 0;
+}
+.summaryLine {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255,255,255,0.82);
+}
+.summaryLine span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.summaryLine strong {
+  color: var(--navy);
+  font-weight: 950;
+}
+.submitButton {
+  width: 100%;
+  min-height: 58px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--navy);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 950;
+  box-shadow: 0 14px 28px rgba(22, 33, 63, 0.18);
+}
+.submitButton:disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+}
+.saveMessage {
+  margin: 0;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.82);
+  color: var(--muted);
+  font-weight: 850;
+}
+.saved { color: #1f6f3d; }
+.error { color: #9c3c3c; }
+.saving { color: var(--navy); }
+@media (max-width: 850px) {
+  .modeStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mainGrid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 700px) {
+  .card {
+    border-radius: 22px;
+  }
+  .header {
+    padding: 18px;
+  }
+  .header p:not(.eyebrow) {
+    font-size: 0.9rem;
+  }
+  .modeStrip {
+    padding: 14px;
+    gap: 7px;
+  }
+  .modeButton {
+    min-height: 58px;
+    border-radius: 16px;
+    padding: 9px 10px;
+  }
+  .modeButton span {
+    display: none;
+  }
+  .mainGrid {
+    padding: 14px;
+  }
+  .panel {
+    border-radius: 18px;
+    padding: 13px;
+  }
+  .activityChoice {
+    grid-template-columns: 32px minmax(0, 1fr) 28px;
+    min-height: 52px;
+    border-radius: 16px;
+    padding: 8px 10px;
+  }
+  .activityChoice input {
+    width: 20px;
+    height: 20px;
+  }
+  .activityChoice small {
+    font-size: 0.7rem;
+  }
+  .orderBadge {
+    min-width: 28px;
+    height: 28px;
+    border-radius: 10px;
+  }
+}
