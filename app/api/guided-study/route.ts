@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
+const DEMO_TEACHER_ID = '11111111-1111-1111-1111-111111111111';
 const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
+const DEMO_CLASS_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
 
 const activityLabels: Record<string, string> = {
@@ -17,6 +19,13 @@ type GuidedStudyRequest = {
   requiredActivityTypes: string[];
   deadlineAt?: string;
   instructions?: string;
+  classId?: string;
+  studentIds?: string[];
+};
+
+type ClassRow = {
+  id: string;
+  class_name: string;
 };
 
 function orderRequiredActivityTypes(activityTypes: string[]) {
@@ -27,6 +36,32 @@ function orderRequiredActivityTypes(activityTypes: string[]) {
     const safeSecondIndex = secondIndex === -1 ? 999 : secondIndex;
     return safeFirstIndex - safeSecondIndex;
   });
+}
+
+async function getClassStudents(classId: string) {
+  if (!supabase) return [DEMO_STUDENT_ID];
+
+  const { data, error } = await supabase
+    .from('class_memberships')
+    .select('student_id')
+    .eq('class_id', classId)
+    .eq('status', 'active');
+
+  if (error || !data?.length) return [DEMO_STUDENT_ID];
+  return data.map((row) => row.student_id as string);
+}
+
+async function getClassName(classId: string) {
+  if (!supabase) return 'Year 12 Russia demo class';
+
+  const { data, error } = await supabase
+    .from('teacher_classes')
+    .select('id, class_name')
+    .eq('id', classId)
+    .maybeSingle<ClassRow>();
+
+  if (error || !data) return 'Year 12 Russia demo class';
+  return data.class_name;
 }
 
 export async function POST(request: Request) {
@@ -63,31 +98,47 @@ export async function POST(request: Request) {
     );
   }
 
+  const classId = body.classId || DEMO_CLASS_ID;
+  const className = await getClassName(classId);
+  const studentIds = body.studentIds?.length ? body.studentIds : await getClassStudents(classId);
+  const firstStudentId = studentIds[0] ?? DEMO_STUDENT_ID;
+
+  const assignmentPayload = {
+    pathway_slug: '1905-revolution',
+    lesson_title: lesson.title,
+    mode: body.mode,
+    required_activity_types: requiredActivityTypes,
+    deadline_at: body.deadlineAt || null,
+    instructions: body.instructions || null,
+    assigned_student_id: firstStudentId,
+    assigned_student_ids: studentIds,
+    assigned_class: className,
+    class_id: classId,
+    teacher_id: DEMO_TEACHER_ID,
+    recipient_count: studentIds.length,
+    status: 'active',
+  };
+
   const { data, error } = await supabase
     .from('guided_study_assignments')
-    .insert({
-      pathway_slug: '1905-revolution',
-      lesson_title: lesson.title,
-      mode: body.mode,
-      required_activity_types: requiredActivityTypes,
-      deadline_at: body.deadlineAt || null,
-      instructions: body.instructions || null,
-      assigned_student_id: DEMO_STUDENT_ID,
-      assigned_class: 'Year 12 Russia demo class',
-      status: 'active',
-    })
-    .select('id, created_at')
+    .insert(assignmentPayload)
+    .select('id, created_at, recipient_count')
     .single();
 
   if (error) {
     return NextResponse.json(
       {
         error: error.message,
-        setupHint: 'If this mentions guided_study_assignments, run supabase/guided-study-assignments.sql in Supabase SQL Editor.',
+        setupHint: 'If this mentions class_id, teacher_id or assigned_student_ids, run supabase/multi-class-platform.sql in Supabase SQL Editor.',
       },
       { status: 500 }
     );
   }
 
-  return NextResponse.json({ status: 'created', assignmentId: data.id, createdAt: data.created_at });
+  return NextResponse.json({
+    status: 'created',
+    assignmentId: data.id,
+    createdAt: data.created_at,
+    recipientCount: data.recipient_count ?? studentIds.length,
+  });
 }
