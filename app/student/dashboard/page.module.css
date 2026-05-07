@@ -1,0 +1,241 @@
+.shell {
+  width: min(860px, calc(100% - 24px));
+  min-height: 100svh;
+  margin: 0 auto;
+  padding: 14px 0 28px;
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 10px 28px rgba(22, 33, 63, 0.06);
+}
+.topbar span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.topbar a {
+  color: var(--navy);
+  font-weight: 900;
+}
+.mainCard {
+  overflow: hidden;
+  border-radius: 30px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(237,245,251,0.94) 58%, rgba(238,232,248,0.72));
+  box-shadow: 0 18px 48px rgba(22, 33, 63, 0.1);
+}
+.header {
+  padding: clamp(18px, 4vw, 34px);
+  border-bottom: 1px solid rgba(213, 226, 235, 0.85);
+}
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.header h1 {
+  margin: 0;
+  color: var(--navy);
+  font-size: clamp(2.1rem, 7vw, 4.6rem);
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+}
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  border-radius: 999px;
+  padding: 7px 12px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--navy);
+  font-size: 0.83rem;
+  font-weight: 900;
+}
+.nextPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: clamp(18px, 4vw, 30px);
+  background: linear-gradient(135deg, rgba(225,242,240,0.88), rgba(255,255,255,0.9));
+}
+.nextPanel h2 {
+  margin: 0 0 6px;
+  color: var(--navy);
+  font-size: clamp(1.6rem, 5vw, 3rem);
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+.nextPanel p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 750;
+}
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 58px;
+  border-radius: 999px;
+  padding: 14px 24px;
+  background: var(--navy);
+  color: #fff;
+  font-weight: 950;
+  box-shadow: 0 14px 28px rgba(22, 33, 63, 0.18);
+  white-space: nowrap;
+}
+.progressArea {
+  padding: clamp(16px, 3vw, 26px);
+}
+.progressTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.progressTop strong {
+  color: var(--navy);
+  font-size: 1.15rem;
+}
+.progressTop span {
+  color: var(--muted);
+  font-weight: 850;
+}
+.progressBar {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #d8e4ec;
+}
+.progressFill {
+  height: 100%;
+  width: var(--progress);
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--navy), #4f7194);
+}
+.checklist {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+.step {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 58px;
+  border-radius: 18px;
+  padding: 9px 12px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255, 255, 255, 0.72);
+}
+.step.current {
+  border: 2px solid var(--navy);
+  background: rgba(225, 242, 240, 0.86);
+}
+.step.complete {
+  background: rgba(227, 242, 232, 0.86);
+}
+.stepMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  background: var(--navy);
+  color: #fff;
+  font-weight: 950;
+}
+.stepTitle {
+  display: block;
+  overflow: hidden;
+  color: var(--navy);
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stepStatus {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.error {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid #e4b3b3;
+  background: var(--rose);
+  color: var(--navy);
+  font-weight: 800;
+}
+@media (max-width: 700px) {
+  .shell {
+    width: min(100% - 16px, 860px);
+    padding-top: 8px;
+  }
+  .topbar {
+    padding: 8px 10px;
+  }
+  .topbar span {
+    font-size: 0.68rem;
+  }
+  .topbar a {
+    font-size: 0.86rem;
+  }
+  .mainCard {
+    border-radius: 22px;
+  }
+  .header {
+    padding: 18px;
+  }
+  .nextPanel {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 18px;
+  }
+  .primaryButton {
+    width: 100%;
+    min-height: 54px;
+  }
+  .progressArea {
+    padding: 16px;
+  }
+  .step {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    min-height: 52px;
+    padding: 8px 9px;
+  }
+  .stepMark {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+  }
+  .stepStatus {
+    font-size: 0.72rem;
+  }
+}
