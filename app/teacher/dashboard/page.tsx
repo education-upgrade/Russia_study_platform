@@ -2,21 +2,21 @@ import Link from 'next/link';
 
 const teacherActions = [
   {
-    title: 'Open live progress',
-    body: 'See saved quiz scores, PEEL responses and confidence exit tickets from the 1905 pathway.',
-    href: '/teacher/progress',
+    title: 'Set guided study',
+    body: 'Choose the 1905 pathway mode, required activities, deadline and teacher instructions.',
+    href: '/teacher/set-study',
     tone: 'teal',
+  },
+  {
+    title: 'Open live progress',
+    body: 'See saved quiz scores, flashcard ratings, PEEL responses and confidence exit tickets from the 1905 pathway.',
+    href: '/teacher/progress',
+    tone: 'lavender',
   },
   {
     title: 'Preview student pathway',
     body: 'Check exactly what students see before setting or refining guided study.',
     href: '/student/lesson/1905',
-    tone: 'lavender',
-  },
-  {
-    title: 'Build the next assignment',
-    body: 'Next phase: add teacher-set tasks, deadlines and class groups once the pilot loop is stable.',
-    href: '/teacher/progress',
     tone: 'warm',
   },
 ];
@@ -33,8 +33,8 @@ export default function TeacherDashboardPage() {
             capture useful student evidence, and make the next teaching decision faster.
           </p>
           <div className="button-row">
-            <Link className="button" href="/teacher/progress">View live progress</Link>
-            <Link className="button secondary" href="/student/lesson/1905">Open student pathway</Link>
+            <Link className="button" href="/teacher/set-study">Set guided study</Link>
+            <Link className="button secondary" href="/teacher/progress">View live progress</Link>
           </div>
         </div>
         <aside className="teacher-hero-actions">
