@@ -16,6 +16,16 @@ type ResponseJson = {
   confidence?: number;
   leastSecureArea?: string;
   reflection?: string;
+  ratings?: Record<string, 'secure' | 'nearly' | 'revisit'>;
+  revealedCardIds?: string[];
+  totalCards?: number;
+  ratedCount?: number;
+  secureCount?: number;
+  nearlyCount?: number;
+  revisitCount?: number;
+  revisitCardIds?: string[];
+  completionPercentage?: number;
+  securePercentage?: number;
 };
 
 type StudentResponseRow = {
@@ -35,6 +45,7 @@ function formatDate(value: string | null) {
 function getActivityLabel(row: StudentResponseRow) {
   if (row.response_type === 'peel_response') return 'PEEL response: weakening Tsarist authority';
   if (row.response_type === 'quiz') return 'Retrieval quiz: 1905 Revolution';
+  if (row.response_type === 'flashcards') return 'Flashcards: 1905 key evidence';
   if (row.response_type === 'confidence_exit_ticket') return 'Confidence exit ticket: 1905 Revolution';
   return row.response_type.replaceAll('_', ' ');
 }
@@ -49,6 +60,14 @@ function getScoreLabel(row: StudentResponseRow) {
     const confidence = row.response_json?.confidence ?? row.score;
     const area = row.response_json?.leastSecureArea;
     return `${confidence ?? '-'}/5${area ? ` · ${area}` : ''}`;
+  }
+
+  if (row.response_type === 'flashcards') {
+    const secure = row.response_json?.secureCount ?? 0;
+    const nearly = row.response_json?.nearlyCount ?? 0;
+    const revisit = row.response_json?.revisitCount ?? 0;
+    const total = row.response_json?.totalCards ?? '?';
+    return `${secure}/${total} secure · ${nearly} nearly · ${revisit} revisit`;
   }
 
   const maxScore = row.response_json?.maxScore;
@@ -73,6 +92,18 @@ function getRiskFlag(row: StudentResponseRow) {
     return 'Confident';
   }
 
+  if (row.response_type === 'flashcards') {
+    const totalCards = row.response_json?.totalCards ?? 0;
+    const ratedCount = row.response_json?.ratedCount ?? 0;
+    const revisitCount = row.response_json?.revisitCount ?? 0;
+    const securePercentage = row.response_json?.securePercentage ?? 0;
+
+    if (ratedCount < totalCards) return 'Incomplete';
+    if (revisitCount > 0) return 'Revisit needed';
+    if (securePercentage >= 80) return 'Secure';
+    return 'Check understanding';
+  }
+
   const percentage = row.response_json?.percentage;
 
   if (row.status !== 'complete' && row.status !== 'submitted') return 'Incomplete';
@@ -84,7 +115,7 @@ function getRiskFlag(row: StudentResponseRow) {
 
 function getRiskClass(risk: string) {
   if (risk === 'Secure' || risk === 'Confident') return 'secure';
-  if (risk === 'Intervention' || risk === 'Needs development' || risk === 'Low confidence') return 'intervention';
+  if (risk === 'Intervention' || risk === 'Needs development' || risk === 'Low confidence' || risk === 'Revisit needed') return 'intervention';
   if (risk === 'Check understanding' || risk === 'Moderate confidence') return 'check';
   if (risk === 'Written evidence submitted' || risk === 'Completed') return 'submitted';
   return 'neutral';
@@ -95,7 +126,8 @@ function getPriorityAction(row: StudentResponseRow) {
   if (risk === 'Intervention') return 'Set recap quiz or reteach causes/consequences.';
   if (risk === 'Needs development') return 'Review PEEL structure and ask for a stronger explain/link section.';
   if (risk === 'Low confidence') return 'Check least secure area and assign targeted flashcards.';
-  if (risk === 'Check understanding') return 'Ask student to correct missed quiz questions.';
+  if (risk === 'Revisit needed') return 'Ask the student to repeat the revisit cards before attempting another PEEL paragraph.';
+  if (risk === 'Check understanding') return 'Ask student to correct missed quiz questions or re-rate uncertain cards.';
   return 'No urgent action.';
 }
 
@@ -130,11 +162,12 @@ export default async function TeacherProgressPage() {
   }));
 
   const quizRows = rows.filter((row) => row.response_type === 'quiz');
+  const flashcardRows = rows.filter((row) => row.response_type === 'flashcards');
   const peelRows = rows.filter((row) => row.response_type === 'peel_response');
   const confidenceRows = rows.filter((row) => row.response_type === 'confidence_exit_ticket');
   const interventionRows = rows.filter((row) => {
     const risk = getRiskFlag(row);
-    return risk === 'Intervention' || risk === 'Needs development' || risk === 'Low confidence';
+    return risk === 'Intervention' || risk === 'Needs development' || risk === 'Low confidence' || risk === 'Revisit needed';
   });
   const averageQuizPercentage = quizRows.length
     ? Math.round(
@@ -157,8 +190,8 @@ export default async function TeacherProgressPage() {
           <p className="eyebrow">Live progress board · Supabase</p>
           <h1>1905 pathway overview</h1>
           <p>
-            A teacher-first view of the pilot learning loop: retrieval performance, PEEL evidence,
-            confidence reflection and simple next-action flags.
+            A teacher-first view of the pilot learning loop: retrieval performance, flashcard confidence,
+            PEEL evidence, confidence reflection and simple next-action flags.
           </p>
         </div>
         <aside className="teacher-hero-actions">
@@ -176,7 +209,7 @@ export default async function TeacherProgressPage() {
         </section>
       )}
 
-      <section className="teacher-metric-strip">
+      <section className="teacher-metric-strip six">
         <article className="teacher-metric teal">
           <span>Responses</span>
           <strong>{rows.length}</strong>
@@ -186,6 +219,11 @@ export default async function TeacherProgressPage() {
           <span>Average quiz</span>
           <strong>{averageQuizPercentage === null ? '-' : `${averageQuizPercentage}%`}</strong>
           <small>retrieval accuracy</small>
+        </article>
+        <article className="teacher-metric warm">
+          <span>Flashcards</span>
+          <strong>{flashcardRows.length}</strong>
+          <small>rated sets</small>
         </article>
         <article className="teacher-metric warm">
           <span>PEEL</span>
@@ -217,7 +255,7 @@ export default async function TeacherProgressPage() {
           {rows.length === 0 ? (
             <div className="empty-state">
               <h3>No student responses found yet</h3>
-              <p>Complete and save the quiz, PEEL task or exit ticket as the demo student first.</p>
+              <p>Complete and save the quiz, flashcards, PEEL task or exit ticket as the demo student first.</p>
             </div>
           ) : (
             <div className="teacher-response-list">
@@ -299,6 +337,14 @@ export default async function TeacherProgressPage() {
                           <p className="preview-box">{row.response_json.reflection}</p>
                         </div>
                       )}
+                    </>
+                  ) : row.response_type === 'flashcards' ? (
+                    <>
+                      <p><strong>Rated:</strong> {row.response_json?.ratedCount ?? 0}/{row.response_json?.totalCards ?? '?'} cards</p>
+                      <p><strong>Secure:</strong> {row.response_json?.secureCount ?? 0}</p>
+                      <p><strong>Nearly:</strong> {row.response_json?.nearlyCount ?? 0}</p>
+                      <p><strong>Revisit:</strong> {row.response_json?.revisitCount ?? 0}</p>
+                      <p><strong>Revisit card IDs:</strong> {(row.response_json?.revisitCardIds ?? []).join(', ') || 'None'}</p>
                     </>
                   ) : (
                     <>
