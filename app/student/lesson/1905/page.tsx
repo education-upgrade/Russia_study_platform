@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
 
 const TRACKABLE_ACTIVITY_TYPES = ['quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
+const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
 
 const activityRouteMap: Record<string, string> = {
   lesson_content: '/student/lesson/1905/lesson',
@@ -127,6 +128,26 @@ function formatDate(value: string | null) {
     month: 'short',
     hour: '2-digit',
     minute: '2-digit',
+  });
+}
+
+function sortActivitiesByPathwayOrder(activities: Activity[]) {
+  return [...activities].sort((first, second) => {
+    const firstIndex = PATHWAY_ACTIVITY_ORDER.indexOf(first.activity_type);
+    const secondIndex = PATHWAY_ACTIVITY_ORDER.indexOf(second.activity_type);
+    const safeFirstIndex = firstIndex === -1 ? 999 : firstIndex;
+    const safeSecondIndex = secondIndex === -1 ? 999 : secondIndex;
+    return safeFirstIndex - safeSecondIndex;
+  });
+}
+
+function sortActivityTypesByPathwayOrder(activityTypes: string[]) {
+  return [...activityTypes].sort((first, second) => {
+    const firstIndex = PATHWAY_ACTIVITY_ORDER.indexOf(first);
+    const secondIndex = PATHWAY_ACTIVITY_ORDER.indexOf(second);
+    const safeFirstIndex = firstIndex === -1 ? 999 : firstIndex;
+    const safeSecondIndex = secondIndex === -1 ? 999 : secondIndex;
+    return safeFirstIndex - safeSecondIndex;
   });
 }
 
@@ -347,17 +368,18 @@ export default async function Russia1905LessonPage() {
 
   const activeAssignment = assignmentData ?? null;
   const hasAssignment = Boolean(activeAssignment);
-  const requiredActivityTypes = activeAssignment?.required_activity_types?.length
-    ? activeAssignment.required_activity_types
-    : orderedFallbackRequiredTypes();
+  const requiredActivityTypes = sortActivityTypesByPathwayOrder(
+    activeAssignment?.required_activity_types?.length
+      ? activeAssignment.required_activity_types
+      : orderedFallbackRequiredTypes()
+  );
 
   const { data: activities, error: activitiesError } = await supabase
     .from('activities')
     .select('id, activity_type, title, skill_focus, difficulty, estimated_minutes')
-    .eq('lesson_id', lesson.id)
-    .order('estimated_minutes', { ascending: true });
+    .eq('lesson_id', lesson.id);
 
-  const orderedActivities = (activities ?? []) as Activity[];
+  const orderedActivities = sortActivitiesByPathwayOrder((activities ?? []) as Activity[]);
   const requiredActivities = orderedActivities.filter((activity) => requiredActivityTypes.includes(activity.activity_type));
   const optionalActivities = orderedActivities.filter((activity) => !requiredActivityTypes.includes(activity.activity_type));
   const activityIds = orderedActivities.map((activity) => activity.id);
@@ -551,5 +573,5 @@ export default async function Russia1905LessonPage() {
 }
 
 function orderedFallbackRequiredTypes() {
-  return ['lesson_content', 'quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
+  return PATHWAY_ACTIVITY_ORDER;
 }
