@@ -114,11 +114,13 @@ h2 { letter-spacing: -0.03em; }
 .status-pill.intervention { background: var(--rose); }
 .status-pill.submitted { background: var(--teal); }
 .status-pill.neutral { background: var(--blue-grey); }
-.completion-pill, .status-detail-badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; padding: 7px 11px; border: 1px solid rgba(213,226,235,.95); font-size: .8rem; font-weight: 900; white-space: nowrap; }
+.completion-pill, .status-detail-badge, .requirement-pill { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; padding: 7px 11px; border: 1px solid rgba(213,226,235,.95); font-size: .8rem; font-weight: 900; white-space: nowrap; }
 .completion-pill.complete, .status-detail-badge.complete { background: var(--green); color: var(--navy); }
 .completion-pill.started, .status-detail-badge.started { background: var(--teal); color: var(--navy); }
 .completion-pill.warning, .status-detail-badge.warning { background: var(--warm); color: var(--navy); }
 .completion-pill.neutral, .status-detail-badge.neutral { background: rgba(255,255,255,.76); color: var(--muted); }
+.requirement-pill.required { background: var(--navy); color: white; border-color: var(--navy); }
+.requirement-pill.optional { background: rgba(255,255,255,.75); color: var(--muted); border-color: var(--border); }
 .progress-bar { width: 100%; height: 12px; background: #d8e4ec; border-radius: 999px; overflow: hidden; margin: 12px 0; }
 .progress-fill { height: 100%; width: var(--progress, 33%); background: linear-gradient(90deg, var(--navy) 0%, #4f7194 100%); }
 
@@ -151,8 +153,12 @@ h2 { letter-spacing: -0.03em; }
 .study-hero-main p { max-width: 760px; }
 .study-hero-panel { border-radius: 24px; padding: 22px; background: rgba(255, 255, 255, 0.72); border: 1px solid rgba(213, 226, 235, 0.95); display: grid; align-content: center; gap: 8px; }
 .next-task-panel { background: linear-gradient(180deg, rgba(255,255,255,.88), rgba(225,242,240,.76)); }
-.pathway-progress-card { max-width: 760px; margin-top: 18px; border-radius: 22px; padding: 18px; background: rgba(255,255,255,.72); border: 1px solid rgba(213,226,235,.95); }
-.pathway-progress-card h2 { margin-bottom: 0; font-size: 1.1rem; }
+.pathway-progress-card, .assignment-context-card { max-width: 800px; margin-top: 18px; border-radius: 22px; padding: 18px; background: rgba(255,255,255,.72); border: 1px solid rgba(213,226,235,.95); }
+.pathway-progress-card h2, .assignment-context-card h2 { margin-bottom: 0; font-size: 1.1rem; }
+.assignment-context-card { display: grid; grid-template-columns: minmax(0, .95fr) minmax(260px, 1.05fr); gap: 16px; align-items: start; }
+.assignment-context-card p { margin-bottom: 0; }
+.assignment-pill-list, .activity-pill-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-start; }
+.activity-pill-row { justify-content: flex-end; }
 .hero-stat-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
 .hero-stat { display: inline-flex; flex-direction: column; gap: 2px; min-width: 118px; border-radius: 18px; padding: 12px 14px; background: rgba(255, 255, 255, 0.72); border: 1px solid rgba(213, 226, 235, 0.95); color: var(--muted); font-weight: 750; }
 .hero-stat strong { color: var(--navy); font-size: 1.45rem; line-height: 1; }
@@ -165,11 +171,20 @@ h2 { letter-spacing: -0.03em; }
 .mini-progress-item.complete { background: rgba(227,242,232,.86); }
 .mini-progress-item.started { background: rgba(225,242,240,.86); }
 .mini-progress-item.warning { background: rgba(248,239,216,.9); }
+.mini-progress-item.required { border-left: 6px solid var(--navy); }
+.mini-progress-item.optional { opacity: .78; }
 .mini-progress-item > span { width: 36px; height: 36px; border-radius: 14px; background: var(--navy); color: white; display: inline-flex; align-items: center; justify-content: center; font-weight: 900; }
+.mini-progress-item.optional > span { background: var(--muted-2); }
 .mini-progress-item small { display: block; color: var(--muted); line-height: 1.35; margin-top: 2px; }
 .mini-progress-item em { display: inline-flex; margin-top: 6px; color: var(--navy); font-size: .76rem; font-style: normal; font-weight: 900; }
 .study-task-stack { display: grid; gap: 22px; }
+.task-section-heading { border-radius: 24px; padding: 18px 20px; background: rgba(255,255,255,.78); border: 1px solid rgba(213,226,235,.95); box-shadow: var(--shadow-soft); }
+.task-section-heading h2 { margin-bottom: 0; }
+.optional-support-heading { background: rgba(255,255,255,.48); }
 .study-task-card { scroll-margin-top: 24px; border-radius: 30px; border: 1px solid rgba(213, 226, 235, 0.95); box-shadow: var(--shadow-soft); overflow: hidden; }
+.study-task-card.required { border-left: 8px solid var(--navy); }
+.study-task-card.optional { opacity: .88; }
+.study-task-card.optional .task-index { background: var(--muted-2); }
 .study-task-header { display: grid; grid-template-columns: 54px minmax(0, 1fr) 260px; gap: 18px; padding: 24px; background: rgba(255,255,255,0.48); }
 .task-index-block { display: grid; justify-items: center; grid-template-rows: 48px 1fr; }
 .task-index { width: 48px; height: 48px; border-radius: 18px; background: var(--navy); color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 950; box-shadow: 0 12px 24px rgba(22,33,63,.16); }
@@ -273,7 +288,7 @@ h2 { letter-spacing: -0.03em; }
 
 @media (max-width: 1100px) { .teacher-metric-strip.six { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 1000px) {
-  .study-hero, .teacher-hero, .study-layout, .teacher-board-grid, .assignment-builder-grid { grid-template-columns: 1fr; }
+  .study-hero, .teacher-hero, .study-layout, .teacher-board-grid, .assignment-builder-grid, .assignment-context-card { grid-template-columns: 1fr; }
   .study-route-card { position: static; }
   .teacher-metric-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .lesson-section-grid.improved { grid-template-columns: 1fr; }
@@ -298,4 +313,5 @@ h2 { letter-spacing: -0.03em; }
   .task-instruction-card { grid-column: auto; }
   .study-task-body { padding: 0 18px 18px; }
   .teacher-metric-strip, .teacher-metric-strip.six, .flashcard-rating-row { grid-template-columns: 1fr; }
+  .activity-pill-row { justify-content: flex-start; }
 }
