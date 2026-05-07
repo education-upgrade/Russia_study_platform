@@ -153,7 +153,8 @@
   font-weight: 950;
 }
 .field input,
-.field textarea {
+.field textarea,
+.field select {
   width: 100%;
   border: 1px solid rgba(213, 226, 235, 0.95);
   border-radius: 16px;
