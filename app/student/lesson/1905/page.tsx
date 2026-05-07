@@ -26,6 +26,16 @@ type Lesson = {
   estimated_minutes: number | null;
 };
 
+type GuidedStudyAssignment = {
+  id: string;
+  mode: string;
+  required_activity_types: string[];
+  deadline_at: string | null;
+  instructions: string | null;
+  status: string;
+  created_at: string;
+};
+
 type StudentResponse = {
   id: string;
   activity_id: string;
@@ -44,6 +54,8 @@ type ActivityStatus = {
   isComplete: boolean;
   isTrackable: boolean;
 };
+
+type RequirementState = 'required' | 'optional';
 
 const activityDesign: Record<string, { tone: string; label: string; purpose: string; action: string }> = {
   lesson_content: {
@@ -89,6 +101,10 @@ function getActivityDesign(activityType: string) {
 
 function formatActivityType(activityType: string) {
   return activityType.replaceAll('_', ' ');
+}
+
+function formatMode(mode: string) {
+  return mode.replaceAll('_', ' ');
 }
 
 function formatDate(value: string | null) {
@@ -183,16 +199,27 @@ function getActivityStatus(activity: Activity, response: StudentResponse | undef
   };
 }
 
-function getNextTask(activities: Activity[], statusByActivityId: Record<string, ActivityStatus>) {
-  const firstIncomplete = activities.find((activity) => {
+function getNextTask(
+  activities: Activity[],
+  statusByActivityId: Record<string, ActivityStatus>,
+  requiredActivityTypes: string[],
+  hasAssignment: boolean
+) {
+  const requiredActivities = hasAssignment
+    ? activities.filter((activity) => requiredActivityTypes.includes(activity.activity_type))
+    : activities;
+
+  const firstIncomplete = requiredActivities.find((activity) => {
     const status = statusByActivityId[activity.id];
     return status?.isTrackable && !status.isComplete;
   });
 
   if (!firstIncomplete) {
     return {
-      title: 'Pathway complete',
-      detail: 'All trackable evidence tasks have been saved. Review your revisit list or improve your PEEL response if needed.',
+      title: hasAssignment ? 'Assignment complete' : 'Pathway complete',
+      detail: hasAssignment
+        ? 'All required evidence tasks have been saved. Optional support remains available if you want to revise further.'
+        : 'All trackable evidence tasks have been saved. Review your revisit list or improve your PEEL response if needed.',
       href: '#activity-1',
     };
   }
@@ -211,16 +238,19 @@ function ActivityCard({
   activity,
   index,
   status,
+  requirementState,
 }: {
   activity: Activity;
   index: number;
   status: ActivityStatus;
+  requirementState: RequirementState;
 }) {
   const content = activity.content_json ?? {};
   const design = getActivityDesign(activity.activity_type);
+  const requirementLabel = requirementState === 'required' ? 'Required assignment activity' : 'Optional support';
 
   return (
-    <article className={`study-task-card ${design.tone}`} id={`activity-${index + 1}`}>
+    <article className={`study-task-card ${design.tone} ${requirementState}`} id={`activity-${index + 1}`}>
       <div className="study-task-header">
         <div className="task-index-block">
           <span className="task-index">{index + 1}</span>
@@ -229,7 +259,10 @@ function ActivityCard({
         <div className="task-title-area">
           <div className="task-title-status-row">
             <p className="eyebrow">{design.label} · {formatActivityType(activity.activity_type)}</p>
-            <span className={`completion-pill ${status.tone}`}>{status.label}</span>
+            <div className="activity-pill-row">
+              <span className={`requirement-pill ${requirementState}`}>{requirementLabel}</span>
+              <span className={`completion-pill ${status.tone}`}>{status.label}</span>
+            </div>
           </div>
           <h2>{activity.title}</h2>
           <p>{design.purpose}</p>
@@ -324,6 +357,22 @@ export default async function Russia1905LessonPage() {
     );
   }
 
+  const { data: assignmentData } = await supabase
+    .from('guided_study_assignments')
+    .select('id, mode, required_activity_types, deadline_at, instructions, status, created_at')
+    .eq('assigned_student_id', DEMO_STUDENT_ID)
+    .eq('status', 'active')
+    .eq('pathway_slug', '1905-revolution')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle<GuidedStudyAssignment>();
+
+  const activeAssignment = assignmentData ?? null;
+  const hasAssignment = Boolean(activeAssignment);
+  const requiredActivityTypes = activeAssignment?.required_activity_types?.length
+    ? activeAssignment.required_activity_types
+    : orderedFallbackRequiredTypes();
+
   const { data: activities, error: activitiesError } = await supabase
     .from('activities')
     .select('id, activity_type, title, skill_focus, difficulty, estimated_minutes, content_json')
@@ -331,6 +380,8 @@ export default async function Russia1905LessonPage() {
     .order('estimated_minutes', { ascending: true });
 
   const orderedActivities = (activities ?? []) as Activity[];
+  const requiredActivities = orderedActivities.filter((activity) => requiredActivityTypes.includes(activity.activity_type));
+  const optionalActivities = orderedActivities.filter((activity) => !requiredActivityTypes.includes(activity.activity_type));
   const activityIds = orderedActivities.map((activity) => activity.id);
   const { data: savedResponses } = activityIds.length
     ? await supabase
@@ -352,7 +403,11 @@ export default async function Russia1905LessonPage() {
     (total, activity) => total + (activity.estimated_minutes ?? 0),
     0
   );
-  const savedEvidencePoints = orderedActivities.filter((activity) =>
+  const requiredMinutes = requiredActivities.reduce(
+    (total, activity) => total + (activity.estimated_minutes ?? 0),
+    0
+  );
+  const savedEvidencePoints = requiredActivities.filter((activity) =>
     TRACKABLE_ACTIVITY_TYPES.includes(activity.activity_type)
   ).length;
   const hasAnyEvidence = Object.keys(responseByActivityId).length > 0;
@@ -360,12 +415,18 @@ export default async function Russia1905LessonPage() {
     acc[activity.id] = getActivityStatus(activity, responseByActivityId[activity.id], hasAnyEvidence);
     return acc;
   }, {});
-  const trackableStatuses = Object.values(statusByActivityId).filter((status) => status.isTrackable);
-  const completedTrackableCount = trackableStatuses.filter((status) => status.isComplete).length;
-  const progressPercentage = trackableStatuses.length
-    ? Math.round((completedTrackableCount / trackableStatuses.length) * 100)
+  const allTrackableStatuses = Object.values(statusByActivityId).filter((status) => status.isTrackable);
+  const requiredTrackableStatuses = requiredActivities
+    .map((activity) => statusByActivityId[activity.id])
+    .filter((status) => status?.isTrackable);
+  const progressStatuses = hasAssignment ? requiredTrackableStatuses : allTrackableStatuses;
+  const completedTrackableCount = progressStatuses.filter((status) => status.isComplete).length;
+  const progressPercentage = progressStatuses.length
+    ? Math.round((completedTrackableCount / progressStatuses.length) * 100)
     : 0;
-  const nextTask = getNextTask(orderedActivities, statusByActivityId);
+  const nextTask = getNextTask(orderedActivities, statusByActivityId, requiredActivityTypes, hasAssignment);
+  const assignmentMode = activeAssignment ? formatMode(activeAssignment.mode) : 'independent study';
+  const deadlineText = activeAssignment?.deadline_at ? formatDate(activeAssignment.deadline_at) : 'No deadline set';
 
   return (
     <main className="page-shell study-shell">
@@ -379,20 +440,32 @@ export default async function Russia1905LessonPage() {
 
       <section className="study-hero">
         <div className="study-hero-main">
-          <p className="eyebrow">Guided study track</p>
+          <p className="eyebrow">{hasAssignment ? 'Teacher-set guided study' : 'Independent guided study track'}</p>
           <h1>{lesson.title}</h1>
-          <p>{lesson.enquiry_question}</p>
+          <p>{activeAssignment?.instructions ?? lesson.enquiry_question}</p>
           <div className="hero-stat-row">
-            <span className="hero-stat"><strong>{totalMinutes || lesson.estimated_minutes || 45}</strong> mins</span>
-            <span className="hero-stat"><strong>{orderedActivities.length}</strong> activities</span>
+            <span className="hero-stat"><strong>{hasAssignment ? requiredMinutes : totalMinutes || lesson.estimated_minutes || 45}</strong> mins</span>
+            <span className="hero-stat"><strong>{hasAssignment ? requiredActivities.length : orderedActivities.length}</strong> required</span>
             <span className="hero-stat"><strong>{savedEvidencePoints}</strong> saved evidence points</span>
             <span className="hero-stat"><strong>{progressPercentage}%</strong> complete</span>
+          </div>
+          <div className="assignment-context-card">
+            <div>
+              <p className="eyebrow">Assignment settings</p>
+              <h2>{hasAssignment ? assignmentMode : 'No active teacher assignment'}</h2>
+              <p>{hasAssignment ? `Deadline: ${deadlineText}` : 'All activities are available as independent study until a teacher assignment is set.'}</p>
+            </div>
+            <div className="assignment-pill-list">
+              {requiredActivityTypes.map((activityType) => (
+                <span className="requirement-pill required" key={activityType}>{formatActivityType(activityType)}</span>
+              ))}
+            </div>
           </div>
           <div className="pathway-progress-card">
             <div className="page-header-row compact-header">
               <div>
-                <p className="eyebrow">Pathway progress</p>
-                <h2>{completedTrackableCount}/{trackableStatuses.length} trackable activities complete</h2>
+                <p className="eyebrow">{hasAssignment ? 'Required assignment progress' : 'Pathway progress'}</p>
+                <h2>{completedTrackableCount}/{progressStatuses.length} trackable activities complete</h2>
               </div>
               <span className={`completion-pill ${progressPercentage === 100 ? 'complete' : progressPercentage > 0 ? 'started' : 'neutral'}`}>
                 {progressPercentage === 100 ? 'Complete' : progressPercentage > 0 ? 'In progress' : 'Not started'}
@@ -429,19 +502,20 @@ export default async function Russia1905LessonPage() {
         <div className="study-layout">
           <aside className="study-route-card">
             <p className="eyebrow">Pathway map</p>
-            <h2>Your route</h2>
-            <p>Move down the sequence. Each saved activity now shows its completion state.</p>
+            <h2>{hasAssignment ? 'Required first' : 'Your route'}</h2>
+            <p>{hasAssignment ? 'Complete the required assignment activities first. Optional support remains available underneath.' : 'Move down the sequence. Each saved activity now shows its completion state.'}</p>
             <div className="mini-progress-list">
               {orderedActivities.map((activity, index) => {
                 const design = getActivityDesign(activity.activity_type);
                 const status = statusByActivityId[activity.id];
+                const requirementState: RequirementState = requiredActivityTypes.includes(activity.activity_type) ? 'required' : 'optional';
                 return (
-                  <a className={`mini-progress-item ${status.tone}`} href={`#activity-${index + 1}`} key={activity.id}>
+                  <a className={`mini-progress-item ${status.tone} ${requirementState}`} href={`#activity-${index + 1}`} key={activity.id}>
                     <span>{status.isComplete ? '✓' : index + 1}</span>
                     <div>
                       <strong>{design.label}</strong>
                       <small>{activity.title}</small>
-                      <em>{status.label}</em>
+                      <em>{requirementState === 'required' ? 'Required' : 'Optional support'} · {status.label}</em>
                     </div>
                   </a>
                 );
@@ -450,17 +524,52 @@ export default async function Russia1905LessonPage() {
           </aside>
 
           <section className="study-task-stack">
-            {orderedActivities.map((activity, index) => (
-              <ActivityCard
-                activity={activity}
-                index={index}
-                status={statusByActivityId[activity.id]}
-                key={activity.id}
-              />
-            ))}
+            {requiredActivities.length > 0 && (
+              <div className="task-section-heading">
+                <p className="eyebrow">Assignment activities</p>
+                <h2>Required for this guided study</h2>
+              </div>
+            )}
+
+            {requiredActivities.map((activity) => {
+              const index = orderedActivities.findIndex((item) => item.id === activity.id);
+              return (
+                <ActivityCard
+                  activity={activity}
+                  index={index}
+                  status={statusByActivityId[activity.id]}
+                  requirementState="required"
+                  key={activity.id}
+                />
+              );
+            })}
+
+            {optionalActivities.length > 0 && (
+              <div className="task-section-heading optional-support-heading">
+                <p className="eyebrow">Optional support</p>
+                <h2>Use these if you need extra help</h2>
+              </div>
+            )}
+
+            {optionalActivities.map((activity) => {
+              const index = orderedActivities.findIndex((item) => item.id === activity.id);
+              return (
+                <ActivityCard
+                  activity={activity}
+                  index={index}
+                  status={statusByActivityId[activity.id]}
+                  requirementState="optional"
+                  key={activity.id}
+                />
+              );
+            })}
           </section>
         </div>
       )}
     </main>
   );
+}
+
+function orderedFallbackRequiredTypes() {
+  return ['lesson_content', 'quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
 }
