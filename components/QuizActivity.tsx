@@ -217,21 +217,12 @@ export default function QuizActivity({ activityId, questions }: QuizActivityProp
         </div>
       </section>
 
-      <section className={styles.feedback} aria-live="polite">
-        {!selectedAnswer && 'Choose an answer. The quiz will move on automatically.'}
-        {selectedAnswer && selectedAnswer === currentQuestion.correct && 'Correct — moving on.'}
-        {selectedAnswer && selectedAnswer !== currentQuestion.correct && `Correct answer: ${currentQuestion.correct}`}
-      </section>
-
-      <section className={styles.bottomNav}>
+      <section className={styles.bottomNavCompact}>
         <button type="button" className="button secondary" onClick={goToPreviousQuestion} disabled={currentIndex === 0}>Previous</button>
         <button type="button" className="button secondary" onClick={skipForward} disabled={currentIndex === questions.length - 1}>Skip</button>
-        <button type="button" className="button" onClick={() => { void saveQuiz(answers, false); }} disabled={saveStatus === 'saving'}>
-          {saveStatus === 'saving' ? 'Saving...' : 'Save'}
-        </button>
       </section>
 
-      {saveMessage && <p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage}</p>}
+      {saveStatus === 'error' && saveMessage && <p className={`${styles.saveMessage} ${styles.error}`}>{saveMessage}</p>}
     </div>
   );
 }
