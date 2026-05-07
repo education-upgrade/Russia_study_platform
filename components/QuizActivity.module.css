@@ -126,8 +126,14 @@
   grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
 }
+.bottomNavCompact {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
 .bottomNav button,
-.bottomNav a {
+.bottomNav a,
+.bottomNavCompact button {
   min-height: 48px;
   padding-inline: 10px;
 }
@@ -205,11 +211,13 @@
     min-height: 38px;
     font-size: .84rem;
   }
-  .bottomNav {
+  .bottomNav,
+  .bottomNavCompact {
     gap: 6px;
   }
   .bottomNav button,
-  .bottomNav a {
+  .bottomNav a,
+  .bottomNavCompact button {
     min-height: 44px;
     padding: 8px 6px;
     font-size: .88rem;
