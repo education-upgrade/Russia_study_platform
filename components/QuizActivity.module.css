@@ -1,0 +1,217 @@
+.shell {
+  width: min(100%, 880px);
+  margin: 0 auto;
+  min-height: min(760px, calc(100svh - 170px));
+  display: grid;
+  grid-template-rows: auto 8px minmax(260px, 1fr) auto auto;
+  gap: 10px;
+  padding: clamp(10px, 2vw, 18px);
+  border-radius: 28px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 18px 48px rgba(22, 33, 63, 0.1);
+}
+.topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+.topbar h3 {
+  margin: 0;
+  font-size: clamp(1.45rem, 3vw, 2.1rem);
+}
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 390px;
+}
+.stats span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  border-radius: 999px;
+  padding: 5px 9px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--navy);
+  font-size: 0.78rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.progress {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #d8e4ec;
+}
+.progress div {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--navy), #4f7194);
+  transition: width 180ms ease;
+}
+.card {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 14px;
+  padding: clamp(14px, 2.4vw, 22px);
+  border-radius: 24px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: linear-gradient(135deg, rgba(255,255,255,.98), rgba(236,231,247,.78));
+}
+.questionText {
+  margin: 0;
+  color: var(--navy);
+  font-size: clamp(1.55rem, 4.6vw, 2.7rem);
+  line-height: 1.08;
+  letter-spacing: -0.045em;
+}
+.options {
+  min-height: 0;
+  display: grid;
+  gap: 10px;
+  align-content: center;
+}
+.option {
+  min-height: 58px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.9);
+  color: var(--navy);
+  font-size: clamp(1rem, 2.7vw, 1.22rem);
+  font-weight: 850;
+  line-height: 1.2;
+  text-align: left;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+.option:not(:disabled):active {
+  transform: scale(.99);
+}
+.option:disabled {
+  cursor: default;
+}
+.selected {
+  border: 3px solid var(--navy);
+  background: var(--teal);
+}
+.correct {
+  border: 3px solid #3f805c;
+  background: var(--green);
+}
+.incorrect {
+  border: 3px solid #9c3c3c;
+  background: var(--rose);
+}
+.feedback {
+  min-height: 44px;
+  display: grid;
+  align-content: center;
+  border-radius: 18px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,.74);
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  color: var(--muted);
+  font-weight: 850;
+  text-align: center;
+}
+.bottomNav {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.bottomNav button,
+.bottomNav a {
+  min-height: 48px;
+  padding-inline: 10px;
+}
+.saveMessage {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-weight: 850;
+  font-size: 0.9rem;
+}
+.saved { color: #1f6f3d; }
+.error { color: #9c3c3c; }
+.summary {
+  min-height: 0;
+  display: grid;
+  align-content: center;
+  gap: 12px;
+  padding: clamp(18px, 3vw, 28px);
+  border-radius: 24px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: linear-gradient(135deg, rgba(255,255,255,.98), rgba(225,242,240,.78));
+  text-align: center;
+}
+.summary h2 {
+  margin: 0;
+  color: var(--navy);
+  font-size: clamp(2rem, 7vw, 4rem);
+  line-height: 1;
+}
+.summary p {
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(1rem, 2.7vw, 1.25rem);
+}
+@media (max-width: 700px) {
+  .shell {
+    min-height: calc(100svh - 132px);
+    border-radius: 20px;
+    gap: 8px;
+    padding: 9px;
+  }
+  .topbar {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    justify-content: flex-start;
+    max-width: none;
+  }
+  .stats span {
+    min-height: 26px;
+    padding: 4px 5px;
+    font-size: 0.66rem;
+  }
+  .card {
+    border-radius: 18px;
+    padding: 12px;
+    gap: 10px;
+  }
+  .questionText {
+    font-size: clamp(1.45rem, 7.3vw, 2.15rem);
+  }
+  .options {
+    gap: 8px;
+  }
+  .option {
+    min-height: 50px;
+    border-radius: 16px;
+    padding: 10px 12px;
+    font-size: clamp(.94rem, 4vw, 1.08rem);
+  }
+  .feedback {
+    min-height: 38px;
+    font-size: .84rem;
+  }
+  .bottomNav {
+    gap: 6px;
+  }
+  .bottomNav button,
+  .bottomNav a {
+    min-height: 44px;
+    padding: 8px 6px;
+    font-size: .88rem;
+  }
+}
