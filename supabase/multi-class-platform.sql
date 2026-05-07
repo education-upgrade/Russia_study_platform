@@ -49,6 +49,25 @@ on conflict (id) do update set
   year_group = excluded.year_group,
   email = excluded.email;
 
+-- Pull any existing prototype users into app_profiles so historic student_responses still appear in the teacher dashboard.
+do $$
+begin
+  if to_regclass('public.users') is not null
+     and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'users' and column_name = 'id')
+     and exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'users' and column_name = 'name') then
+    execute $sql$
+      insert into app_profiles (id, display_name, role, year_group, email)
+      select id, coalesce(name, 'Demo Student'), 'student', 'Y12', null
+      from users
+      where id is not null
+      on conflict (id) do update set
+        display_name = excluded.display_name,
+        role = 'student',
+        year_group = coalesce(app_profiles.year_group, excluded.year_group)
+    $sql$;
+  end if;
+end $$;
+
 insert into teacher_classes (id, class_name, year_group, course_code, teacher_id, status)
 values
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Year 12 Russia demo class', 'Y12', 'AQA-7042-1H', '11111111-1111-1111-1111-111111111111', 'active'),
@@ -139,6 +158,14 @@ values
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '22222222-2222-2222-2222-222222222222', 'active'),
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '33333333-3333-3333-3333-333333333333', 'active'),
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '44444444-4444-4444-4444-444444444444', 'active')
+on conflict (class_id, student_id) do update set status = excluded.status;
+
+-- Put all existing prototype student users into the Y12 demo class so saved activity data is visible immediately.
+insert into class_memberships (class_id, student_id, status)
+select 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', id, 'active'
+from app_profiles
+where role = 'student'
+  and coalesce(year_group, 'Y12') = 'Y12'
 on conflict (class_id, student_id) do update set status = excluded.status;
 
 insert into course_units (course_code, year_group, unit_order, unit_title, period_label)
