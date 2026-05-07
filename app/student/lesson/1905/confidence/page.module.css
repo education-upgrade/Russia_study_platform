@@ -1,0 +1,112 @@
+.shell {
+  width: min(980px, calc(100% - 20px));
+  min-height: 100svh;
+  margin: 0 auto;
+  padding: 10px 0 18px;
+}
+.topbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 9px 10px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 26px rgba(22, 33, 63, 0.06);
+}
+.backLink,
+.dashboardLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  border-radius: 999px;
+  padding: 7px 12px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: #fff;
+  color: var(--navy);
+  font-weight: 900;
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+.titleBlock {
+  min-width: 0;
+  text-align: center;
+}
+.titleBlock p {
+  margin: 0 0 1px;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.titleBlock h1 {
+  margin: 0;
+  overflow: hidden;
+  color: var(--navy);
+  font-size: clamp(1rem, 2.8vw, 1.3rem);
+  font-weight: 950;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.panel {
+  border-radius: 24px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: 0 18px 48px rgba(22, 33, 63, 0.08);
+  padding: 10px;
+}
+.footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 0 4px;
+}
+.footer a {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 850;
+}
+@media (max-width: 700px) {
+  .shell {
+    width: min(100% - 14px, 980px);
+    padding-top: 7px;
+  }
+  .topbar {
+    gap: 6px;
+    padding: 7px;
+    margin-bottom: 7px;
+  }
+  .backLink,
+  .dashboardLink {
+    min-height: 34px;
+    padding: 6px 8px;
+    font-size: 0.76rem;
+  }
+  .dashboardLink {
+    max-width: 86px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .titleBlock p {
+    font-size: 0.58rem;
+    letter-spacing: 0.09em;
+  }
+  .titleBlock h1 {
+    font-size: 0.94rem;
+  }
+  .panel {
+    padding: 6px;
+    border-radius: 18px;
+  }
+  .footer {
+    margin-top: 8px;
+  }
+}
