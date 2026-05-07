@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import QuizActivity from '@/components/QuizActivity';
 import { supabase } from '@/lib/supabase';
+import styles from './page.module.css';
 
 type Activity = {
   id: string;
@@ -32,34 +33,28 @@ async function getActivity(activityType: string) {
   return { activity, error: error?.message ?? '' };
 }
 
+function cleanQuizTitle(title: string | undefined | null) {
+  if (!title) return '1905 Revolution retrieval';
+  return title.replace(/^Retrieval quiz:\s*/i, '').replace(/^Quiz:\s*/i, '');
+}
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function QuizPage() {
   const { activity, error } = await getActivity('quiz');
+  const pageTitle = cleanQuizTitle(activity?.title);
 
   return (
-    <main className="page-shell activity-focus-shell">
-      <div className="page-header-row app-topbar">
-        <span className="breadcrumb">1905 pathway / Retrieval quiz</span>
-        <div className="button-row compact">
-          <Link className="button secondary" href="/student/lesson/1905">Back to pathway</Link>
-          <Link className="button secondary" href="/student/dashboard">Dashboard</Link>
+    <main className={styles.shell}>
+      <div className={styles.topbar}>
+        <Link className={styles.backLink} href="/student/lesson/1905">← Pathway</Link>
+        <div className={styles.titleBlock}>
+          <p>Retrieval quiz</p>
+          <h1>{pageTitle}</h1>
         </div>
+        <Link className={styles.dashboardLink} href="/student/dashboard">Dashboard</Link>
       </div>
-
-      <section className="activity-focus-hero lavender">
-        <div>
-          <p className="eyebrow">Focused activity screen</p>
-          <h1>{activity?.title ?? '1905 retrieval quiz'}</h1>
-          <p>Complete the quiz without notes first. The score saves as evidence for your teacher and helps decide what to revisit next.</p>
-        </div>
-        <aside className="activity-focus-meta">
-          <span className="badge">{activity?.estimated_minutes ?? 10} mins</span>
-          <span className="badge">{activity?.skill_focus ?? 'Retrieval practice'}</span>
-          {activity?.difficulty && <span className="badge">{activity.difficulty}</span>}
-        </aside>
-      </section>
 
       {error && (
         <section className="card warm" style={{ marginTop: 24 }}>
@@ -69,14 +64,14 @@ export default async function QuizPage() {
       )}
 
       {activity && Array.isArray(activity.content_json?.questions) && (
-        <section className="activity-focus-card">
+        <section className={styles.panel}>
           <QuizActivity activityId={activity.id} questions={activity.content_json.questions} />
         </section>
       )}
 
-      <section className="activity-bottom-nav">
-        <Link className="button secondary" href="/student/lesson/1905/lesson">Previous: lesson notes</Link>
-        <Link className="button" href="/student/lesson/1905/flashcards">Next: flashcards</Link>
+      <section className={styles.footer}>
+        <Link href="/student/lesson/1905/lesson">Previous: lesson notes</Link>
+        <Link href="/student/lesson/1905/flashcards">Next: flashcards →</Link>
       </section>
     </main>
   );
