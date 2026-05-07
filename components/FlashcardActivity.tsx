@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import styles from './FlashcardActivity.module.css';
 
 type FlashcardRating = 'secure' | 'nearly' | 'revisit';
 
@@ -109,13 +110,13 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
   }
 
   return (
-    <div className="flashcard-app-shell">
-      <section className="flashcard-app-topbar">
+    <div className={styles.shell}>
+      <section className={styles.topbar}>
         <div>
           <p className="eyebrow">Active recall</p>
           <h3>Card {currentIndex + 1} of {cards.length}</h3>
         </div>
-        <div className="flashcard-mini-stats" aria-label="Flashcard progress statistics">
+        <div className={styles.stats} aria-label="Flashcard progress statistics">
           <span>{ratedCount}/{cards.length} rated</span>
           <span>{secureCount} secure</span>
           <span>{nearlyCount} nearly</span>
@@ -123,34 +124,34 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
         </div>
       </section>
 
-      <div className="flashcard-app-progress" aria-label="Flashcard completion progress">
+      <div className={styles.progress} aria-label="Flashcard completion progress">
         <div style={{ width: `${progressPercentage}%` }} />
       </div>
 
-      <section className={`flashcard-app-card ${isRevealed ? 'revealed' : ''}`}>
-        <div className="flashcard-app-card-face question-face">
+      <section className={`${styles.card} ${isRevealed ? styles.revealed : ''}`}>
+        <div className={styles.face}>
           <p className="eyebrow">Question</p>
           <h2>{currentCard.front}</h2>
         </div>
 
-        <div className="flashcard-app-card-face answer-face" aria-hidden={!isRevealed}>
+        <div className={`${styles.face} ${isRevealed ? '' : styles.hiddenAnswer}`} aria-hidden={!isRevealed}>
           <p className="eyebrow">Answer</p>
           <p>{currentCard.back}</p>
         </div>
       </section>
 
-      <section className="flashcard-app-controls">
+      <section className={styles.controls}>
         {!isRevealed ? (
-          <button type="button" className="button flashcard-primary-action" onClick={revealCard}>
+          <button type="button" className={`button ${styles.primary}`} onClick={revealCard}>
             Reveal answer
           </button>
         ) : (
-          <div className="flashcard-rating-compact" aria-label="Rate your recall">
+          <div className={styles.ratingRow} aria-label="Rate your recall">
             {(Object.keys(ratingLabels) as FlashcardRating[]).map((rating) => (
               <button
                 type="button"
                 key={rating}
-                className={`flashcard-rating-chip ${rating}${currentRating === rating ? ' selected' : ''}`}
+                className={`${styles.rating} ${styles[rating]}${currentRating === rating ? ` ${styles.selected}` : ''}`}
                 onClick={() => rateCard(rating)}
               >
                 {ratingLabels[rating]}
@@ -160,7 +161,7 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
         )}
       </section>
 
-      <section className="flashcard-app-bottom-nav">
+      <section className={styles.bottomNav}>
         <button type="button" className="button secondary" onClick={goToPreviousCard} disabled={currentIndex === 0}>
           Previous
         </button>
@@ -172,12 +173,10 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
         </button>
       </section>
 
-      {saveMessage && (
-        <p className={`flashcard-save-message ${saveStatus}`}>{saveMessage}</p>
-      )}
+      {saveMessage && <p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage}</p>}
 
       {isDeckComplete && (
-        <section className={revisitCards.length > 0 ? 'flashcard-deck-summary revisit' : 'flashcard-deck-summary secure'}>
+        <section className={`${styles.summary} ${revisitCards.length > 0 ? styles.summaryRevisit : styles.summarySecure}`}>
           <strong>{revisitCards.length > 0 ? 'Revisit before writing' : 'Deck complete'}</strong>
           {revisitCards.length > 0 ? (
             <span>{revisitCards.map((card) => card.front).join(' · ')}</span>
