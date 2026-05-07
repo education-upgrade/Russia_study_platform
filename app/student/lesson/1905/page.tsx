@@ -1,13 +1,17 @@
 import Link from 'next/link';
-import ConfidenceExitTicketActivity from '@/components/ConfidenceExitTicketActivity';
-import FlashcardActivity from '@/components/FlashcardActivity';
-import PeelResponseActivity from '@/components/PeelResponseActivity';
-import QuizActivity from '@/components/QuizActivity';
 import { supabase } from '@/lib/supabase';
 
 const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
 
 const TRACKABLE_ACTIVITY_TYPES = ['quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
+
+const activityRouteMap: Record<string, string> = {
+  lesson_content: '/student/lesson/1905/lesson',
+  quiz: '/student/lesson/1905/quiz',
+  flashcards: '/student/lesson/1905/flashcards',
+  peel_response: '/student/lesson/1905/peel',
+  confidence_exit_ticket: '/student/lesson/1905/confidence',
+};
 
 type Activity = {
   id: string;
@@ -16,7 +20,6 @@ type Activity = {
   skill_focus: string | null;
   difficulty: string | null;
   estimated_minutes: number | null;
-  content_json: any;
 };
 
 type Lesson = {
@@ -57,36 +60,41 @@ type ActivityStatus = {
 
 type RequirementState = 'required' | 'optional';
 
-const activityDesign: Record<string, { tone: string; label: string; purpose: string; action: string }> = {
+const activityDesign: Record<string, { tone: string; label: string; purpose: string; action: string; button: string }> = {
   lesson_content: {
     tone: 'teal',
     label: 'Learn',
-    purpose: 'Build the core narrative before testing yourself.',
-    action: 'Read the three notes and identify the main reason 1905 mattered.',
+    purpose: 'Read the core notes only when you need support before the evidence tasks.',
+    action: 'Use this as optional support or as the first step in a full guided study assignment.',
+    button: 'Open lesson notes',
   },
   quiz: {
     tone: 'lavender',
     label: 'Retrieve',
     purpose: 'Check precise recall and expose gaps quickly.',
-    action: 'Answer without notes first, then review what needs revisiting.',
+    action: 'Complete the quiz without notes first, then use your score to decide what to revisit.',
+    button: 'Start retrieval quiz',
   },
   flashcards: {
     tone: 'warm',
     label: 'Rehearse',
     purpose: 'Secure the key evidence before writing.',
-    action: 'Say the answer aloud before revealing. Rate each card as secure, nearly or revisit.',
+    action: 'Work through one fixed-card deck and rate each card as secure, nearly or revisit.',
+    button: 'Open flashcards',
   },
   peel_response: {
     tone: 'teal',
     label: 'Apply',
     purpose: 'Turn knowledge into exam-ready explanation.',
-    action: 'Build one focused PEEL paragraph with a clear judgement link.',
+    action: 'Write one focused PEEL paragraph with a clear judgement link.',
+    button: 'Write PEEL response',
   },
   confidence_exit_ticket: {
     tone: 'lavender',
     label: 'Reflect',
     purpose: 'Tell the teacher what feels secure and what still needs support.',
-    action: 'Be honest: this helps guide recap and intervention.',
+    action: 'Complete this short final check once the required evidence tasks are done.',
+    button: 'Complete confidence check',
   },
 };
 
@@ -95,8 +103,13 @@ function getActivityDesign(activityType: string) {
     tone: '',
     label: 'Study',
     purpose: 'Complete this guided study activity.',
-    action: 'Complete the task carefully and save where prompted.',
+    action: 'Open the activity and save your work when prompted.',
+    button: 'Open activity',
   };
+}
+
+function getActivityRoute(activityType: string) {
+  return activityRouteMap[activityType] ?? '/student/lesson/1905';
 }
 
 function formatActivityType(activityType: string) {
@@ -122,8 +135,8 @@ function getActivityStatus(activity: Activity, response: StudentResponse | undef
 
   if (activity.activity_type === 'lesson_content') {
     return {
-      label: hasAnyEvidence ? 'Studied' : 'Start here',
-      detail: hasAnyEvidence ? 'Content has probably been used before saved tasks.' : 'Read this before completing the evidence tasks.',
+      label: hasAnyEvidence ? 'Support used' : 'Available',
+      detail: hasAnyEvidence ? 'Evidence tasks have been started. Reopen notes if you need support.' : 'Open the notes before evidence tasks if needed.',
       tone: hasAnyEvidence ? 'complete' : 'neutral',
       isComplete: hasAnyEvidence,
       isTrackable: false,
@@ -219,22 +232,23 @@ function getNextTask(
       title: hasAssignment ? 'Assignment complete' : 'Pathway complete',
       detail: hasAssignment
         ? 'All required evidence tasks have been saved. Optional support remains available if you want to revise further.'
-        : 'All trackable evidence tasks have been saved. Review your revisit list or improve your PEEL response if needed.',
-      href: '#activity-1',
+        : 'All trackable evidence tasks have been saved. Review your weakest area or improve your PEEL response if needed.',
+      href: '/student/lesson/1905',
+      button: 'Review pathway',
     };
   }
 
-  const index = activities.findIndex((activity) => activity.id === firstIncomplete.id);
   const design = getActivityDesign(firstIncomplete.activity_type);
 
   return {
     title: `${design.label}: ${firstIncomplete.title}`,
     detail: statusByActivityId[firstIncomplete.id]?.detail ?? design.action,
-    href: `#activity-${index + 1}`,
+    href: getActivityRoute(firstIncomplete.activity_type),
+    button: design.button,
   };
 }
 
-function ActivityCard({
+function ActivityLaunchCard({
   activity,
   index,
   status,
@@ -245,15 +259,17 @@ function ActivityCard({
   status: ActivityStatus;
   requirementState: RequirementState;
 }) {
-  const content = activity.content_json ?? {};
   const design = getActivityDesign(activity.activity_type);
   const requirementLabel = requirementState === 'required' ? 'Required assignment activity' : 'Optional support';
+  const buttonLabel = status.isComplete && activity.activity_type !== 'lesson_content'
+    ? `Review ${design.label.toLowerCase()}`
+    : design.button;
 
   return (
     <article className={`study-task-card ${design.tone} ${requirementState}`} id={`activity-${index + 1}`}>
       <div className="study-task-header">
         <div className="task-index-block">
-          <span className="task-index">{index + 1}</span>
+          <span className="task-index">{status.isComplete ? '✓' : index + 1}</span>
           <span className="task-line" />
         </div>
         <div className="task-title-area">
@@ -274,50 +290,12 @@ function ActivityCard({
           </div>
         </div>
         <aside className="task-instruction-card">
-          <p className="eyebrow">What to do</p>
+          <p className="eyebrow">Focused task screen</p>
           <p>{design.action}</p>
-        </aside>
-      </div>
-
-      <div className="study-task-body">
-        {activity.activity_type === 'lesson_content' && Array.isArray(content.sections) && (
-          <div className="lesson-section-grid improved">
-            {content.sections.map((section: { heading: string; body: string }, sectionIndex: number) => (
-              <section className="panel lesson-note" key={section.heading}>
-                <span className="note-number">{sectionIndex + 1}</span>
-                <p className="eyebrow">Core explanation</p>
-                <h3>{section.heading}</h3>
-                <p>{section.body}</p>
-              </section>
-            ))}
+          <div className="button-row compact" style={{ marginTop: 14 }}>
+            <Link className="button" href={getActivityRoute(activity.activity_type)}>{buttonLabel}</Link>
           </div>
-        )}
-
-        {activity.activity_type === 'quiz' && Array.isArray(content.questions) && (
-          <QuizActivity activityId={activity.id} questions={content.questions} />
-        )}
-
-        {activity.activity_type === 'flashcards' && Array.isArray(content.cards) && (
-          <FlashcardActivity activityId={activity.id} cards={content.cards} />
-        )}
-
-        {activity.activity_type === 'peel_response' && (
-          <PeelResponseActivity
-            activityId={activity.id}
-            question={content.question ?? 'Write a PEEL response.'}
-            stretchQuestion={content.stretchQuestion}
-            scaffold={Array.isArray(content.scaffold) ? content.scaffold : undefined}
-          />
-        )}
-
-        {activity.activity_type === 'confidence_exit_ticket' && (
-          <ConfidenceExitTicketActivity
-            activityId={activity.id}
-            prompt={content.prompt ?? 'How confident are you with this topic?'}
-            scale={Array.isArray(content.scale) ? content.scale : undefined}
-            leastSecureOptions={Array.isArray(content.leastSecureOptions) ? content.leastSecureOptions : undefined}
-          />
-        )}
+        </aside>
       </div>
     </article>
   );
@@ -375,7 +353,7 @@ export default async function Russia1905LessonPage() {
 
   const { data: activities, error: activitiesError } = await supabase
     .from('activities')
-    .select('id, activity_type, title, skill_focus, difficulty, estimated_minutes, content_json')
+    .select('id, activity_type, title, skill_focus, difficulty, estimated_minutes')
     .eq('lesson_id', lesson.id)
     .order('estimated_minutes', { ascending: true });
 
@@ -407,7 +385,7 @@ export default async function Russia1905LessonPage() {
     (total, activity) => total + (activity.estimated_minutes ?? 0),
     0
   );
-  const savedEvidencePoints = requiredActivities.filter((activity) =>
+  const requiredEvidenceTasks = requiredActivities.filter((activity) =>
     TRACKABLE_ACTIVITY_TYPES.includes(activity.activity_type)
   ).length;
   const hasAnyEvidence = Object.keys(responseByActivityId).length > 0;
@@ -434,7 +412,7 @@ export default async function Russia1905LessonPage() {
         <span className="breadcrumb">Student pathway / Year 12 Russia / 1905 Revolution</span>
         <div className="button-row compact">
           <Link className="button secondary" href="/student/dashboard">Dashboard</Link>
-          <span className="badge">Live from Supabase</span>
+          <span className="badge">Activity launcher</span>
         </div>
       </div>
 
@@ -445,8 +423,8 @@ export default async function Russia1905LessonPage() {
           <p>{activeAssignment?.instructions ?? lesson.enquiry_question}</p>
           <div className="hero-stat-row">
             <span className="hero-stat"><strong>{hasAssignment ? requiredMinutes : totalMinutes || lesson.estimated_minutes || 45}</strong> mins</span>
-            <span className="hero-stat"><strong>{hasAssignment ? requiredActivities.length : orderedActivities.length}</strong> required</span>
-            <span className="hero-stat"><strong>{savedEvidencePoints}</strong> saved evidence points</span>
+            <span className="hero-stat"><strong>{hasAssignment ? requiredActivities.length : orderedActivities.length}</strong> activities</span>
+            <span className="hero-stat"><strong>{requiredEvidenceTasks}</strong> evidence tasks</span>
             <span className="hero-stat"><strong>{progressPercentage}%</strong> complete</span>
           </div>
           <div className="assignment-context-card">
@@ -480,7 +458,7 @@ export default async function Russia1905LessonPage() {
           <p className="eyebrow">Next recommended task</p>
           <h2>{nextTask.title}</h2>
           <p>{nextTask.detail}</p>
-          <a className="button" href={nextTask.href}>{progressPercentage === 100 ? 'Review pathway' : 'Go to next task'}</a>
+          <Link className="button" href={nextTask.href}>{nextTask.button}</Link>
         </aside>
       </section>
 
@@ -502,22 +480,24 @@ export default async function Russia1905LessonPage() {
         <div className="study-layout">
           <aside className="study-route-card">
             <p className="eyebrow">Pathway map</p>
-            <h2>{hasAssignment ? 'Required first' : 'Your route'}</h2>
-            <p>{hasAssignment ? 'Complete the required assignment activities first. Optional support remains available underneath.' : 'Move down the sequence. Each saved activity now shows its completion state.'}</p>
+            <h2>{hasAssignment ? 'Complete required tasks first' : 'Your study route'}</h2>
+            <p>
+              This page is now a launcher. Open one activity at a time, complete it on its own focused screen, then return here for the next step.
+            </p>
             <div className="mini-progress-list">
               {orderedActivities.map((activity, index) => {
                 const design = getActivityDesign(activity.activity_type);
                 const status = statusByActivityId[activity.id];
                 const requirementState: RequirementState = requiredActivityTypes.includes(activity.activity_type) ? 'required' : 'optional';
                 return (
-                  <a className={`mini-progress-item ${status.tone} ${requirementState}`} href={`#activity-${index + 1}`} key={activity.id}>
+                  <Link className={`mini-progress-item ${status.tone} ${requirementState}`} href={getActivityRoute(activity.activity_type)} key={activity.id}>
                     <span>{status.isComplete ? '✓' : index + 1}</span>
                     <div>
                       <strong>{design.label}</strong>
                       <small>{activity.title}</small>
                       <em>{requirementState === 'required' ? 'Required' : 'Optional support'} · {status.label}</em>
                     </div>
-                  </a>
+                  </Link>
                 );
               })}
             </div>
@@ -534,7 +514,7 @@ export default async function Russia1905LessonPage() {
             {requiredActivities.map((activity) => {
               const index = orderedActivities.findIndex((item) => item.id === activity.id);
               return (
-                <ActivityCard
+                <ActivityLaunchCard
                   activity={activity}
                   index={index}
                   status={statusByActivityId[activity.id]}
@@ -554,7 +534,7 @@ export default async function Russia1905LessonPage() {
             {optionalActivities.map((activity) => {
               const index = orderedActivities.findIndex((item) => item.id === activity.id);
               return (
-                <ActivityCard
+                <ActivityLaunchCard
                   activity={activity}
                   index={index}
                   status={statusByActivityId[activity.id]}
