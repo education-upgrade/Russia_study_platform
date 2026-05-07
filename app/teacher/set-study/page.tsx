@@ -12,7 +12,35 @@ type GuidedStudyAssignment = {
   assigned_class: string;
   status: string;
   created_at: string;
+  recipient_count?: number | null;
 };
+
+type ClassOption = {
+  id: string;
+  className: string;
+  yearGroup: string;
+  studentCount: number;
+};
+
+type TeacherClassRow = {
+  id: string;
+  class_name: string;
+  year_group: string;
+};
+
+type ClassMembershipRow = {
+  class_id: string;
+  student_id: string;
+};
+
+const fallbackClasses: ClassOption[] = [
+  {
+    id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    className: 'Year 12 Russia demo class',
+    yearGroup: 'Y12',
+    studentCount: 1,
+  },
+];
 
 function formatMode(mode: string) {
   return mode.replaceAll('_', ' ');
@@ -28,23 +56,54 @@ function formatDate(value: string | null) {
   });
 }
 
+function buildClassOptions(classes: TeacherClassRow[], memberships: ClassMembershipRow[]) {
+  if (!classes.length) return fallbackClasses;
+
+  return classes.map((classRow) => ({
+    id: classRow.id,
+    className: classRow.class_name,
+    yearGroup: classRow.year_group,
+    studentCount: memberships.filter((membership) => membership.class_id === classRow.id).length,
+  }));
+}
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function SetStudyPage() {
   let assignments: GuidedStudyAssignment[] = [];
   let assignmentError = '';
+  let classOptions: ClassOption[] = fallbackClasses;
+  let classSetupWarning = '';
 
   if (supabase) {
     const { data, error } = await supabase
       .from('guided_study_assignments')
-      .select('id, mode, required_activity_types, deadline_at, instructions, assigned_class, status, created_at')
+      .select('id, mode, required_activity_types, deadline_at, instructions, assigned_class, status, created_at, recipient_count')
       .eq('pathway_slug', '1905-revolution')
       .order('created_at', { ascending: false })
       .limit(3);
 
     assignments = (data ?? []) as GuidedStudyAssignment[];
     assignmentError = error?.message ?? '';
+
+    const { data: classData, error: classError } = await supabase
+      .from('teacher_classes')
+      .select('id, class_name, year_group')
+      .eq('status', 'active')
+      .order('year_group', { ascending: true })
+      .order('class_name', { ascending: true });
+
+    const { data: membershipData, error: membershipError } = await supabase
+      .from('class_memberships')
+      .select('class_id, student_id')
+      .eq('status', 'active');
+
+    if (classError || membershipError) {
+      classSetupWarning = classError?.message ?? membershipError?.message ?? '';
+    } else {
+      classOptions = buildClassOptions((classData ?? []) as TeacherClassRow[], (membershipData ?? []) as ClassMembershipRow[]);
+    }
   }
 
   return (
@@ -67,7 +126,13 @@ export default async function SetStudyPage() {
         </section>
       )}
 
-      <GuidedStudyAssignmentForm />
+      {classSetupWarning && (
+        <section className={styles.notice}>
+          Class setup warning: {classSetupWarning}. Run supabase/multi-class-platform.sql in Supabase SQL Editor to enable class targeting.
+        </section>
+      )}
+
+      <GuidedStudyAssignmentForm classOptions={classOptions} />
 
       <section className={styles.history}>
         <div className={styles.historyHeader}>
@@ -89,7 +154,7 @@ export default async function SetStudyPage() {
               <article className={styles.assignmentRow} key={assignment.id}>
                 <div>
                   <strong>{assignment.assigned_class}</strong>
-                  <small>{assignment.status}</small>
+                  <small>{assignment.recipient_count ?? 1} student{(assignment.recipient_count ?? 1) === 1 ? '' : 's'} · {assignment.status}</small>
                 </div>
                 <div>
                   <strong>{formatMode(assignment.mode)}</strong>
