@@ -11,6 +11,7 @@ type QuizSaveRequest = {
   maxScore: number;
   percentage: number;
   incorrectQuestionIds: string[];
+  status?: 'in_progress' | 'complete';
 };
 
 export async function POST(request: Request) {
@@ -30,12 +31,16 @@ export async function POST(request: Request) {
     );
   }
 
+  const responseStatus = body.status === 'complete' ? 'complete' : 'in_progress';
+  const now = new Date().toISOString();
+
   const responsePayload = {
     answers: body.answers,
     score: body.score,
     maxScore: body.maxScore,
     percentage: body.percentage,
     incorrectQuestionIds: body.incorrectQuestionIds,
+    status: responseStatus,
   };
 
   const { data: existing } = await supabase
@@ -46,26 +51,26 @@ export async function POST(request: Request) {
     .eq('activity_id', body.activityId)
     .maybeSingle();
 
-  const now = new Date().toISOString();
+  const rowPayload = {
+    response_type: 'quiz',
+    response_json: responsePayload,
+    score: body.score,
+    status: responseStatus,
+    last_saved_at: now,
+    submitted_at: responseStatus === 'complete' ? now : null,
+  };
 
   if (existing?.id) {
     const { error } = await supabase
       .from('student_responses')
-      .update({
-        response_type: 'quiz',
-        response_json: responsePayload,
-        score: body.score,
-        status: 'complete',
-        last_saved_at: now,
-        submitted_at: now,
-      })
+      .update(rowPayload)
       .eq('id', existing.id);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ status: 'updated', savedAt: now });
+    return NextResponse.json({ status: 'updated', savedAt: now, responseStatus });
   }
 
   const { error } = await supabase
@@ -74,18 +79,13 @@ export async function POST(request: Request) {
       student_id: DEMO_STUDENT_ID,
       assignment_id: DEMO_ASSIGNMENT_ID,
       activity_id: body.activityId,
-      response_type: 'quiz',
-      response_json: responsePayload,
-      score: body.score,
-      status: 'complete',
       started_at: now,
-      last_saved_at: now,
-      submitted_at: now,
+      ...rowPayload,
     });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ status: 'created', savedAt: now });
+  return NextResponse.json({ status: 'created', savedAt: now, responseStatus });
 }
