@@ -39,27 +39,15 @@ export default async function FlashcardsPage() {
   const { activity, error } = await getActivity('flashcards');
 
   return (
-    <main className="page-shell activity-focus-shell">
-      <div className="page-header-row app-topbar">
-        <span className="breadcrumb">1905 pathway / Flashcards</span>
-        <div className="button-row compact">
-          <Link className="button secondary" href="/student/lesson/1905">Back to pathway</Link>
-          <Link className="button secondary" href="/student/dashboard">Dashboard</Link>
-        </div>
-      </div>
-
-      <section className="activity-focus-hero warm">
+    <main className="page-shell activity-focus-shell flashcard-page-shell">
+      <div className="flashcard-page-topbar">
+        <Link className="flashcard-back-link" href="/student/lesson/1905">← Pathway</Link>
         <div>
-          <p className="eyebrow">Focused activity screen</p>
-          <h1>{activity?.title ?? '1905 flashcards'}</h1>
-          <p>Work through one card at a time. Reveal the answer, rate it honestly, then move on. This page is separated from the pathway to reduce scrolling and overload.</p>
+          <p className="eyebrow">Flashcards</p>
+          <h1>{activity?.title ?? '1905 Revolution key knowledge'}</h1>
         </div>
-        <aside className="activity-focus-meta">
-          <span className="badge">{activity?.estimated_minutes ?? 10} mins</span>
-          <span className="badge">{activity?.skill_focus ?? 'Core evidence'}</span>
-          {activity?.difficulty && <span className="badge">{activity.difficulty}</span>}
-        </aside>
-      </section>
+        <Link className="flashcard-dashboard-link" href="/student/dashboard">Dashboard</Link>
+      </div>
 
       {error && (
         <section className="card warm" style={{ marginTop: 24 }}>
@@ -69,14 +57,14 @@ export default async function FlashcardsPage() {
       )}
 
       {activity && Array.isArray(activity.content_json?.cards) && (
-        <section className="activity-focus-card">
+        <section className="flashcard-fullscreen-panel">
           <FlashcardActivity activityId={activity.id} cards={activity.content_json.cards} />
         </section>
       )}
 
-      <section className="activity-bottom-nav">
-        <Link className="button secondary" href="/student/lesson/1905/quiz">Previous: quiz</Link>
-        <Link className="button" href="/student/lesson/1905/peel">Next: PEEL response</Link>
+      <section className="flashcard-route-footer">
+        <Link href="/student/lesson/1905/quiz">Previous: quiz</Link>
+        <Link href="/student/lesson/1905/peel">Next: PEEL response →</Link>
       </section>
     </main>
   );
