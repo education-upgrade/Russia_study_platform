@@ -9,7 +9,9 @@ type ConfidenceSaveRequest = {
   prompt: string;
   confidence: number;
   leastSecureArea: string;
-  reflection: string;
+  reflection?: string;
+  understandBetter?: string;
+  needHelpWith?: string;
 };
 
 export async function POST(request: Request) {
@@ -34,11 +36,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Choose the area you feel least secure on.' }, { status: 400 });
   }
 
+  if (!body.understandBetter?.trim()) {
+    return NextResponse.json({ error: 'Add one thing you understand better now.' }, { status: 400 });
+  }
+
+  if (!body.needHelpWith?.trim()) {
+    return NextResponse.json({ error: 'Add one thing you still need help with.' }, { status: 400 });
+  }
+
   const responsePayload = {
     prompt: body.prompt,
     confidence: body.confidence,
     leastSecureArea: body.leastSecureArea,
-    reflection: body.reflection,
+    understandBetter: body.understandBetter.trim(),
+    needHelpWith: body.needHelpWith.trim(),
+    reflection: body.reflection?.trim() || body.needHelpWith.trim(),
   };
 
   const { data: existing } = await supabase
