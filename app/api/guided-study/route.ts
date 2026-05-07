@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
 const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
+const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
 
 const activityLabels: Record<string, string> = {
   lesson_content: 'Lesson content',
@@ -18,15 +19,27 @@ type GuidedStudyRequest = {
   instructions?: string;
 };
 
+function orderRequiredActivityTypes(activityTypes: string[]) {
+  return [...activityTypes].sort((first, second) => {
+    const firstIndex = PATHWAY_ACTIVITY_ORDER.indexOf(first);
+    const secondIndex = PATHWAY_ACTIVITY_ORDER.indexOf(second);
+    const safeFirstIndex = firstIndex === -1 ? 999 : firstIndex;
+    const safeSecondIndex = secondIndex === -1 ? 999 : secondIndex;
+    return safeFirstIndex - safeSecondIndex;
+  });
+}
+
 export async function POST(request: Request) {
   if (!supabase) {
     return NextResponse.json({ error: 'Supabase is not configured.' }, { status: 500 });
   }
 
   const body = (await request.json()) as GuidedStudyRequest;
-  const requiredActivityTypes = body.requiredActivityTypes?.length
-    ? body.requiredActivityTypes
-    : ['lesson_content', 'quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
+  const requiredActivityTypes = orderRequiredActivityTypes(
+    body.requiredActivityTypes?.length
+      ? body.requiredActivityTypes
+      : PATHWAY_ACTIVITY_ORDER
+  );
 
   if (!body.mode) {
     return NextResponse.json({ error: 'Choose a guided study mode.' }, { status: 400 });
