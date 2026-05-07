@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import styles from './page.module.css';
 
-const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
+const DEMO_CLASS_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
 
 const activityLabels: Record<string, string> = {
@@ -16,11 +16,8 @@ const activityLabels: Record<string, string> = {
 type ResponseJson = {
   maxScore?: number;
   percentage?: number;
-  incorrectQuestionIds?: string[];
-  question?: string;
   fullResponse?: string;
   wordCount?: number;
-  prompt?: string;
   confidence?: number;
   leastSecureArea?: string;
   reflection?: string;
@@ -29,27 +26,23 @@ type ResponseJson = {
   totalCards?: number;
   ratedCount?: number;
   secureCount?: number;
-  nearlyCount?: number;
   revisitCount?: number;
-  revisitCardIds?: string[];
   securePercentage?: number;
 };
 
 type StudentResponseRow = {
-  id: string;
+  student_id: string;
   activity_id: string;
   status: string;
   score: number | null;
   response_type: string;
   response_json: ResponseJson | null;
-  submitted_at: string | null;
 };
 
 type ActivityRow = {
   id: string;
   activity_type: string;
   title: string;
-  estimated_minutes: number | null;
 };
 
 type GuidedStudyAssignment = {
@@ -59,18 +52,40 @@ type GuidedStudyAssignment = {
   deadline_at: string | null;
   instructions: string | null;
   assigned_class: string;
+  assigned_student_ids?: string[] | null;
+  recipient_count?: number | null;
   status: string;
   created_at: string;
 };
 
-type RequiredActivityProgress = {
-  activityType: string;
-  label: string;
-  activity?: ActivityRow;
-  response?: StudentResponseRow;
-  complete: boolean;
-  risk: string;
-  detail: string;
+type StudentProfile = {
+  id: string;
+  display_name: string;
+  year_group: string | null;
+};
+
+type TeacherClass = {
+  id: string;
+  class_name: string;
+  year_group: string;
+};
+
+type Membership = {
+  student_id: string;
+  class_id: string;
+};
+
+type StudentSummary = {
+  id: string;
+  name: string;
+  progress: number;
+  completed: number;
+  required: number;
+  quiz: string;
+  flashcards: string;
+  peel: string;
+  confidence: string;
+  flag: string;
   action: string;
 };
 
@@ -78,9 +93,7 @@ function orderActivityTypes(activityTypes: string[]) {
   return [...activityTypes].sort((first, second) => {
     const firstIndex = PATHWAY_ACTIVITY_ORDER.indexOf(first);
     const secondIndex = PATHWAY_ACTIVITY_ORDER.indexOf(second);
-    const safeFirstIndex = firstIndex === -1 ? 999 : firstIndex;
-    const safeSecondIndex = secondIndex === -1 ? 999 : secondIndex;
-    return safeFirstIndex - safeSecondIndex;
+    return (firstIndex === -1 ? 999 : firstIndex) - (secondIndex === -1 ? 999 : secondIndex);
   });
 }
 
@@ -98,76 +111,45 @@ function formatMode(mode: string) {
   return mode.replaceAll('_', ' ');
 }
 
-function isResponseComplete(row: StudentResponseRow | undefined) {
-  if (!row) return false;
+function isComplete(activityType: string, response: StudentResponseRow | undefined) {
+  if (activityType === 'lesson_content') return true;
+  if (!response) return false;
 
-  if (row.response_type === 'flashcards') {
-    const ratedCount = row.response_json?.ratedCount ?? 0;
-    const totalCards = row.response_json?.totalCards ?? Number.POSITIVE_INFINITY;
-    return row.status === 'complete' || ratedCount >= totalCards;
+  if (activityType === 'flashcards') {
+    const ratedCount = response.response_json?.ratedCount ?? 0;
+    const totalCards = response.response_json?.totalCards ?? Number.POSITIVE_INFINITY;
+    return response.status === 'complete' || ratedCount >= totalCards;
   }
 
-  return row.status === 'complete' || row.status === 'submitted';
+  return response.status === 'complete' || response.status === 'submitted';
 }
 
-function getEvidenceDetail(activityType: string, row: StudentResponseRow | undefined) {
-  if (!row) return activityType === 'lesson_content' ? 'Available support' : 'Not completed';
+function getRiskFlag(response: StudentResponseRow | undefined, activityType: string) {
+  if (!response) return activityType === 'lesson_content' ? 'Support activity' : 'Missing evidence';
 
-  if (row.response_type === 'quiz') {
-    return `${row.score ?? '-'}/${row.response_json?.maxScore ?? '?'}${typeof row.response_json?.percentage === 'number' ? ` · ${row.response_json.percentage}%` : ''}`;
+  if (activityType === 'peel_response') {
+    return (response.response_json?.wordCount ?? 0) < 40 ? 'Needs development' : 'Submitted';
   }
 
-  if (row.response_type === 'flashcards') {
-    return `${row.response_json?.secureCount ?? 0} secure · ${row.response_json?.revisitCount ?? 0} revisit`;
-  }
-
-  if (row.response_type === 'peel_response') {
-    return `${row.response_json?.wordCount ?? 0} words`;
-  }
-
-  if (row.response_type === 'confidence_exit_ticket') {
-    const confidence = row.response_json?.confidence ?? row.score ?? '-';
-    const area = row.response_json?.leastSecureArea;
-    return `${confidence}/5${area ? ` · ${area}` : ''}`;
-  }
-
-  return row.status;
-}
-
-function getRiskFlag(row: StudentResponseRow | undefined, activityType?: string) {
-  if (!row) {
-    if (activityType === 'lesson_content') return 'Support activity';
-    return 'Missing evidence';
-  }
-
-  if (row.response_type === 'peel_response') {
-    const wordCount = row.response_json?.wordCount ?? 0;
-    if (wordCount < 40) return 'Needs development';
-    return 'Submitted';
-  }
-
-  if (row.response_type === 'confidence_exit_ticket') {
-    const confidence = row.response_json?.confidence ?? row.score ?? 0;
+  if (activityType === 'confidence_exit_ticket') {
+    const confidence = response.response_json?.confidence ?? response.score ?? 0;
     if (confidence <= 2) return 'Low confidence';
     if (confidence === 3) return 'Check confidence';
     return 'Confident';
   }
 
-  if (row.response_type === 'flashcards') {
-    const totalCards = row.response_json?.totalCards ?? 0;
-    const ratedCount = row.response_json?.ratedCount ?? 0;
-    const revisitCount = row.response_json?.revisitCount ?? 0;
-    const securePercentage = row.response_json?.securePercentage ?? 0;
-
+  if (activityType === 'flashcards') {
+    const totalCards = response.response_json?.totalCards ?? 0;
+    const ratedCount = response.response_json?.ratedCount ?? 0;
+    const revisitCount = response.response_json?.revisitCount ?? 0;
+    const securePercentage = response.response_json?.securePercentage ?? 0;
     if (ratedCount < totalCards) return 'Incomplete';
     if (revisitCount > 0) return 'Revisit needed';
     if (securePercentage >= 80) return 'Secure';
     return 'Check understanding';
   }
 
-  const percentage = row.response_json?.percentage;
-
-  if (row.status !== 'complete' && row.status !== 'submitted') return 'Incomplete';
+  const percentage = response.response_json?.percentage;
   if (typeof percentage === 'number' && percentage < 60) return 'Intervention';
   if (typeof percentage === 'number' && percentage < 80) return 'Check understanding';
   if (typeof percentage === 'number' && percentage >= 80) return 'Secure';
@@ -175,56 +157,58 @@ function getRiskFlag(row: StudentResponseRow | undefined, activityType?: string)
 }
 
 function getRiskClass(risk: string) {
-  if (risk === 'Secure' || risk === 'Confident') return styles.secure;
+  if (risk === 'Secure' || risk === 'Confident' || risk === 'On track') return styles.secure;
   if (risk === 'Intervention' || risk === 'Needs development' || risk === 'Low confidence' || risk === 'Revisit needed' || risk === 'Missing evidence') return styles.intervention;
   if (risk === 'Check understanding' || risk === 'Check confidence' || risk === 'Incomplete') return styles.check;
   if (risk === 'Submitted') return styles.submitted;
   return styles.neutral;
 }
 
-function getPriorityAction(row: StudentResponseRow | undefined, activityType?: string) {
-  if (!row) {
-    if (activityType === 'quiz') return 'Ask the student to complete the retrieval quiz first.';
-    if (activityType === 'flashcards') return 'Ask the student to rate the flashcards before writing.';
-    if (activityType === 'peel_response') return 'Prioritise the PEEL paragraph as written evidence.';
-    if (activityType === 'confidence_exit_ticket') return 'Ask the student to complete the final confidence check.';
-    return 'No saved evidence yet.';
-  }
+function evidenceText(activityType: string, response: StudentResponseRow | undefined) {
+  if (!response) return 'Missing';
+  if (activityType === 'quiz') return `${response.score ?? '-'}/${response.response_json?.maxScore ?? '?'}${typeof response.response_json?.percentage === 'number' ? ` · ${response.response_json.percentage}%` : ''}`;
+  if (activityType === 'flashcards') return `${response.response_json?.secureCount ?? 0} secure · ${response.response_json?.revisitCount ?? 0} revisit`;
+  if (activityType === 'peel_response') return `${response.response_json?.wordCount ?? 0} words`;
+  if (activityType === 'confidence_exit_ticket') return `${response.response_json?.confidence ?? response.score ?? '-'}/5`;
+  return response.status;
+}
 
-  const risk = getRiskFlag(row, activityType);
-  if (risk === 'Intervention') return 'Set a recap task or reteach the weakest knowledge.';
-  if (risk === 'Needs development') return 'Review PEEL structure and ask for a stronger explanation/link.';
-  if (risk === 'Low confidence') return 'Use the least secure area to target a short intervention.';
-  if (risk === 'Revisit needed') return 'Ask the student to repeat revisit cards before more writing.';
-  if (risk === 'Check understanding') return 'Ask the student to correct weak recall before moving on.';
-  if (risk === 'Incomplete') return 'Ask the student to finish and resave this activity.';
+function nextAction(flag: string) {
+  if (flag === 'Missing evidence') return 'Complete the missing task.';
+  if (flag === 'Needs development') return 'Review PEEL explanation and judgement.';
+  if (flag === 'Low confidence') return 'Target the least secure area.';
+  if (flag === 'Revisit needed') return 'Repeat revisit flashcards.';
+  if (flag === 'Intervention') return 'Set recap or reteach weak knowledge.';
+  if (flag === 'Check understanding' || flag === 'Check confidence' || flag === 'Incomplete') return 'Quick teacher check.';
   return 'No urgent action.';
 }
 
-function getRequiredActivityProgress(activityType: string, activities: ActivityRow[], responses: StudentResponseRow[]): RequiredActivityProgress {
-  const activity = activities.find((item) => item.activity_type === activityType);
-  const response = activity
-    ? responses.find((item) => item.activity_id === activity.id)
-    : responses.find((item) => item.response_type === activityType);
-  const complete = activityType === 'lesson_content' ? true : isResponseComplete(response);
-  const risk = activityType === 'lesson_content' ? 'Support activity' : getRiskFlag(response, activityType);
+function buildStudentSummary(student: StudentProfile, requiredTypes: string[], activities: ActivityRow[], responses: StudentResponseRow[]) {
+  const studentResponses = responses.filter((response) => response.student_id === student.id);
+  const responseFor = (activityType: string) => {
+    const activity = activities.find((item) => item.activity_type === activityType);
+    return activity ? studentResponses.find((response) => response.activity_id === activity.id) : undefined;
+  };
+
+  const evidenceTypes = requiredTypes.filter((type) => type !== 'lesson_content');
+  const completeCount = evidenceTypes.filter((type) => isComplete(type, responseFor(type))).length;
+  const progress = evidenceTypes.length ? Math.round((completeCount / evidenceTypes.length) * 100) : 0;
+  const risks = evidenceTypes.map((type) => getRiskFlag(responseFor(type), type));
+  const priorityRisk = risks.find((risk) => ['Intervention', 'Needs development', 'Low confidence', 'Revisit needed', 'Missing evidence', 'Incomplete'].includes(risk)) ?? 'On track';
 
   return {
-    activityType,
-    label: activityLabels[activityType] ?? activityType.replaceAll('_', ' '),
-    activity,
-    response,
-    complete,
-    risk,
-    detail: getEvidenceDetail(activityType, response),
-    action: getPriorityAction(response, activityType),
+    id: student.id,
+    name: student.display_name,
+    progress,
+    completed: completeCount,
+    required: evidenceTypes.length,
+    quiz: evidenceText('quiz', responseFor('quiz')),
+    flashcards: evidenceText('flashcards', responseFor('flashcards')),
+    peel: evidenceText('peel_response', responseFor('peel_response')),
+    confidence: evidenceText('confidence_exit_ticket', responseFor('confidence_exit_ticket')),
+    flag: priorityRisk,
+    action: nextAction(priorityRisk),
   };
-}
-
-function getResponseByType(rows: StudentResponseRow[], activities: ActivityRow[], activityType: string) {
-  const activity = activities.find((item) => item.activity_type === activityType);
-  if (!activity) return undefined;
-  return rows.find((row) => row.activity_id === activity.id);
 }
 
 export const dynamic = 'force-dynamic';
@@ -247,16 +231,20 @@ export default async function TeacherProgressPage() {
     );
   }
 
-  const { data: lesson } = await supabase
-    .from('lessons')
-    .select('id, title')
-    .eq('title', 'Was the 1905 Revolution a turning point for Tsarist Russia?')
-    .single();
+  const { data: classData, error: classError } = await supabase
+    .from('teacher_classes')
+    .select('id, class_name, year_group')
+    .eq('status', 'active')
+    .order('year_group', { ascending: true })
+    .order('class_name', { ascending: true });
+
+  const classes = ((classData ?? []) as TeacherClass[]);
+  const activeClass = classes[0] ?? { id: DEMO_CLASS_ID, class_name: 'Year 12 Russia demo class', year_group: 'Y12' };
 
   const { data: assignmentData, error: assignmentError } = await supabase
     .from('guided_study_assignments')
-    .select('id, mode, required_activity_types, deadline_at, instructions, assigned_class, status, created_at')
-    .eq('assigned_student_id', DEMO_STUDENT_ID)
+    .select('id, mode, required_activity_types, deadline_at, instructions, assigned_class, assigned_student_ids, recipient_count, status, created_at')
+    .eq('class_id', activeClass.id)
     .eq('status', 'active')
     .eq('pathway_slug', '1905-revolution')
     .order('created_at', { ascending: false })
@@ -264,78 +252,80 @@ export default async function TeacherProgressPage() {
     .maybeSingle();
 
   const activeAssignment = assignmentData as GuidedStudyAssignment | null;
-  const requiredActivityTypes = orderActivityTypes(
-    activeAssignment?.required_activity_types?.length
-      ? activeAssignment.required_activity_types
-      : PATHWAY_ACTIVITY_ORDER
-  );
+  const requiredTypes = orderActivityTypes(activeAssignment?.required_activity_types?.length ? activeAssignment.required_activity_types : PATHWAY_ACTIVITY_ORDER);
+
+  const { data: membershipData, error: membershipError } = await supabase
+    .from('class_memberships')
+    .select('class_id, student_id')
+    .eq('class_id', activeClass.id)
+    .eq('status', 'active');
+
+  const memberships = (membershipData ?? []) as Membership[];
+  const studentIds = memberships.map((membership) => membership.student_id);
+
+  const { data: profileData, error: profileError } = studentIds.length
+    ? await supabase
+        .from('app_profiles')
+        .select('id, display_name, year_group')
+        .in('id', studentIds)
+    : { data: [], error: null };
+
+  const students = (profileData ?? []) as StudentProfile[];
+
+  const { data: lesson } = await supabase
+    .from('lessons')
+    .select('id, title')
+    .eq('title', 'Was the 1905 Revolution a turning point for Tsarist Russia?')
+    .single();
 
   const { data: activityData } = lesson?.id
     ? await supabase
         .from('activities')
-        .select('id, activity_type, title, estimated_minutes')
+        .select('id, activity_type, title')
         .eq('lesson_id', lesson.id)
     : { data: [] };
 
   const activities = (activityData ?? []) as ActivityRow[];
   const activityIds = activities.map((activity) => activity.id);
 
-  const { data, error } = activityIds.length
+  const { data: responseData, error: responseError } = activityIds.length && studentIds.length
     ? await supabase
         .from('student_responses')
-        .select('id, activity_id, status, score, response_type, response_json, submitted_at')
-        .eq('student_id', DEMO_STUDENT_ID)
+        .select('student_id, activity_id, status, score, response_type, response_json')
+        .in('student_id', studentIds)
         .in('activity_id', activityIds)
-        .order('submitted_at', { ascending: false })
     : { data: [], error: null };
 
-  const rows: StudentResponseRow[] = (data ?? []).map((row) => ({
-    id: String(row.id),
-    activity_id: String(row.activity_id),
-    status: String(row.status),
-    score: typeof row.score === 'number' ? row.score : null,
-    response_type: String(row.response_type),
-    response_json: (row.response_json ?? null) as ResponseJson | null,
-    submitted_at: row.submitted_at ? String(row.submitted_at) : null,
-  }));
-
-  const requiredProgress = requiredActivityTypes.map((activityType) => getRequiredActivityProgress(activityType, activities, rows));
-  const requiredEvidenceProgress = requiredProgress.filter((item) => item.activityType !== 'lesson_content');
-  const completedRequiredCount = requiredEvidenceProgress.filter((item) => item.complete).length;
-  const requiredEvidenceCount = requiredEvidenceProgress.length;
-  const progressPercentage = requiredEvidenceCount
-    ? Math.round((completedRequiredCount / requiredEvidenceCount) * 100)
-    : 0;
-  const priorityRows = requiredEvidenceProgress.filter((item) => {
-    return item.risk === 'Intervention' || item.risk === 'Needs development' || item.risk === 'Low confidence' || item.risk === 'Revisit needed' || item.risk === 'Missing evidence' || item.risk === 'Incomplete';
-  });
-
-  const quizResponse = getResponseByType(rows, activities, 'quiz');
-  const flashcardResponse = getResponseByType(rows, activities, 'flashcards');
-  const peelResponse = getResponseByType(rows, activities, 'peel_response');
-  const confidenceResponse = getResponseByType(rows, activities, 'confidence_exit_ticket');
-  const decision = priorityRows.length ? `${priorityRows[0].label} needs attention` : 'No urgent action';
-  const decisionDetail = priorityRows.length ? priorityRows[0].action : 'The current required evidence is complete or low risk.';
+  const responses = (responseData ?? []) as StudentResponseRow[];
+  const summaries = students.map((student) => buildStudentSummary(student, requiredTypes, activities, responses));
+  const averageProgress = summaries.length ? Math.round(summaries.reduce((total, student) => total + student.progress, 0) / summaries.length) : 0;
+  const flaggedStudents = summaries.filter((student) => student.flag !== 'On track');
+  const completedStudents = summaries.filter((student) => student.progress === 100).length;
+  const averageQuiz = summaries
+    .map((student) => Number((student.quiz.match(/· (\d+)%/) ?? [])[1]))
+    .filter((value) => Number.isFinite(value));
+  const quizAverage = averageQuiz.length ? Math.round(averageQuiz.reduce((total, value) => total + value, 0) / averageQuiz.length) : null;
+  const decision = flaggedStudents.length ? `${flaggedStudents[0].name} needs attention` : 'No urgent action';
+  const decisionDetail = flaggedStudents.length ? flaggedStudents[0].action : 'The class is currently on track for the required route.';
 
   return (
     <main className={styles.shell}>
       <div className={styles.topbar}>
-        <span>Teacher / Progress / 1905 Revolution</span>
+        <span>Teacher / Progress / 1905 Revolution / {activeClass.class_name}</span>
         <Link className={styles.navButton} href="/teacher/set-study">Set study</Link>
         <Link className={styles.navButton} href="/student/dashboard">Student view</Link>
       </div>
 
-      {assignmentError && (
-        <section className={styles.error}>Assignment query warning: {assignmentError.message}</section>
-      )}
-      {error && (
-        <section className={styles.error}>Progress query failed: {error.message}</section>
+      {(classError || membershipError || profileError || assignmentError || responseError) && (
+        <section className={styles.error}>
+          Setup warning: {classError?.message ?? membershipError?.message ?? profileError?.message ?? assignmentError?.message ?? responseError?.message}. Run supabase/multi-class-platform.sql if class data is missing.
+        </section>
       )}
 
       <section className={styles.mainCard}>
         <header className={styles.header}>
           <div>
-            <p className={styles.eyebrow}>Teacher decision dashboard</p>
+            <p className={styles.eyebrow}>Teacher class dashboard</p>
             <h1>1905 progress</h1>
             <p>{activeAssignment?.instructions ?? 'Progress is shown against the current 1905 guided study route.'}</p>
           </div>
@@ -349,23 +339,23 @@ export default async function TeacherProgressPage() {
         <section className={styles.snapshot}>
           <article className={styles.metric}>
             <span>Class</span>
-            <strong>1</strong>
-            <small>demo student</small>
+            <strong>{students.length}</strong>
+            <small>{activeClass.year_group} students</small>
           </article>
           <article className={styles.metric}>
-            <span>Required</span>
-            <strong>{completedRequiredCount}/{requiredEvidenceCount}</strong>
-            <small>evidence tasks</small>
+            <span>Complete</span>
+            <strong>{completedStudents}/{students.length || 0}</strong>
+            <small>students at 100%</small>
           </article>
           <article className={styles.metric}>
             <span>Progress</span>
-            <strong>{progressPercentage}%</strong>
+            <strong>{averageProgress}%</strong>
             <small>{activeAssignment ? formatMode(activeAssignment.mode) : 'default route'}</small>
           </article>
           <article className={styles.metric}>
-            <span>Flags</span>
-            <strong>{priorityRows.length}</strong>
-            <small>need attention</small>
+            <span>Quiz avg</span>
+            <strong>{quizAverage ?? '-'}</strong>
+            <small>{quizAverage === null ? 'no quiz data' : 'average %'}</small>
           </article>
         </section>
 
@@ -378,21 +368,21 @@ export default async function TeacherProgressPage() {
             <span className={styles.badge}>{activeAssignment ? formatDate(activeAssignment.deadline_at) : 'No active deadline'}</span>
           </div>
 
-          {priorityRows.length === 0 ? (
+          {flaggedStudents.length === 0 ? (
             <div className={styles.empty}>
               <h3>No urgent action</h3>
-              <p>The demo student has no high-priority intervention flags on the current required route.</p>
+              <p>No students currently have high-priority intervention flags on this route.</p>
             </div>
           ) : (
             <div className={styles.priorityList}>
-              {priorityRows.map((item) => (
-                <article className={styles.priorityItem} key={item.activityType}>
+              {flaggedStudents.slice(0, 5).map((student) => (
+                <article className={styles.priorityItem} key={student.id}>
                   <div>
-                    <strong>Demo Student</strong>
-                    <small>{item.label}</small>
+                    <strong>{student.name}</strong>
+                    <small>{student.completed}/{student.required} complete</small>
                   </div>
-                  <p>{item.action}</p>
-                  <span className={`${styles.statusPill} ${getRiskClass(item.risk)}`}>{item.risk}</span>
+                  <p>{student.action}</p>
+                  <span className={`${styles.statusPill} ${getRiskClass(student.flag)}`}>{student.flag}</span>
                 </article>
               ))}
             </div>
@@ -402,70 +392,47 @@ export default async function TeacherProgressPage() {
         <section className={styles.studentEvidence}>
           <div className={styles.sectionHeader}>
             <div>
-              <p className={styles.eyebrow}>Student evidence</p>
-              <h2>Demo Student</h2>
+              <p className={styles.eyebrow}>Class overview</p>
+              <h2>{activeClass.class_name}</h2>
             </div>
-            <span className={styles.badge}>{completedRequiredCount}/{requiredEvidenceCount} complete</span>
+            <span className={styles.badge}>{students.length} students</span>
           </div>
 
           <article className={styles.studentCard}>
-            <div className={styles.studentTop}>
-              <div>
-                <h3>1905 Revolution</h3>
-                <p>{activeAssignment?.assigned_class ?? 'Year 12 Russia demo class'} · {activeAssignment ? formatMode(activeAssignment.mode) : 'guided study'}</p>
+            {summaries.length === 0 ? (
+              <div className={styles.empty}>
+                <h3>No students found</h3>
+                <p>Run supabase/multi-class-platform.sql to add demo classes and memberships.</p>
               </div>
-              <span className={`${styles.statusPill} ${priorityRows.length ? styles.intervention : styles.secure}`}>
-                {priorityRows.length ? `${priorityRows.length} flag${priorityRows.length === 1 ? '' : 's'}` : 'On track'}
-              </span>
-            </div>
-
-            <div className={styles.evidenceGrid}>
-              <article className={styles.evidenceBox}>
-                <span>Quiz</span>
-                <strong>{getEvidenceDetail('quiz', quizResponse)}</strong>
-                <small>{getRiskFlag(quizResponse, 'quiz')}</small>
-              </article>
-              <article className={styles.evidenceBox}>
-                <span>Flashcards</span>
-                <strong>{getEvidenceDetail('flashcards', flashcardResponse)}</strong>
-                <small>{getRiskFlag(flashcardResponse, 'flashcards')}</small>
-              </article>
-              <article className={styles.evidenceBox}>
-                <span>PEEL</span>
-                <strong>{getEvidenceDetail('peel_response', peelResponse)}</strong>
-                <small>{getRiskFlag(peelResponse, 'peel_response')}</small>
-              </article>
-              <article className={styles.evidenceBox}>
-                <span>Confidence</span>
-                <strong>{getEvidenceDetail('confidence_exit_ticket', confidenceResponse)}</strong>
-                <small>{getRiskFlag(confidenceResponse, 'confidence_exit_ticket')}</small>
-              </article>
-            </div>
+            ) : (
+              <div className={styles.priorityList}>
+                {summaries.map((student) => (
+                  <article className={styles.priorityItem} key={student.id}>
+                    <div>
+                      <strong>{student.name}</strong>
+                      <small>{student.progress}% · {student.completed}/{student.required} complete</small>
+                    </div>
+                    <p>Quiz: {student.quiz} · Flashcards: {student.flashcards} · PEEL: {student.peel} · Confidence: {student.confidence}</p>
+                    <span className={`${styles.statusPill} ${getRiskClass(student.flag)}`}>{student.flag}</span>
+                  </article>
+                ))}
+              </div>
+            )}
 
             <details className={styles.details}>
-              <summary>Open detailed evidence</summary>
+              <summary>Open assignment detail</summary>
               <div className={styles.detailGrid}>
                 <article className={styles.detailPanel}>
+                  <h4>Current assignment</h4>
+                  <p><strong>Class:</strong> {activeClass.class_name}</p>
+                  <p><strong>Mode:</strong> {activeAssignment ? formatMode(activeAssignment.mode) : 'Default route'}</p>
+                  <p><strong>Deadline:</strong> {activeAssignment ? formatDate(activeAssignment.deadline_at) : 'No active deadline'}</p>
+                </article>
+                <article className={styles.detailPanel}>
                   <h4>Required route</h4>
-                  {requiredProgress.map((item) => (
-                    <p key={item.activityType}><strong>{item.label}:</strong> {item.detail} · {item.risk}</p>
+                  {requiredTypes.map((type, index) => (
+                    <p key={type}><strong>{index + 1}. {activityLabels[type] ?? type}:</strong> required</p>
                   ))}
-                </article>
-                <article className={styles.detailPanel}>
-                  <h4>Confidence reflection</h4>
-                  <p><strong>Understands better:</strong> {confidenceResponse?.response_json?.understandBetter ?? 'Not recorded'}</p>
-                  <p><strong>Needs help with:</strong> {confidenceResponse?.response_json?.needHelpWith ?? confidenceResponse?.response_json?.reflection ?? 'Not recorded'}</p>
-                  <p><strong>Least secure:</strong> {confidenceResponse?.response_json?.leastSecureArea ?? 'Not recorded'}</p>
-                </article>
-                <article className={styles.detailPanel}>
-                  <h4>PEEL response</h4>
-                  <p><strong>Words:</strong> {peelResponse?.response_json?.wordCount ?? 0}</p>
-                  <p className={styles.preview}>{peelResponse?.response_json?.fullResponse ?? 'No PEEL response saved.'}</p>
-                </article>
-                <article className={styles.detailPanel}>
-                  <h4>Quiz and flashcards</h4>
-                  <p><strong>Incorrect questions:</strong> {(quizResponse?.response_json?.incorrectQuestionIds ?? []).join(', ') || 'None recorded'}</p>
-                  <p><strong>Revisit cards:</strong> {(flashcardResponse?.response_json?.revisitCardIds ?? []).join(', ') || 'None recorded'}</p>
                 </article>
               </div>
             </details>
