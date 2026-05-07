@@ -1,6 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useMemo, useRef, useState } from 'react';
+import styles from './QuizActivity.module.css';
 
 type QuizQuestion = {
   id?: string;
@@ -14,39 +16,47 @@ type QuizActivityProps = {
   questions: QuizQuestion[];
 };
 
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
 export default function QuizActivity({ activityId, questions }: QuizActivityProps) {
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [submitted, setSubmitted] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [completed, setCompleted] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [saveMessage, setSaveMessage] = useState('');
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const questionKeys = useMemo(
     () => questions.map((question, index) => question.id ?? `question-${index}`),
     [questions]
   );
 
+  const currentQuestion = questions[currentIndex];
+  const currentQuestionKey = questionKeys[currentIndex] ?? '';
+  const selectedAnswer = answers[currentQuestionKey];
   const answeredCount = questionKeys.filter((key) => Boolean(answers[key])).length;
-  const score = questions.reduce((total, question, index) => {
-    const key = question.id ?? `question-${index}`;
-    return total + (answers[key] === question.correct ? 1 : 0);
-  }, 0);
 
-  const percentage = questions.length > 0 ? Math.round((score / questions.length) * 100) : 0;
-  const allAnswered = answeredCount === questions.length;
-  const incorrectQuestionIds = questions
-    .map((question, index) => ({ question, key: question.id ?? `question-${index}` }))
-    .filter(({ question, key }) => answers[key] !== question.correct)
-    .map(({ question, key }) => question.id ?? key);
+  function calculateResult(nextAnswers: Record<string, string>) {
+    const score = questions.reduce((total, question, index) => {
+      const key = question.id ?? `question-${index}`;
+      return total + (nextAnswers[key] === question.correct ? 1 : 0);
+    }, 0);
+    const percentage = questions.length > 0 ? Math.round((score / questions.length) * 100) : 0;
+    const incorrectQuestionIds = questions
+      .map((question, index) => ({ question, key: question.id ?? `question-${index}` }))
+      .filter(({ question, key }) => nextAnswers[key] !== question.correct)
+      .map(({ question, key }) => question.id ?? key);
 
-  function selectAnswer(questionKey: string, option: string) {
-    if (submitted) return;
-    setAnswers((current) => ({ ...current, [questionKey]: option }));
+    return { score, percentage, incorrectQuestionIds };
   }
 
-  async function submitQuiz() {
-    setSubmitted(true);
+  const { score, percentage, incorrectQuestionIds } = calculateResult(answers);
+  const progressPercentage = questions.length ? Math.round((answeredCount / questions.length) * 100) : 0;
+
+  async function saveQuiz(nextAnswers: Record<string, string>, isComplete: boolean) {
+    const result = calculateResult(nextAnswers);
     setSaveStatus('saving');
-    setSaveMessage('Saving quiz result...');
+    setSaveMessage(isComplete ? 'Saving final score...' : 'Auto-saving...');
 
     try {
       const response = await fetch('/api/student-responses/quiz', {
@@ -54,109 +64,174 @@ export default function QuizActivity({ activityId, questions }: QuizActivityProp
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           activityId,
-          answers,
-          score,
+          answers: nextAnswers,
+          score: result.score,
           maxScore: questions.length,
-          percentage,
-          incorrectQuestionIds,
+          percentage: result.percentage,
+          incorrectQuestionIds: result.incorrectQuestionIds,
+          status: isComplete ? 'complete' : 'in_progress',
         }),
       });
 
-      const result = await response.json();
+      const responseBody = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error ?? 'Quiz result could not be saved.');
+        throw new Error(responseBody.error ?? 'Quiz result could not be saved.');
       }
 
       setSaveStatus('saved');
-      setSaveMessage(`Saved at ${new Date(result.savedAt).toLocaleTimeString()}`);
+      setSaveMessage(isComplete ? `Saved score ${result.score}/${questions.length}` : 'Saved');
     } catch (error) {
       setSaveStatus('error');
       setSaveMessage(error instanceof Error ? error.message : 'Quiz result could not be saved.');
     }
   }
 
+  function selectAnswer(option: string) {
+    if (!currentQuestion || selectedAnswer || completed) return;
+
+    const nextAnswers = { ...answers, [currentQuestionKey]: option };
+    const isFinalQuestion = currentIndex === questions.length - 1;
+
+    setAnswers(nextAnswers);
+    void saveQuiz(nextAnswers, isFinalQuestion);
+
+    if (advanceTimerRef.current) {
+      clearTimeout(advanceTimerRef.current);
+    }
+
+    advanceTimerRef.current = setTimeout(() => {
+      if (isFinalQuestion) {
+        setCompleted(true);
+      } else {
+        setCurrentIndex((previous) => Math.min(previous + 1, questions.length - 1));
+      }
+    }, 650);
+  }
+
+  function goToPreviousQuestion() {
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    setCurrentIndex((previous) => Math.max(previous - 1, 0));
+  }
+
+  function skipForward() {
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    setCurrentIndex((previous) => Math.min(previous + 1, questions.length - 1));
+  }
+
+  function reviewQuiz() {
+    setCompleted(false);
+    setCurrentIndex(0);
+  }
+
   function resetQuiz() {
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
     setAnswers({});
-    setSubmitted(false);
+    setCompleted(false);
+    setCurrentIndex(0);
     setSaveStatus('idle');
     setSaveMessage('');
   }
 
-  return (
-    <div className="quiz-shell">
-      <div className="panel teal">
-        <div className="quiz-toolbar">
+  if (!currentQuestion) {
+    return (
+      <section className="panel warm">
+        <h3>No quiz questions found</h3>
+        <p>This activity does not currently have any questions.</p>
+      </section>
+    );
+  }
+
+  if (completed) {
+    return (
+      <div className={styles.shell}>
+        <section className={styles.topbar}>
           <div>
-            <p className="eyebrow">Interactive retrieval</p>
-            <h3>Answer all questions, then submit your quiz.</h3>
-            <p>Use this as a quick knowledge check before moving into exam-writing.</p>
+            <h3>Quiz complete</h3>
           </div>
-          <div className="activity-summary">
-            <span className="badge">Answered {answeredCount}/{questions.length}</span>
-            {submitted && <span className="badge">Score {score}/{questions.length} · {percentage}%</span>}
+          <div className={styles.stats} aria-label="Quiz result statistics">
+            <span>{score}/{questions.length}</span>
+            <span>{percentage}%</span>
+            <span>{incorrectQuestionIds.length} revisit</span>
           </div>
+        </section>
+
+        <div className={styles.progress} aria-label="Quiz completion progress">
+          <div style={{ width: '100%' }} />
         </div>
-        <div className="progress-bar">
-          <div className="progress-fill" style={{ '--progress': `${questions.length ? (answeredCount / questions.length) * 100 : 0}%` } as React.CSSProperties} />
+
+        <section className={styles.summary}>
+          <h2>{score}/{questions.length}</h2>
+          <p>{percentage >= 80 ? 'Strong recall. Move on to flashcards for consolidation.' : 'Good start. Revisit the weaker questions before moving on.'}</p>
+        </section>
+
+        <section className={styles.bottomNav}>
+          <button type="button" className="button secondary" onClick={reviewQuiz}>Review</button>
+          <button type="button" className="button secondary" onClick={resetQuiz}>Try again</button>
+          <Link className="button" href="/student/lesson/1905/flashcards">Next</Link>
+        </section>
+
+        {saveMessage && <p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.shell}>
+      <section className={styles.topbar}>
+        <div>
+          <h3>Question {currentIndex + 1} of {questions.length}</h3>
         </div>
-        {saveMessage && (
-          <p><strong>Save status:</strong> {saveMessage}</p>
-        )}
+        <div className={styles.stats} aria-label="Quiz progress statistics">
+          <span>{answeredCount}/{questions.length} answered</span>
+          <span>{score} correct</span>
+          <span>{saveStatus === 'saving' ? 'saving' : saveStatus === 'saved' ? 'saved' : 'ready'}</span>
+        </div>
+      </section>
+
+      <div className={styles.progress} aria-label="Quiz completion progress">
+        <div style={{ width: `${progressPercentage}%` }} />
       </div>
 
-      {questions.map((question, qIndex) => {
-        const key = question.id ?? `question-${qIndex}`;
-        const selected = answers[key];
+      <section className={styles.card}>
+        <h2 className={styles.questionText}>{currentQuestion.question}</h2>
+        <div className={styles.options}>
+          {currentQuestion.options.map((option) => {
+            const isSelected = selectedAnswer === option;
+            const isCorrect = option === currentQuestion.correct;
+            const showCorrect = Boolean(selectedAnswer) && isCorrect;
+            const showIncorrect = isSelected && !isCorrect;
 
-        return (
-          <section className="panel" key={key}>
-            <p className="eyebrow">Question {qIndex + 1}</p>
-            <h3>{question.question}</h3>
-            <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
-              {question.options.map((option) => {
-                const isSelected = selected === option;
-                const isCorrect = option === question.correct;
-                const showCorrect = submitted && isCorrect;
-                const showIncorrect = submitted && isSelected && !isCorrect;
+            return (
+              <button
+                type="button"
+                key={option}
+                onClick={() => selectAnswer(option)}
+                className={`${styles.option}${isSelected ? ` ${styles.selected}` : ''}${showCorrect ? ` ${styles.correct}` : ''}${showIncorrect ? ` ${styles.incorrect}` : ''}`}
+                disabled={Boolean(selectedAnswer)}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
-                return (
-                  <button
-                    type="button"
-                    key={option}
-                    onClick={() => selectAnswer(key, option)}
-                    className={`option-button${isSelected ? ' selected' : ''}${showCorrect ? ' correct' : ''}${showIncorrect ? ' incorrect' : ''}`}
-                    disabled={submitted}
-                  >
-                    {option}{showCorrect ? ' ✓ correct' : ''}{showIncorrect ? ' · check this' : ''}
-                  </button>
-                );
-              })}
-            </div>
-            {submitted && selected && selected !== question.correct && (
-              <p><strong>Correct answer:</strong> {question.correct}</p>
-            )}
-          </section>
-        );
-      })}
+      <section className={styles.feedback} aria-live="polite">
+        {!selectedAnswer && 'Choose an answer. The quiz will move on automatically.'}
+        {selectedAnswer && selectedAnswer === currentQuestion.correct && 'Correct — moving on.'}
+        {selectedAnswer && selectedAnswer !== currentQuestion.correct && `Correct answer: ${currentQuestion.correct}`}
+      </section>
 
-      <div className="button-row">
-        {!submitted ? (
-          <button
-            type="button"
-            className="button"
-            onClick={submitQuiz}
-            disabled={!allAnswered || saveStatus === 'saving'}
-            style={{ opacity: allAnswered ? 1 : 0.5 }}
-          >
-            {saveStatus === 'saving' ? 'Saving...' : 'Submit quiz'}
-          </button>
-        ) : (
-          <button type="button" className="button secondary" onClick={resetQuiz}>
-            Try again
-          </button>
-        )}
-      </div>
+      <section className={styles.bottomNav}>
+        <button type="button" className="button secondary" onClick={goToPreviousQuestion} disabled={currentIndex === 0}>Previous</button>
+        <button type="button" className="button secondary" onClick={skipForward} disabled={currentIndex === questions.length - 1}>Skip</button>
+        <button type="button" className="button" onClick={() => { void saveQuiz(answers, false); }} disabled={saveStatus === 'saving'}>
+          {saveStatus === 'saving' ? 'Saving...' : 'Save'}
+        </button>
+      </section>
+
+      {saveMessage && <p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage}</p>}
     </div>
   );
 }
