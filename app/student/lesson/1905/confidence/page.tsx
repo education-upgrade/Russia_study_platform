@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import ConfidenceExitTicketActivity from '@/components/ConfidenceExitTicketActivity';
 import { supabase } from '@/lib/supabase';
+import styles from './page.module.css';
 
 type Activity = {
   id: string;
@@ -32,35 +33,32 @@ async function getActivity(activityType: string) {
   return { activity, error: error?.message ?? '' };
 }
 
+function cleanConfidenceTitle(title: string | undefined | null) {
+  if (!title) return '1905 Revolution';
+  return title
+    .replace(/^Confidence exit ticket:\s*/i, '')
+    .replace(/^Confidence check:\s*/i, '')
+    .replace(/^Exit ticket:\s*/i, '');
+}
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function ConfidencePage() {
   const { activity, error } = await getActivity('confidence_exit_ticket');
   const content = activity?.content_json ?? {};
+  const pageTitle = cleanConfidenceTitle(activity?.title);
 
   return (
-    <main className="page-shell activity-focus-shell">
-      <div className="page-header-row app-topbar">
-        <span className="breadcrumb">1905 pathway / Confidence check</span>
-        <div className="button-row compact">
-          <Link className="button secondary" href="/student/lesson/1905">Back to pathway</Link>
-          <Link className="button secondary" href="/student/dashboard">Dashboard</Link>
+    <main className={styles.shell}>
+      <div className={styles.topbar}>
+        <Link className={styles.backLink} href="/student/lesson/1905">← Pathway</Link>
+        <div className={styles.titleBlock}>
+          <p>Final reflection</p>
+          <h1>{pageTitle}</h1>
         </div>
+        <Link className={styles.dashboardLink} href="/student/dashboard">Dashboard</Link>
       </div>
-
-      <section className="activity-focus-hero lavender">
-        <div>
-          <p className="eyebrow">Final reflection</p>
-          <h1>{activity?.title ?? '1905 confidence check'}</h1>
-          <p>Finish with a quick confidence check so your teacher can see what feels secure and what still needs support.</p>
-        </div>
-        <aside className="activity-focus-meta">
-          <span className="badge">{activity?.estimated_minutes ?? 5} mins</span>
-          <span className="badge">{activity?.skill_focus ?? 'Reflection'}</span>
-          {activity?.difficulty && <span className="badge">{activity.difficulty}</span>}
-        </aside>
-      </section>
 
       {error && (
         <section className="card warm" style={{ marginTop: 24 }}>
@@ -70,7 +68,7 @@ export default async function ConfidencePage() {
       )}
 
       {activity && (
-        <section className="activity-focus-card compact-activity-card">
+        <section className={styles.panel}>
           <ConfidenceExitTicketActivity
             activityId={activity.id}
             prompt={content.prompt ?? 'How confident are you with this topic?'}
@@ -80,9 +78,9 @@ export default async function ConfidencePage() {
         </section>
       )}
 
-      <section className="activity-bottom-nav">
-        <Link className="button secondary" href="/student/lesson/1905/peel">Previous: PEEL response</Link>
-        <Link className="button" href="/student/lesson/1905">Return to pathway</Link>
+      <section className={styles.footer}>
+        <Link href="/student/lesson/1905/peel">Previous: PEEL response</Link>
+        <Link href="/student/lesson/1905">Finish pathway →</Link>
       </section>
     </main>
   );
