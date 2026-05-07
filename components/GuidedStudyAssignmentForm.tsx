@@ -4,6 +4,8 @@ import { useState } from 'react';
 
 type StudyMode = 'full_guided_study' | 'exam_practice' | 'recap' | 'confidence_repair';
 
+const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
+
 const modeOptions: { value: StudyMode; title: string; description: string }[] = [
   {
     value: 'full_guided_study',
@@ -32,25 +34,29 @@ const activityOptions = [
   { value: 'quiz', label: 'Retrieval quiz', description: 'Trackable knowledge check.' },
   { value: 'flashcards', label: 'Flashcards', description: 'Trackable secure / nearly / revisit ratings.' },
   { value: 'peel_response', label: 'PEEL response', description: 'Written exam-skill evidence.' },
-  { value: 'confidence_exit_ticket', label: 'Confidence exit ticket', description: 'Student reflection and least-secure area.' },
+  { value: 'confidence_exit_ticket', label: 'Confidence exit ticket', description: 'Final reflection and least-secure area.' },
 ];
 
-const defaultActivities = activityOptions.map((activity) => activity.value);
+const defaultActivities = PATHWAY_ACTIVITY_ORDER;
+
+function orderSelectedActivities(activityTypes: string[]) {
+  return [...activityTypes].sort((first, second) => PATHWAY_ACTIVITY_ORDER.indexOf(first) - PATHWAY_ACTIVITY_ORDER.indexOf(second));
+}
 
 function getDefaultInstructions(mode: StudyMode) {
   if (mode === 'exam_practice') {
-    return 'Complete the retrieval quiz and flashcards first, then produce a focused PEEL paragraph. Your judgement link is the priority.';
+    return 'Complete the retrieval quiz and flashcards first, then produce a focused PEEL paragraph. Finish with the confidence exit ticket so I can see what still needs support.';
   }
 
   if (mode === 'recap') {
-    return 'Use the lesson notes, quiz and flashcards to repair weak knowledge. Repeat any revisit cards before moving on.';
+    return 'Use the lesson notes, quiz and flashcards to repair weak knowledge. Repeat any revisit cards, then complete the confidence exit ticket as the final task.';
   }
 
   if (mode === 'confidence_repair') {
-    return 'Move carefully through the pathway. Use the confidence exit ticket honestly so I can see which part still feels insecure.';
+    return 'Move carefully through the pathway. Complete the confidence exit ticket last and be honest about which part still feels insecure.';
   }
 
-  return 'Complete the full 1905 guided study pathway before the next review lesson. Focus especially on flashcard revisit cards and the PEEL judgement link.';
+  return 'Complete the full 1905 guided study pathway before the next review lesson. The confidence exit ticket should be completed last after the evidence tasks.';
 }
 
 export default function GuidedStudyAssignmentForm() {
@@ -66,9 +72,9 @@ export default function GuidedStudyAssignmentForm() {
     setInstructions(getDefaultInstructions(nextMode));
 
     if (nextMode === 'exam_practice') {
-      setSelectedActivities(['quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket']);
+      setSelectedActivities(orderSelectedActivities(['quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket']));
     } else if (nextMode === 'recap') {
-      setSelectedActivities(['lesson_content', 'quiz', 'flashcards', 'confidence_exit_ticket']);
+      setSelectedActivities(orderSelectedActivities(['lesson_content', 'quiz', 'flashcards', 'confidence_exit_ticket']));
     } else {
       setSelectedActivities(defaultActivities);
     }
@@ -77,10 +83,10 @@ export default function GuidedStudyAssignmentForm() {
   function toggleActivity(activityType: string) {
     setSelectedActivities((current) => {
       if (current.includes(activityType)) {
-        return current.filter((item) => item !== activityType);
+        return orderSelectedActivities(current.filter((item) => item !== activityType));
       }
 
-      return [...current, activityType];
+      return orderSelectedActivities([...current, activityType]);
     });
     setSaveStatus('idle');
     setSaveMessage('');
@@ -96,7 +102,7 @@ export default function GuidedStudyAssignmentForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mode,
-          requiredActivityTypes: selectedActivities,
+          requiredActivityTypes: orderSelectedActivities(selectedActivities),
           deadlineAt: deadlineAt ? new Date(deadlineAt).toISOString() : undefined,
           instructions,
         }),
@@ -142,6 +148,7 @@ export default function GuidedStudyAssignmentForm() {
         <p>Demo class: Year 12 Russia. Demo student assignment will appear on the student dashboard.</p>
         <div className="activity-summary">
           <span className="badge">{selectedActivities.length} activities selected</span>
+          <span className="badge">Final activity: confidence exit ticket</span>
           <span className="badge">{deadlineAt ? 'Deadline set' : 'No deadline yet'}</span>
         </div>
         {saveMessage && (
