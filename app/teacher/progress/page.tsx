@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
 const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
+const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
 
 const activityLabels: Record<string, string> = {
   lesson_content: 'Lesson content',
@@ -26,6 +27,8 @@ type ResponseJson = {
   confidence?: number;
   leastSecureArea?: string;
   reflection?: string;
+  understandBetter?: string;
+  needHelpWith?: string;
   ratings?: Record<string, 'secure' | 'nearly' | 'revisit'>;
   revealedCardIds?: string[];
   totalCards?: number;
@@ -76,6 +79,16 @@ type RequiredActivityProgress = {
   detail: string;
   action: string;
 };
+
+function orderActivityTypes(activityTypes: string[]) {
+  return [...activityTypes].sort((first, second) => {
+    const firstIndex = PATHWAY_ACTIVITY_ORDER.indexOf(first);
+    const secondIndex = PATHWAY_ACTIVITY_ORDER.indexOf(second);
+    const safeFirstIndex = firstIndex === -1 ? 999 : firstIndex;
+    const safeSecondIndex = secondIndex === -1 ? 999 : secondIndex;
+    return safeFirstIndex - safeSecondIndex;
+  });
+}
 
 function formatDate(value: string | null) {
   if (!value) return 'No deadline set';
@@ -203,7 +216,7 @@ function getPriorityAction(row: StudentResponseRow | undefined, activityType?: s
     if (activityType === 'quiz') return 'Student has not saved the retrieval quiz. Chase completion or set a quick starter check.';
     if (activityType === 'flashcards') return 'Student has not rated the flashcards. Ask them to complete the evidence cards before writing.';
     if (activityType === 'peel_response') return 'Student has not submitted written evidence. Prioritise the PEEL paragraph.';
-    if (activityType === 'confidence_exit_ticket') return 'Student has not completed the confidence exit ticket. Ask for reflection before intervention planning.';
+    if (activityType === 'confidence_exit_ticket') return 'Student has not completed the final confidence exit ticket. Ask for reflection after the evidence tasks.';
     return 'No saved evidence for this required activity yet.';
   }
 
@@ -271,9 +284,11 @@ export default async function TeacherProgressPage() {
     .maybeSingle();
 
   const activeAssignment = assignmentData as GuidedStudyAssignment | null;
-  const requiredActivityTypes = activeAssignment?.required_activity_types?.length
-    ? activeAssignment.required_activity_types
-    : ['lesson_content', 'quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
+  const requiredActivityTypes = orderActivityTypes(
+    activeAssignment?.required_activity_types?.length
+      ? activeAssignment.required_activity_types
+      : PATHWAY_ACTIVITY_ORDER
+  );
 
   const { data: activityData } = lesson?.id
     ? await supabase
@@ -319,15 +334,10 @@ export default async function TeacherProgressPage() {
   const requiredResponseIds = new Set(requiredProgress.map((item) => item.response?.id).filter(Boolean));
 
   const quizRows = rows.filter((row) => row.response_type === 'quiz');
-  const flashcardRows = rows.filter((row) => row.response_type === 'flashcards');
   const peelRows = rows.filter((row) => row.response_type === 'peel_response');
   const confidenceRows = rows.filter((row) => row.response_type === 'confidence_exit_ticket');
   const assignmentRiskRows = requiredEvidenceProgress.filter((item) => {
     return item.risk === 'Intervention' || item.risk === 'Needs development' || item.risk === 'Low confidence' || item.risk === 'Revisit needed' || item.risk === 'Missing required evidence';
-  });
-  const interventionRows = rows.filter((row) => {
-    const risk = getRiskFlag(row);
-    return risk === 'Intervention' || risk === 'Needs development' || risk === 'Low confidence' || risk === 'Revisit needed';
   });
   const averageQuizPercentage = quizRows.length
     ? Math.round(
@@ -352,7 +362,7 @@ export default async function TeacherProgressPage() {
           <h1>1905 guided study evidence</h1>
           <p>
             This view now checks progress against the work actually set by the teacher, not just any activity data.
-            Use it to see what is complete, what is missing and what needs intervention.
+            The hierarchy keeps the confidence exit ticket as the final activity.
           </p>
         </div>
         <aside className="teacher-hero-actions">
@@ -449,7 +459,7 @@ export default async function TeacherProgressPage() {
               <p className="eyebrow">Assignment tracker</p>
               <h2>Required activity evidence</h2>
             </div>
-            <span className="badge">Against set work</span>
+            <span className="badge">Exit ticket last</span>
           </div>
 
           <div className="teacher-response-list">
@@ -560,11 +570,8 @@ export default async function TeacherProgressPage() {
                       <p><strong>Prompt:</strong> {row.response_json?.prompt ?? 'Not recorded'}</p>
                       <p><strong>Confidence:</strong> {row.response_json?.confidence ?? row.score ?? '-'}/5</p>
                       <p><strong>Least secure area:</strong> {row.response_json?.leastSecureArea ?? 'Not recorded'}</p>
-                      {row.response_json?.reflection && (
-                        <div className="panel lavender" style={{ marginTop: 12 }}>
-                          <p className="preview-box">{row.response_json.reflection}</p>
-                        </div>
-                      )}
+                      <p><strong>Understands better:</strong> {row.response_json?.understandBetter ?? 'Not recorded'}</p>
+                      <p><strong>Needs help with:</strong> {row.response_json?.needHelpWith ?? row.response_json?.reflection ?? 'Not recorded'}</p>
                     </>
                   ) : row.response_type === 'flashcards' ? (
                     <>
