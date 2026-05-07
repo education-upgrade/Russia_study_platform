@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import styles from './page.module.css';
 
 type Activity = {
   id: string;
@@ -31,61 +32,83 @@ async function getActivity(activityType: string) {
   return { activity, error: error?.message ?? '', enquiry: lesson.enquiry_question as string | null };
 }
 
+function cleanLessonTitle(title: string | undefined | null) {
+  if (!title) return '1905 Revolution';
+  return title
+    .replace(/^Lesson introduction:\s*/i, '')
+    .replace(/^Lesson notes:\s*/i, '')
+    .replace(/^Introduction:\s*/i, '');
+}
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function LessonNotesPage() {
   const { activity, error, enquiry } = await getActivity('lesson_content');
   const sections = Array.isArray(activity?.content_json?.sections) ? activity?.content_json.sections : [];
+  const pageTitle = cleanLessonTitle(activity?.title);
 
   return (
-    <main className="page-shell activity-focus-shell">
-      <div className="page-header-row app-topbar">
-        <span className="breadcrumb">1905 pathway / Lesson notes</span>
-        <div className="button-row compact">
-          <Link className="button secondary" href="/student/lesson/1905">Back to pathway</Link>
-          <Link className="button secondary" href="/student/dashboard">Dashboard</Link>
+    <main className={styles.shell}>
+      <div className={styles.topbar}>
+        <Link className={styles.backLink} href="/student/lesson/1905">← Pathway</Link>
+        <div className={styles.titleBlock}>
+          <p>Lesson notes</p>
+          <h1>{pageTitle}</h1>
         </div>
+        <Link className={styles.dashboardLink} href="/student/dashboard">Dashboard</Link>
       </div>
 
-      <section className="activity-focus-hero teal">
-        <div>
-          <p className="eyebrow">Optional support screen</p>
-          <h1>{activity?.title ?? '1905 lesson notes'}</h1>
-          <p>{enquiry ?? 'Use these notes to build the core narrative before completing the evidence tasks.'}</p>
-        </div>
-        <aside className="activity-focus-meta">
-          <span className="badge">{activity?.estimated_minutes ?? 15} mins</span>
-          <span className="badge">{activity?.skill_focus ?? 'Core knowledge'}</span>
-          {activity?.difficulty && <span className="badge">{activity.difficulty}</span>}
-        </aside>
-      </section>
-
-      {error && (
-        <section className="card warm" style={{ marginTop: 24 }}>
-          <h2>Activity not available</h2>
-          <p>{error}</p>
-        </section>
-      )}
-
-      {sections.length > 0 && (
-        <section className="activity-focus-card">
-          <div className="lesson-section-grid improved">
-            {sections.map((section: { heading: string; body: string }, sectionIndex: number) => (
-              <section className="panel lesson-note" key={section.heading}>
-                <span className="note-number">{sectionIndex + 1}</span>
-                <p className="eyebrow">Core explanation</p>
-                <h3>{section.heading}</h3>
-                <p>{section.body}</p>
-              </section>
-            ))}
+      <section className={styles.panel}>
+        {error && (
+          <div className={styles.error}>
+            <strong>Activity not available:</strong> {error}
           </div>
-        </section>
-      )}
+        )}
 
-      <section className="activity-bottom-nav">
-        <Link className="button secondary" href="/student/lesson/1905">Return to pathway</Link>
-        <Link className="button" href="/student/lesson/1905/quiz">Next: retrieval quiz</Link>
+        <article className={styles.lessonCard}>
+          <header className={styles.lessonHeader}>
+            <p className={styles.eyebrow}>Core context</p>
+            <h2>{pageTitle}</h2>
+            <p>{enquiry ?? 'Use these notes to build the core narrative before completing the evidence tasks.'}</p>
+            <div className={styles.metaRow}>
+              <span className={styles.badge}>{activity?.estimated_minutes ?? 8} mins</span>
+              <span className={styles.badge}>{activity?.skill_focus ?? 'AO1 contextual understanding'}</span>
+              {activity?.difficulty && <span className={styles.badge}>{activity.difficulty}</span>}
+            </div>
+          </header>
+
+          {sections.length > 0 ? (
+            <section className={styles.sections}>
+              {sections.map((section: { heading: string; body: string }, sectionIndex: number) => (
+                <article className={styles.note} key={section.heading}>
+                  <span className={styles.noteNumber}>{sectionIndex + 1}</span>
+                  <div>
+                    <p className={styles.eyebrow}>Explanation</p>
+                    <h3>{section.heading}</h3>
+                    <p>{section.body}</p>
+                  </div>
+                </article>
+              ))}
+            </section>
+          ) : (
+            <section className={styles.sections}>
+              <article className={styles.note}>
+                <span className={styles.noteNumber}>1</span>
+                <div>
+                  <p className={styles.eyebrow}>Explanation</p>
+                  <h3>No notes available</h3>
+                  <p>Run the 1905 content seed if this section is empty.</p>
+                </div>
+              </article>
+            </section>
+          )}
+
+          <nav className={styles.bottomNav}>
+            <Link className={styles.secondaryButton} href="/student/lesson/1905">Return to pathway</Link>
+            <Link className={styles.primaryButton} href="/student/lesson/1905/quiz">Next: retrieval quiz</Link>
+          </nav>
+        </article>
       </section>
     </main>
   );
