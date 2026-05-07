@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import ConfidenceExitTicketActivity from '@/components/ConfidenceExitTicketActivity';
+import FlashcardActivity from '@/components/FlashcardActivity';
 import PeelResponseActivity from '@/components/PeelResponseActivity';
 import QuizActivity from '@/components/QuizActivity';
 import { supabase } from '@/lib/supabase';
@@ -38,7 +39,7 @@ const activityDesign: Record<string, { tone: string; label: string; purpose: str
     tone: 'warm',
     label: 'Rehearse',
     purpose: 'Secure the key evidence before writing.',
-    action: 'Say the answer aloud before revealing or reading the back.',
+    action: 'Say the answer aloud before revealing. Rate each card as secure, nearly or revisit.',
   },
   peel_response: {
     tone: 'teal',
@@ -113,17 +114,7 @@ function ActivityCard({ activity, index }: { activity: Activity; index: number }
         )}
 
         {activity.activity_type === 'flashcards' && Array.isArray(content.cards) && (
-          <div className="flashcard-grid improved">
-            {content.cards.map((card: any, cardIndex: number) => (
-              <section className="panel flashcard improved-card" key={card.id ?? card.front}>
-                <div>
-                  <p className="eyebrow">Flashcard {cardIndex + 1}</p>
-                  <h3>{card.front}</h3>
-                </div>
-                <p className="flashcard-back">{card.back}</p>
-              </section>
-            ))}
-          </div>
+          <FlashcardActivity activityId={activity.id} cards={content.cards} />
         )}
 
         {activity.activity_type === 'peel_response' && (
@@ -193,6 +184,9 @@ export default async function Russia1905LessonPage() {
     (total, activity) => total + (activity.estimated_minutes ?? 0),
     0
   );
+  const savedEvidencePoints = orderedActivities.filter((activity) =>
+    ['quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'].includes(activity.activity_type)
+  ).length;
 
   return (
     <main className="page-shell study-shell">
@@ -212,13 +206,13 @@ export default async function Russia1905LessonPage() {
           <div className="hero-stat-row">
             <span className="hero-stat"><strong>{totalMinutes || lesson.estimated_minutes || 45}</strong> mins</span>
             <span className="hero-stat"><strong>{orderedActivities.length}</strong> activities</span>
-            <span className="hero-stat"><strong>3</strong> saved evidence points</span>
+            <span className="hero-stat"><strong>{savedEvidencePoints}</strong> saved evidence points</span>
           </div>
         </div>
         <aside className="study-hero-panel">
           <p className="eyebrow">Success criteria</p>
           <h2>Finish with evidence your teacher can use</h2>
-          <p>Quiz score, PEEL paragraph and confidence reflection are saved into the teacher progress page.</p>
+          <p>Quiz score, flashcard ratings, PEEL paragraph and confidence reflection are saved into the teacher progress page.</p>
           <a className="button" href="#activity-1">Start pathway</a>
         </aside>
       </section>
