@@ -1,6 +1,6 @@
 -- Multi-class guided study platform foundation
 -- Run this in Supabase SQL Editor after the existing 1905 and guided-study seed files.
--- It is deliberately backwards-compatible with the current demo app.
+-- It is deliberately backwards-compatible with the current demo app and safe to rerun.
 
 create extension if not exists "pgcrypto";
 
@@ -13,6 +13,12 @@ create table if not exists app_profiles (
   created_at timestamptz not null default now()
 );
 
+alter table app_profiles add column if not exists display_name text;
+alter table app_profiles add column if not exists role text;
+alter table app_profiles add column if not exists year_group text;
+alter table app_profiles add column if not exists email text;
+alter table app_profiles add column if not exists created_at timestamptz not null default now();
+
 create table if not exists teacher_classes (
   id uuid primary key default gen_random_uuid(),
   class_name text not null,
@@ -23,6 +29,13 @@ create table if not exists teacher_classes (
   created_at timestamptz not null default now()
 );
 
+alter table teacher_classes add column if not exists class_name text;
+alter table teacher_classes add column if not exists year_group text;
+alter table teacher_classes add column if not exists course_code text not null default 'AQA-7042-1H';
+alter table teacher_classes add column if not exists teacher_id uuid references app_profiles(id) on delete set null;
+alter table teacher_classes add column if not exists status text not null default 'active';
+alter table teacher_classes add column if not exists created_at timestamptz not null default now();
+
 create table if not exists class_memberships (
   id uuid primary key default gen_random_uuid(),
   class_id uuid not null references teacher_classes(id) on delete cascade,
@@ -31,6 +44,12 @@ create table if not exists class_memberships (
   created_at timestamptz not null default now(),
   unique (class_id, student_id)
 );
+
+alter table class_memberships add column if not exists class_id uuid references teacher_classes(id) on delete cascade;
+alter table class_memberships add column if not exists student_id uuid references app_profiles(id) on delete cascade;
+alter table class_memberships add column if not exists status text not null default 'active';
+alter table class_memberships add column if not exists created_at timestamptz not null default now();
+create unique index if not exists ux_class_memberships_class_student on class_memberships(class_id, student_id);
 
 create table if not exists course_units (
   id uuid primary key default gen_random_uuid(),
@@ -41,6 +60,13 @@ create table if not exists course_units (
   period_label text not null,
   unique (course_code, unit_order)
 );
+
+alter table course_units add column if not exists course_code text not null default 'AQA-7042-1H';
+alter table course_units add column if not exists year_group text;
+alter table course_units add column if not exists unit_order int;
+alter table course_units add column if not exists unit_title text;
+alter table course_units add column if not exists period_label text;
+create unique index if not exists ux_course_units_course_order on course_units(course_code, unit_order);
 
 create table if not exists study_pathways (
   id uuid primary key default gen_random_uuid(),
@@ -55,6 +81,18 @@ create table if not exists study_pathways (
   status text not null default 'active' check (status in ('active', 'draft', 'archived')),
   created_at timestamptz not null default now()
 );
+
+alter table study_pathways add column if not exists slug text;
+alter table study_pathways add column if not exists course_code text not null default 'AQA-7042-1H';
+alter table study_pathways add column if not exists year_group text;
+alter table study_pathways add column if not exists unit_title text;
+alter table study_pathways add column if not exists pathway_title text;
+alter table study_pathways add column if not exists enquiry_question text;
+alter table study_pathways add column if not exists pathway_order int not null default 1;
+alter table study_pathways add column if not exists recommended_activity_order text[] not null default array['lesson_content','quiz','flashcards','peel_response','confidence_exit_ticket'];
+alter table study_pathways add column if not exists status text not null default 'active';
+alter table study_pathways add column if not exists created_at timestamptz not null default now();
+create unique index if not exists ux_study_pathways_slug on study_pathways(slug);
 
 alter table guided_study_assignments
   add column if not exists class_id uuid references teacher_classes(id) on delete set null;
