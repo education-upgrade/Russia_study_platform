@@ -1,15 +1,24 @@
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import styles from './page.module.css';
 
 const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
 const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
 
 const activityLabels: Record<string, string> = {
-  lesson_content: 'Lesson content',
+  lesson_content: 'Lesson notes',
   quiz: 'Retrieval quiz',
   flashcards: 'Flashcards',
   peel_response: 'PEEL response',
-  confidence_exit_ticket: 'Confidence exit ticket',
+  confidence_exit_ticket: 'Confidence check',
+};
+
+const activityRouteMap: Record<string, string> = {
+  lesson_content: '/student/lesson/1905/lesson',
+  quiz: '/student/lesson/1905/quiz',
+  flashcards: '/student/lesson/1905/flashcards',
+  peel_response: '/student/lesson/1905/peel',
+  confidence_exit_ticket: '/student/lesson/1905/confidence',
 };
 
 type GuidedStudyAssignment = {
@@ -34,13 +43,25 @@ type StudentResponse = {
   response_json: any;
 };
 
+type ActivityState = {
+  type: string;
+  label: string;
+  complete: boolean;
+  href: string;
+};
+
 function formatMode(mode: string) {
   return mode.replaceAll('_', ' ');
 }
 
 function formatDate(value: string | null) {
-  if (!value) return 'No deadline set';
-  return new Date(value).toLocaleString('en-GB');
+  if (!value) return 'No deadline';
+  return new Date(value).toLocaleString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function orderActivityTypes(activityTypes: string[]) {
@@ -65,6 +86,10 @@ function isActivityComplete(activityType: string, response: StudentResponse | un
   return response.status === 'complete' || response.status === 'submitted';
 }
 
+function getNextActivity(activityStates: ActivityState[]) {
+  return activityStates.find((activity) => !activity.complete) ?? null;
+}
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -74,8 +99,7 @@ export default async function StudentDashboardPage() {
   let progressPercentage = 0;
   let completedCount = 0;
   let requiredCount = 0;
-  let nextActivityLabel = 'Open pathway';
-  let activityStates: { type: string; label: string; complete: boolean }[] = [];
+  let activityStates: ActivityState[] = [];
 
   if (supabase) {
     const { data: assignmentData, error } = await supabase
@@ -91,118 +115,129 @@ export default async function StudentDashboardPage() {
     assignment = assignmentData as GuidedStudyAssignment | null;
     assignmentError = error?.message ?? '';
 
-    if (assignment) {
-      const { data: lesson } = await supabase
-        .from('lessons')
-        .select('id')
-        .eq('title', 'Was the 1905 Revolution a turning point for Tsarist Russia?')
-        .single();
+    const requiredActivityTypes = orderActivityTypes(
+      assignment?.required_activity_types?.length
+        ? assignment.required_activity_types
+        : PATHWAY_ACTIVITY_ORDER
+    );
 
-      if (lesson) {
-        const { data: activities } = await supabase
-          .from('activities')
-          .select('id, activity_type')
-          .eq('lesson_id', lesson.id);
+    const { data: lesson } = await supabase
+      .from('lessons')
+      .select('id')
+      .eq('title', 'Was the 1905 Revolution a turning point for Tsarist Russia?')
+      .single();
 
-        const lessonActivities = (activities ?? []) as Activity[];
-        const activityIds = lessonActivities.map((activity) => activity.id);
-        const { data: responses } = activityIds.length
-          ? await supabase
-              .from('student_responses')
-              .select('activity_id, response_type, status, response_json')
-              .eq('student_id', DEMO_STUDENT_ID)
-              .in('activity_id', activityIds)
-          : { data: [] };
+    if (lesson) {
+      const { data: activities } = await supabase
+        .from('activities')
+        .select('id, activity_type')
+        .eq('lesson_id', lesson.id);
 
-        const responseByActivityType = lessonActivities.reduce<Record<string, StudentResponse | undefined>>((acc, activity) => {
-          const matchingResponse = ((responses ?? []) as StudentResponse[]).find((response) => response.activity_id === activity.id);
-          acc[activity.activity_type] = matchingResponse;
-          return acc;
-        }, {});
+      const lessonActivities = (activities ?? []) as Activity[];
+      const activityIds = lessonActivities.map((activity) => activity.id);
+      const { data: responses } = activityIds.length
+        ? await supabase
+            .from('student_responses')
+            .select('activity_id, response_type, status, response_json')
+            .eq('student_id', DEMO_STUDENT_ID)
+            .in('activity_id', activityIds)
+        : { data: [] };
 
-        activityStates = orderActivityTypes(assignment.required_activity_types).map((activityType) => ({
-          type: activityType,
-          label: activityLabels[activityType] ?? activityType.replaceAll('_', ' '),
-          complete: isActivityComplete(activityType, responseByActivityType[activityType]),
-        }));
+      const responseByActivityType = lessonActivities.reduce<Record<string, StudentResponse | undefined>>((acc, activity) => {
+        const matchingResponse = ((responses ?? []) as StudentResponse[]).find((response) => response.activity_id === activity.id);
+        acc[activity.activity_type] = matchingResponse;
+        return acc;
+      }, {});
 
-        requiredCount = activityStates.length;
-        completedCount = activityStates.filter((activity) => activity.complete).length;
-        progressPercentage = requiredCount ? Math.round((completedCount / requiredCount) * 100) : 0;
-        nextActivityLabel = activityStates.find((activity) => !activity.complete)?.label ?? 'Review pathway';
-      }
+      activityStates = requiredActivityTypes.map((activityType) => ({
+        type: activityType,
+        label: activityLabels[activityType] ?? activityType.replaceAll('_', ' '),
+        href: activityRouteMap[activityType] ?? '/student/lesson/1905',
+        complete: isActivityComplete(activityType, responseByActivityType[activityType]),
+      }));
+
+      requiredCount = activityStates.length;
+      completedCount = activityStates.filter((activity) => activity.complete).length;
+      progressPercentage = requiredCount ? Math.round((completedCount / requiredCount) * 100) : 0;
     }
   }
 
+  if (!activityStates.length) {
+    activityStates = orderActivityTypes(PATHWAY_ACTIVITY_ORDER).map((type) => ({
+      type,
+      label: activityLabels[type],
+      href: activityRouteMap[type],
+      complete: false,
+    }));
+    requiredCount = activityStates.length;
+  }
+
   const hasAssignment = Boolean(assignment);
-  const fallbackActivityStates = orderActivityTypes(PATHWAY_ACTIVITY_ORDER).map((type) => ({
-    type,
-    label: activityLabels[type],
-    complete: false,
-  }));
+  const nextActivity = getNextActivity(activityStates);
+  const nextHref = nextActivity?.href ?? '/student/lesson/1905';
+  const nextLabel = nextActivity?.label ?? 'Review pathway';
+  const nextDescription = nextActivity
+    ? 'Open the next task. Complete it on its own screen, then come back here.'
+    : 'All required tasks are complete. You can review the pathway or improve earlier work.';
 
   return (
-    <main className="page-shell">
-      <div className="page-header-row app-topbar">
-        <span className="breadcrumb">Student dashboard / Guided study</span>
-        <Link className="button secondary" href="/student/lesson/1905">Open pathway</Link>
+    <main className={styles.shell}>
+      <div className={styles.topbar}>
+        <span>Student dashboard</span>
+        <Link href="/student/lesson/1905">Pathway</Link>
       </div>
 
-      <section className="hero">
-        <p className="eyebrow">My Guided Study</p>
-        <h1>{hasAssignment ? '1905 Revolution assignment' : '1905 Revolution pathway'}</h1>
-        <p>
-          {hasAssignment
-            ? assignment?.instructions
-            : 'No teacher-set assignment is active yet. You can still use the 1905 pathway for independent revision.'}
-        </p>
-        <div className="button-row">
-          <Link className="button" href="/student/lesson/1905">{hasAssignment ? 'Continue guided study' : 'Start independent study'}</Link>
-          <span className="badge">Next step: {nextActivityLabel}</span>
-        </div>
+      <section className={styles.mainCard}>
+        <header className={styles.header}>
+          <p className={styles.eyebrow}>{hasAssignment ? 'Active guided study' : 'Independent study'}</p>
+          <h1>1905 Revolution</h1>
+          <div className={styles.metaRow}>
+            <span className={styles.pill}>{hasAssignment ? formatMode(assignment?.mode ?? '') : 'Practice mode'}</span>
+            <span className={styles.pill}>{formatDate(assignment?.deadline_at ?? null)}</span>
+            <span className={styles.pill}>{completedCount}/{requiredCount || 5} complete</span>
+          </div>
+        </header>
+
+        <section className={styles.nextPanel}>
+          <div>
+            <p className={styles.eyebrow}>{nextActivity ? 'Next task' : 'Finished'}</p>
+            <h2>{nextLabel}</h2>
+            <p>{nextDescription}</p>
+          </div>
+          <Link className={styles.primaryButton} href={nextHref}>{nextActivity ? 'Continue' : 'Review'}</Link>
+        </section>
+
+        <section className={styles.progressArea}>
+          <div className={styles.progressTop}>
+            <strong>Your route</strong>
+            <span>{progressPercentage}% complete</span>
+          </div>
+          <div className={styles.progressBar} aria-label="Guided study progress">
+            <div className={styles.progressFill} style={{ '--progress': `${progressPercentage}%` } as React.CSSProperties} />
+          </div>
+
+          <div className={styles.checklist}>
+            {activityStates.map((activity, index) => {
+              const isCurrent = nextActivity?.type === activity.type;
+              return (
+                <Link
+                  className={`${styles.step} ${activity.complete ? styles.complete : ''} ${isCurrent ? styles.current : ''}`}
+                  href={activity.href}
+                  key={activity.type}
+                >
+                  <span className={styles.stepMark}>{activity.complete ? '✓' : index + 1}</span>
+                  <span className={styles.stepTitle}>{activity.label}</span>
+                  <span className={styles.stepStatus}>{activity.complete ? 'Done' : isCurrent ? 'Next' : 'To do'}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
       </section>
 
       {assignmentError && (
-        <section className="card warm" style={{ marginTop: 24 }}>
-          <p className="eyebrow">Setup needed</p>
-          <h2>Assignment table not ready</h2>
-          <p>{assignmentError}</p>
-        </section>
+        <div className={styles.error}>Assignment setup warning: {assignmentError}</div>
       )}
-
-      <section className="grid two">
-        <article className="card teal">
-          <p className="eyebrow">Current assignment</p>
-          <h2>Was the 1905 Revolution a turning point for Tsarist Russia?</h2>
-          <p>{hasAssignment ? `Mode: ${formatMode(assignment?.mode ?? '')}` : 'Independent practice mode'}</p>
-          <div className="progress-bar"><div className="progress-fill" style={{ '--progress': `${progressPercentage}%` } as React.CSSProperties} /></div>
-          <p><strong>Progress:</strong> {completedCount}/{requiredCount || 5} required activities complete · {progressPercentage}%</p>
-          <p><strong>Deadline:</strong> {formatDate(assignment?.deadline_at ?? null)}</p>
-        </article>
-
-        <article className="card lavender">
-          <p className="eyebrow">Exam skill focus</p>
-          <h2>How far did the 1905 Revolution weaken Tsarist authority?</h2>
-          <p>Use Point, Evidence, Explain and Link judgement to build one focused paragraph.</p>
-          <Link className="button secondary" href="/student/lesson/1905/peel">Go to PEEL task</Link>
-        </article>
-      </section>
-
-      <section className="card" style={{ marginTop: 24 }}>
-        <p className="eyebrow">Assignment map</p>
-        <h2>What you need to complete</h2>
-        <div className="step-list">
-          {(activityStates.length ? activityStates : fallbackActivityStates).map((activity, index) => (
-            <div className={`step-chip ${activity.complete ? 'complete' : ''}`} key={activity.type}>
-              <span className="step-number">{activity.complete ? '✓' : index + 1}</span>
-              <span>
-                <strong>{activity.label}</strong><br />
-                <span className="step-meta">{activity.complete ? 'Complete' : activity.type === 'confidence_exit_ticket' ? 'Final required activity' : 'Required 1905 activity'}</span>
-              </span>
-            </div>
-          ))}
-        </div>
-      </section>
     </main>
   );
 }
