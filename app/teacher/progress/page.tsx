@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import styles from './page.module.css';
 
 const DEMO_CLASS_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
 const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
 
 const activityLabels: Record<string, string> = {
@@ -52,6 +53,7 @@ type GuidedStudyAssignment = {
   deadline_at: string | null;
   instructions: string | null;
   assigned_class: string;
+  assigned_student_id?: string | null;
   assigned_student_ids?: string[] | null;
   recipient_count?: number | null;
   status: string;
@@ -75,20 +77,6 @@ type Membership = {
   class_id: string;
 };
 
-type StudentSummary = {
-  id: string;
-  name: string;
-  progress: number;
-  completed: number;
-  required: number;
-  quiz: string;
-  flashcards: string;
-  peel: string;
-  confidence: string;
-  flag: string;
-  action: string;
-};
-
 function orderActivityTypes(activityTypes: string[]) {
   return [...activityTypes].sort((first, second) => {
     const firstIndex = PATHWAY_ACTIVITY_ORDER.indexOf(first);
@@ -109,6 +97,10 @@ function formatDate(value: string | null) {
 
 function formatMode(mode: string) {
   return mode.replaceAll('_', ' ');
+}
+
+function unique(values: string[]) {
+  return [...new Set(values.filter(Boolean))];
 }
 
 function isComplete(activityType: string, response: StudentResponseRow | undefined) {
@@ -243,7 +235,7 @@ export default async function TeacherProgressPage() {
 
   const { data: assignmentData, error: assignmentError } = await supabase
     .from('guided_study_assignments')
-    .select('id, mode, required_activity_types, deadline_at, instructions, assigned_class, assigned_student_ids, recipient_count, status, created_at')
+    .select('id, mode, required_activity_types, deadline_at, instructions, assigned_class, assigned_student_id, assigned_student_ids, recipient_count, status, created_at')
     .eq('class_id', activeClass.id)
     .eq('status', 'active')
     .eq('pathway_slug', '1905-revolution')
@@ -261,7 +253,10 @@ export default async function TeacherProgressPage() {
     .eq('status', 'active');
 
   const memberships = (membershipData ?? []) as Membership[];
-  const studentIds = memberships.map((membership) => membership.student_id);
+  const membershipStudentIds = memberships.map((membership) => membership.student_id);
+  const assignmentStudentIds = activeAssignment?.assigned_student_ids ?? [];
+  const legacyAssignmentStudentId = activeAssignment?.assigned_student_id ? [activeAssignment.assigned_student_id] : [];
+  const studentIds = unique([...assignmentStudentIds, ...legacyAssignmentStudentId, ...membershipStudentIds, DEMO_STUDENT_ID]);
 
   const { data: profileData, error: profileError } = studentIds.length
     ? await supabase
@@ -270,7 +265,12 @@ export default async function TeacherProgressPage() {
         .in('id', studentIds)
     : { data: [], error: null };
 
-  const students = (profileData ?? []) as StudentProfile[];
+  const profileRows = (profileData ?? []) as StudentProfile[];
+  const students = studentIds.map((id, index) => profileRows.find((profile) => profile.id === id) ?? {
+    id,
+    display_name: id === DEMO_STUDENT_ID ? 'Demo Student' : `Student ${index + 1}`,
+    year_group: activeClass.year_group,
+  });
 
   const { data: lesson } = await supabase
     .from('lessons')
@@ -427,6 +427,7 @@ export default async function TeacherProgressPage() {
                   <p><strong>Class:</strong> {activeClass.class_name}</p>
                   <p><strong>Mode:</strong> {activeAssignment ? formatMode(activeAssignment.mode) : 'Default route'}</p>
                   <p><strong>Deadline:</strong> {activeAssignment ? formatDate(activeAssignment.deadline_at) : 'No active deadline'}</p>
+                  <p><strong>Responses found:</strong> {responses.length}</p>
                 </article>
                 <article className={styles.detailPanel}>
                   <h4>Required route</h4>
