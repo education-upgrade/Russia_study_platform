@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { pathway1905LessonSections } from '@/lib/pathway1905Content';
 import styles from './page.module.css';
 
 type Activity = {
@@ -12,7 +13,7 @@ type Activity = {
 };
 
 async function getActivity(activityType: string) {
-  if (!supabase) return { activity: null, error: 'Supabase is not configured.' };
+  if (!supabase) return { activity: null, error: 'Supabase is not configured.', enquiry: null };
 
   const { data: lesson, error: lessonError } = await supabase
     .from('lessons')
@@ -45,7 +46,8 @@ export const revalidate = 0;
 
 export default async function LessonNotesPage() {
   const { activity, error, enquiry } = await getActivity('lesson_content');
-  const sections = Array.isArray(activity?.content_json?.sections) ? activity?.content_json.sections : [];
+  const savedSections = Array.isArray(activity?.content_json?.sections) ? activity?.content_json.sections : [];
+  const sections = savedSections.length >= 6 ? savedSections : pathway1905LessonSections;
   const pageTitle = cleanLessonTitle(activity?.title);
 
   return (
@@ -72,37 +74,24 @@ export default async function LessonNotesPage() {
             <h2>{pageTitle}</h2>
             <p>{enquiry ?? 'Use these notes to build the core narrative before completing the evidence tasks.'}</p>
             <div className={styles.metaRow}>
-              <span className={styles.badge}>{activity?.estimated_minutes ?? 8} mins</span>
+              <span className={styles.badge}>{activity?.estimated_minutes ?? 12} mins</span>
               <span className={styles.badge}>{activity?.skill_focus ?? 'AO1 contextual understanding'}</span>
-              {activity?.difficulty && <span className={styles.badge}>{activity.difficulty}</span>}
+              <span className={styles.badge}>{activity?.difficulty ?? 'secure'}</span>
             </div>
           </header>
 
-          {sections.length > 0 ? (
-            <section className={styles.sections}>
-              {sections.map((section: { heading: string; body: string }, sectionIndex: number) => (
-                <article className={styles.note} key={section.heading}>
-                  <span className={styles.noteNumber}>{sectionIndex + 1}</span>
-                  <div>
-                    <p className={styles.eyebrow}>Explanation</p>
-                    <h3>{section.heading}</h3>
-                    <p>{section.body}</p>
-                  </div>
-                </article>
-              ))}
-            </section>
-          ) : (
-            <section className={styles.sections}>
-              <article className={styles.note}>
-                <span className={styles.noteNumber}>1</span>
+          <section className={styles.sections}>
+            {sections.map((section: { heading: string; body: string }, sectionIndex: number) => (
+              <article className={styles.note} key={section.heading}>
+                <span className={styles.noteNumber}>{sectionIndex + 1}</span>
                 <div>
                   <p className={styles.eyebrow}>Explanation</p>
-                  <h3>No notes available</h3>
-                  <p>Run the 1905 content seed if this section is empty.</p>
+                  <h3>{section.heading}</h3>
+                  <p>{section.body}</p>
                 </div>
               </article>
-            </section>
-          )}
+            ))}
+          </section>
 
           <nav className={styles.bottomNav}>
             <Link className={styles.secondaryButton} href="/student/lesson/1905">Return to pathway</Link>
