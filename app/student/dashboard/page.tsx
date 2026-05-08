@@ -3,20 +3,20 @@ import { supabase } from '@/lib/supabase';
 import styles from './page.module.css';
 
 const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
-const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
+const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'flashcards', 'quiz', 'peel_response', 'confidence_exit_ticket'];
 
 const activityLabels: Record<string, string> = {
   lesson_content: 'Lesson notes',
-  quiz: 'Retrieval quiz',
   flashcards: 'Flashcards',
+  quiz: 'Retrieval quiz',
   peel_response: 'PEEL response',
   confidence_exit_ticket: 'Confidence check',
 };
 
 const activityRouteMap: Record<string, string> = {
   lesson_content: '/student/lesson/1905/lesson',
-  quiz: '/student/lesson/1905/quiz',
   flashcards: '/student/lesson/1905/flashcards',
+  quiz: '/student/lesson/1905/quiz',
   peel_response: '/student/lesson/1905/peel',
   confidence_exit_ticket: '/student/lesson/1905/confidence',
 };
