@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import styles from './FlashcardActivity.module.css';
 
@@ -28,10 +28,12 @@ function getCardId(card: Flashcard, index: number) {
 }
 
 export default function FlashcardActivity({ activityId, cards }: FlashcardActivityProps) {
+  const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [revealedCardIds, setRevealedCardIds] = useState<string[]>([]);
   const [ratings, setRatings] = useState<Record<string, FlashcardRating>>({});
   const [completed, setCompleted] = useState(false);
+  const [isMovingNext, setIsMovingNext] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveMessage, setSaveMessage] = useState('');
 
@@ -85,9 +87,11 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
 
       setSaveStatus('saved');
       setSaveMessage('Saved');
+      return true;
     } catch (error) {
       setSaveStatus('error');
       setSaveMessage(error instanceof Error ? error.message : 'Could not save automatically.');
+      return false;
     }
   }
 
@@ -100,6 +104,8 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
 
     setRatings(nextRatings);
     setRevealedCardIds(nextRevealedCardIds);
+
+    // Save immediately after every rating. On the final card this writes status=complete.
     void saveFlashcards(nextRatings, nextRevealedCardIds);
 
     if (isFinalCard) {
@@ -128,8 +134,27 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
     setRevealedCardIds([]);
     setRatings({});
     setCompleted(false);
+    setIsMovingNext(false);
     setSaveStatus('idle');
     setSaveMessage('');
+  }
+
+  async function moveToPeel() {
+    if (isMovingNext) return;
+    setIsMovingNext(true);
+
+    const allCardIds = cards.map((card, index) => getCardId(card, index));
+    const nextRevealedCardIds = [...new Set([...revealedCardIds, ...allCardIds.filter((cardId) => ratings[cardId])])];
+
+    // This deliberate final save prevents navigation cancelling the last auto-save.
+    const saved = await saveFlashcards(ratings, nextRevealedCardIds);
+
+    if (saved) {
+      router.push('/student/lesson/1905/peel');
+      return;
+    }
+
+    setIsMovingNext(false);
   }
 
   if (!currentCard) {
@@ -191,7 +216,9 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
         <section className={styles.completionNav}>
           <button type="button" className="button secondary" onClick={reviewDeck}>Review</button>
           <button type="button" className="button secondary" onClick={resetDeck}>Try again</button>
-          <Link className="button" href="/student/lesson/1905/peel">Next</Link>
+          <button type="button" className="button" onClick={moveToPeel} disabled={isMovingNext || saveStatus === 'saving'}>
+            {isMovingNext || saveStatus === 'saving' ? 'Saving...' : 'Next'}
+          </button>
         </section>
 
         {saveMessage && <p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage}</p>}
