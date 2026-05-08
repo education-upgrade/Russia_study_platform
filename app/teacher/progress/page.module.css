@@ -96,6 +96,65 @@
   color: var(--muted);
   font-weight: 760;
 }
+.controls {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 16px;
+  padding: clamp(14px, 3vw, 22px);
+  border-bottom: 1px solid rgba(213, 226, 235, 0.88);
+  background: rgba(255, 255, 255, 0.5);
+}
+.classSwitch,
+.filterStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.switchPill,
+.filterPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  border-radius: 999px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255, 255, 255, 0.84);
+  color: var(--navy);
+  padding: 8px 12px;
+  font-weight: 950;
+  text-decoration: none;
+  box-shadow: 0 8px 20px rgba(22, 33, 63, 0.04);
+}
+.switchPill {
+  justify-content: flex-start;
+  min-width: 210px;
+}
+.switchPill strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.switchPill small,
+.filterPill span {
+  border-radius: 999px;
+  background: rgba(237, 245, 251, 0.95);
+  color: var(--muted);
+  padding: 3px 7px;
+  font-size: 0.72rem;
+  font-weight: 950;
+}
+.activeSwitch,
+.activeFilter {
+  border-color: rgba(22, 33, 63, 0.95);
+  background: var(--navy);
+  color: #fff;
+}
+.activeSwitch small,
+.activeFilter span {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
 .snapshot {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -341,7 +400,8 @@
 @media (max-width: 950px) {
   .header,
   .priorityItem,
-  .studentTop {
+  .studentTop,
+  .controls {
     grid-template-columns: 1fr;
   }
   .decisionCard {
@@ -388,5 +448,15 @@
   .sectionHeader {
     align-items: flex-start;
     flex-direction: column;
+  }
+  .classSwitch,
+  .filterStrip {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .switchPill,
+  .filterPill {
+    flex: 0 0 auto;
   }
 }
