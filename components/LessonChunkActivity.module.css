@@ -1,0 +1,363 @@
+.shell {
+  min-height: calc(100svh - 154px);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  gap: 10px;
+}
+.headerPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: clamp(12px, 2vw, 18px);
+  border-radius: 20px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: linear-gradient(135deg, rgba(225,242,240,0.9), rgba(255,255,255,0.94));
+}
+.eyebrow {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.headerPanel h2 {
+  margin: 4px 0 7px;
+  color: var(--navy);
+  font-size: clamp(1.25rem, 3.4vw, 2rem);
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+}
+.headerPanel p:not(.eyebrow) {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 720;
+  line-height: 1.38;
+}
+.metaStack {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 280px;
+}
+.metaStack span,
+.finishedStats span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  border-radius: 999px;
+  padding: 5px 9px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255,255,255,0.78);
+  color: var(--navy);
+  font-size: 0.76rem;
+  font-weight: 850;
+  text-align: center;
+}
+.progressArea {
+  border-radius: 18px;
+  border: 1px solid rgba(213, 226, 235, 0.9);
+  background: rgba(255,255,255,0.7);
+  padding: 10px 12px;
+}
+.progressTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: var(--navy);
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+.progressTop span {
+  color: var(--muted);
+}
+.progressBar {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(213, 226, 235, 0.7);
+}
+.progressBar div {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--navy);
+  transition: width 220ms ease;
+}
+.sectionPanel {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: clamp(12px, 3vw, 24px);
+  align-items: start;
+  overflow: auto;
+  padding: clamp(16px, 3vw, 28px);
+  border-radius: 22px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255,255,255,0.94);
+}
+.sectionNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: var(--navy);
+  color: #fff;
+  font-size: 1.35rem;
+  font-weight: 950;
+}
+.sectionText h3 {
+  margin: 5px 0 12px;
+  color: var(--navy);
+  font-size: clamp(1.7rem, 5vw, 3.2rem);
+  line-height: 0.98;
+  letter-spacing: -0.06em;
+}
+.sectionText p:not(.eyebrow) {
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(1.02rem, 2.4vw, 1.32rem);
+  font-weight: 720;
+  line-height: 1.55;
+}
+.checkPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
+  gap: 12px;
+  align-items: stretch;
+  padding: 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: linear-gradient(135deg, rgba(238,232,248,0.74), rgba(255,255,255,0.92));
+}
+.checkPanel h4 {
+  margin: 5px 0 0;
+  color: var(--navy);
+  font-size: clamp(1rem, 2.4vw, 1.22rem);
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+.checkPanel textarea {
+  width: 100%;
+  min-height: 96px;
+  resize: none;
+  border-radius: 16px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: #fff;
+  color: var(--navy);
+  padding: 12px 14px;
+  font: inherit;
+  font-weight: 720;
+  line-height: 1.45;
+  outline: none;
+}
+.checkPanel textarea:focus {
+  border-color: rgba(22, 33, 63, 0.88);
+  box-shadow: 0 0 0 3px rgba(22, 33, 63, 0.08);
+}
+.controls,
+.finishedActions {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.55fr) auto minmax(150px, 0.8fr);
+  gap: 8px;
+  align-items: center;
+}
+.secondaryButton,
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  border-radius: 999px;
+  padding: 10px 14px;
+  border: 0;
+  font: inherit;
+  font-weight: 950;
+  text-decoration: none;
+}
+.secondaryButton {
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: #fff;
+  color: var(--navy);
+}
+.primaryButton {
+  background: var(--navy);
+  color: #fff;
+  box-shadow: 0 14px 28px rgba(22, 33, 63, 0.16);
+}
+.primaryButton:disabled,
+.secondaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  box-shadow: none;
+}
+.savePill {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 5px 10px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+.saving { background: #fff0cc; color: var(--navy); }
+.saved { background: #dff1e5; color: var(--navy); }
+.error { background: var(--rose); color: var(--navy); }
+.errorText {
+  margin: 0;
+  border-radius: 14px;
+  background: var(--rose);
+  color: var(--navy);
+  padding: 8px 10px;
+  font-weight: 850;
+}
+.emptyPanel,
+.finishedPanel {
+  min-height: calc(100svh - 154px);
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  text-align: center;
+  border-radius: 24px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255,255,255,0.9);
+  padding: clamp(18px, 5vw, 38px);
+}
+.finishedIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 22px;
+  background: var(--navy);
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 950;
+}
+.finishedPanel h2,
+.emptyPanel h2 {
+  margin: 0;
+  color: var(--navy);
+  font-size: clamp(1.8rem, 5vw, 3rem);
+  letter-spacing: -0.06em;
+}
+.finishedPanel p:not(.eyebrow),
+.emptyPanel p {
+  max-width: 620px;
+  margin: 0;
+  color: var(--muted);
+  font-weight: 760;
+  line-height: 1.45;
+}
+.finishedStats {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.finishedActions {
+  grid-template-columns: 1fr 1fr;
+  width: min(560px, 100%);
+}
+@media (max-width: 760px) {
+  .shell {
+    min-height: calc(100svh - 112px);
+    gap: 7px;
+  }
+  .headerPanel,
+  .checkPanel,
+  .controls,
+  .finishedActions {
+    grid-template-columns: 1fr;
+  }
+  .headerPanel {
+    gap: 8px;
+    padding: 10px;
+  }
+  .headerPanel h2 {
+    margin: 2px 0 4px;
+    font-size: clamp(1.14rem, 5.5vw, 1.5rem);
+  }
+  .headerPanel p:not(.eyebrow) {
+    font-size: 0.82rem;
+    line-height: 1.32;
+  }
+  .metaStack {
+    justify-content: flex-start;
+    max-width: none;
+  }
+  .metaStack span {
+    min-height: 24px;
+    font-size: 0.66rem;
+    padding: 3px 7px;
+  }
+  .progressArea {
+    padding: 8px 10px;
+  }
+  .progressTop {
+    font-size: 0.76rem;
+  }
+  .sectionPanel {
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
+    border-radius: 18px;
+  }
+  .sectionNumber {
+    width: 38px;
+    height: 38px;
+    border-radius: 13px;
+    font-size: 1rem;
+  }
+  .sectionText h3 {
+    margin: 2px 0 7px;
+    font-size: clamp(1.35rem, 8vw, 2rem);
+  }
+  .sectionText p:not(.eyebrow) {
+    font-size: 0.91rem;
+    line-height: 1.45;
+  }
+  .checkPanel {
+    padding: 10px;
+    border-radius: 18px;
+    gap: 8px;
+  }
+  .checkPanel h4 {
+    font-size: 0.96rem;
+  }
+  .checkPanel textarea {
+    min-height: 84px;
+    font-size: 0.92rem;
+    padding: 10px 11px;
+  }
+  .secondaryButton,
+  .primaryButton {
+    min-height: 42px;
+    font-size: 0.9rem;
+  }
+  .savePill:empty {
+    display: none;
+  }
+}
+@media (max-height: 760px) and (max-width: 760px) {
+  .headerPanel p:not(.eyebrow),
+  .metaStack {
+    display: none;
+  }
+  .checkPanel textarea {
+    min-height: 70px;
+  }
+  .sectionText p:not(.eyebrow) {
+    font-size: 0.84rem;
+  }
+}
