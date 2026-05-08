@@ -59,24 +59,30 @@ export async function POST(request: Request) {
   const status = ratedCount >= body.totalCards ? 'complete' : 'in_progress';
   const now = new Date().toISOString();
 
-  const { data: existing } = await supabase
+  // Look for the newest existing flashcard response for this student/activity, regardless of assignment.
+  // This prevents dashboards from reading an older duplicate in_progress row after a newer assignment is created.
+  const { data: existingRows } = await supabase
     .from('student_responses')
     .select('id')
     .eq('student_id', DEMO_STUDENT_ID)
-    .eq('assignment_id', DEMO_ASSIGNMENT_ID)
     .eq('activity_id', body.activityId)
-    .maybeSingle();
+    .order('last_saved_at', { ascending: false, nullsFirst: false })
+    .order('started_at', { ascending: false, nullsFirst: false })
+    .limit(1);
+
+  const existing = existingRows?.[0];
 
   if (existing?.id) {
     const { error } = await supabase
       .from('student_responses')
       .update({
+        assignment_id: DEMO_ASSIGNMENT_ID,
         response_type: 'flashcards',
         response_json: responsePayload,
         score: secureCount,
         status,
         last_saved_at: now,
-        submitted_at: now,
+        submitted_at: status === 'complete' ? now : null,
       })
       .eq('id', existing.id);
 
@@ -99,7 +105,7 @@ export async function POST(request: Request) {
       status,
       started_at: now,
       last_saved_at: now,
-      submitted_at: now,
+      submitted_at: status === 'complete' ? now : null,
     });
 
   if (error) {
