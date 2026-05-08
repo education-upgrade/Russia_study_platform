@@ -92,11 +92,13 @@
   font-weight: 950;
   font-size: 1.2rem;
 }
+.topicGrid,
 .classGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
+.topicButton,
 .classButton {
   min-height: 70px;
   border-radius: 20px;
@@ -107,6 +109,10 @@
   text-align: left;
   padding: 12px 14px;
 }
+.topicButton {
+  min-height: 104px;
+}
+.topicButton strong,
 .classButton strong {
   display: block;
   overflow: hidden;
@@ -115,20 +121,40 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.topicButton small,
 .classButton span {
   display: block;
   margin-top: 4px;
   color: var(--muted);
   font-weight: 800;
+  line-height: 1.28;
 }
+.topicMeta {
+  display: inline-flex;
+  margin-bottom: 7px;
+  border-radius: 999px;
+  background: rgba(237, 245, 251, 0.92);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  padding: 5px 9px;
+  text-transform: uppercase;
+}
+.selectedTopic,
 .selectedClass {
   border: 3px solid var(--navy);
   background: var(--navy);
   color: #fff;
   padding: 10px 12px;
 }
+.selectedTopic small,
 .selectedClass span {
   color: rgba(255,255,255,0.78);
+}
+.selectedTopic .topicMeta {
+  background: rgba(255,255,255,0.16);
+  color: rgba(255,255,255,0.84);
 }
 .modeStrip {
   display: grid;
@@ -353,15 +379,21 @@
     height: 38px;
     border-radius: 14px;
   }
+  .topicGrid,
   .classGrid,
   .modeStrip {
     grid-template-columns: 1fr;
   }
+  .topicButton,
   .classButton,
   .modeButton {
     min-height: 0;
     border-radius: 16px;
     padding: 10px 11px;
+  }
+  .topicButton small {
+    display: block;
+    font-size: 0.76rem;
   }
   .modeButton span,
   .modeButton small {
