@@ -152,13 +152,13 @@ export default function QuizActivity({ activityId, questions }: QuizActivityProp
     setSaveMessage('');
   }
 
-  async function moveToFlashcards() {
+  async function moveToPeel() {
     if (isMovingNext) return;
     setIsMovingNext(true);
     const saved = await saveQuiz(answers, true);
 
     if (saved) {
-      router.push('/student/lesson/1905/flashcards');
+      router.push('/student/lesson/1905/peel');
       return;
     }
 
@@ -194,13 +194,13 @@ export default function QuizActivity({ activityId, questions }: QuizActivityProp
 
         <section className={styles.summary}>
           <h2>{score}/{questions.length}</h2>
-          <p>{percentage >= 80 ? 'Strong recall. Move on to flashcards for consolidation.' : 'Good start. Revisit the weaker questions before moving on.'}</p>
+          <p>{percentage >= 80 ? 'Strong recall. Move on to the PEEL response and apply this knowledge.' : 'Good start. Revisit the weaker questions, then apply the knowledge in your PEEL response.'}</p>
         </section>
 
         <section className={styles.bottomNav}>
           <button type="button" className="button secondary" onClick={reviewQuiz}>Review</button>
           <button type="button" className="button secondary" onClick={resetQuiz}>Try again</button>
-          <button type="button" className="button" onClick={moveToFlashcards} disabled={isMovingNext || saveStatus === 'saving'}>
+          <button type="button" className="button" onClick={moveToPeel} disabled={isMovingNext || saveStatus === 'saving'}>
             {isMovingNext || saveStatus === 'saving' ? 'Saving...' : 'Next'}
           </button>
         </section>
