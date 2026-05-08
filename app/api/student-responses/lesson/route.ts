@@ -10,6 +10,7 @@ type LessonSaveRequest = {
   currentSection: number;
   totalSections: number;
   finished: boolean;
+  sectionHeadings?: string[];
 };
 
 export async function POST(request: Request) {
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
 
   const responsePayload = {
     answers,
+    sectionHeadings: body.sectionHeadings ?? [],
     currentSection: body.currentSection,
     totalSections: body.totalSections,
     completedAnswers,
