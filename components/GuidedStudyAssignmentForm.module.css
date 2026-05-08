@@ -10,6 +10,10 @@
   box-shadow: 0 18px 48px rgba(22, 33, 63, 0.1);
 }
 .header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: end;
   padding: clamp(18px, 4vw, 30px);
   border-bottom: 1px solid rgba(213, 226, 235, 0.88);
 }
@@ -35,58 +39,133 @@
   font-weight: 740;
   line-height: 1.5;
 }
+.headerSummary {
+  min-width: 230px;
+  border-radius: 22px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255,255,255,0.78);
+  padding: 14px;
+}
+.headerSummary span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.headerSummary strong {
+  display: block;
+  margin-top: 7px;
+  color: var(--navy);
+  font-weight: 950;
+}
+.stepPanel {
+  margin: clamp(12px, 2.4vw, 18px);
+  border-radius: 24px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255, 255, 255, 0.72);
+  padding: clamp(14px, 3vw, 20px);
+}
+.stepHeader {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.stepHeader h3 {
+  margin: 0;
+  color: var(--navy);
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  letter-spacing: -0.045em;
+}
+.stepNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 16px;
+  background: var(--navy);
+  color: #fff;
+  font-weight: 950;
+  font-size: 1.2rem;
+}
+.classGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.classButton {
+  min-height: 70px;
+  border-radius: 20px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255,255,255,0.88);
+  color: var(--navy);
+  cursor: pointer;
+  text-align: left;
+  padding: 12px 14px;
+}
+.classButton strong {
+  display: block;
+  overflow: hidden;
+  font: inherit;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.classButton span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-weight: 800;
+}
+.selectedClass {
+  border: 3px solid var(--navy);
+  background: var(--navy);
+  color: #fff;
+  padding: 10px 12px;
+}
+.selectedClass span {
+  color: rgba(255,255,255,0.78);
+}
 .modeStrip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
-  padding: clamp(14px, 3vw, 22px);
-  background: rgba(255, 255, 255, 0.48);
 }
 .modeButton {
-  min-height: 64px;
+  min-height: 112px;
   border-radius: 18px;
   border: 1px solid rgba(213, 226, 235, 0.95);
   background: rgba(255,255,255,0.86);
   color: var(--navy);
   cursor: pointer;
   text-align: left;
-  padding: 10px 12px;
+  padding: 11px 12px;
 }
 .modeButton strong {
   display: block;
-  font-size: 0.92rem;
+  font-size: 0.98rem;
   font-weight: 950;
 }
-.modeButton span {
+.modeButton span,
+.modeButton small {
   display: block;
-  margin-top: 2px;
+  margin-top: 4px;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: 0.73rem;
   font-weight: 760;
-  line-height: 1.2;
+  line-height: 1.22;
+}
+.modeButton small {
+  font-weight: 900;
 }
 .modeButton.selected {
   border: 3px solid var(--navy);
   background: var(--teal);
-  padding: 8px 10px;
-}
-.mainGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.55fr);
-  gap: 12px;
-  padding: clamp(14px, 3vw, 22px);
-}
-.panel {
-  border-radius: 24px;
-  border: 1px solid rgba(213, 226, 235, 0.95);
-  background: rgba(255,255,255,0.78);
-  padding: clamp(14px, 3vw, 20px);
-}
-.panel h3 {
-  margin: 0 0 10px;
-  color: var(--navy);
-  font-size: clamp(1.25rem, 3vw, 1.7rem);
-  letter-spacing: -0.04em;
+  padding: 9px 10px;
 }
 .activityList {
   display: grid;
@@ -143,10 +222,18 @@
   font-weight: 950;
   font-size: 0.8rem;
 }
+.confirmGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.62fr);
+  gap: 12px;
+}
+.finalControls {
+  display: grid;
+  gap: 12px;
+}
 .field {
   display: grid;
   gap: 6px;
-  margin-top: 12px;
 }
 .field span {
   color: var(--navy);
@@ -165,20 +252,28 @@
   padding: 11px 12px;
 }
 .field textarea {
-  min-height: 118px;
+  min-height: 150px;
   resize: vertical;
 }
 .summaryBox {
   display: grid;
+  align-content: start;
   gap: 10px;
+  border-radius: 22px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255,255,255,0.7);
+  padding: 14px;
 }
 .summaryBox h3 {
-  margin-bottom: 0;
+  margin: 0;
+  color: var(--navy);
+  font-size: clamp(1.25rem, 3vw, 1.7rem);
+  letter-spacing: -0.04em;
 }
 .summaryLine {
   display: grid;
   gap: 4px;
-  padding: 12px;
+  padding: 11px 12px;
   border-radius: 16px;
   border: 1px solid rgba(213, 226, 235, 0.95);
   background: rgba(255,255,255,0.82);
@@ -193,6 +288,7 @@
 .summaryLine strong {
   color: var(--navy);
   font-weight: 950;
+  line-height: 1.2;
 }
 .submitButton {
   width: 100%;
@@ -221,12 +317,16 @@
 .saved { color: #1f6f3d; }
 .error { color: #9c3c3c; }
 .saving { color: var(--navy); }
-@media (max-width: 850px) {
+@media (max-width: 900px) {
+  .header,
+  .confirmGrid {
+    grid-template-columns: 1fr;
+  }
+  .headerSummary {
+    min-width: 0;
+  }
   .modeStrip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .mainGrid {
-    grid-template-columns: 1fr;
   }
 }
 @media (max-width: 700px) {
@@ -239,24 +339,33 @@
   .header p:not(.eyebrow) {
     font-size: 0.9rem;
   }
-  .modeStrip {
-    padding: 14px;
-    gap: 7px;
-  }
-  .modeButton {
-    min-height: 58px;
-    border-radius: 16px;
-    padding: 9px 10px;
-  }
-  .modeButton span {
-    display: none;
-  }
-  .mainGrid {
-    padding: 14px;
-  }
-  .panel {
-    border-radius: 18px;
+  .stepPanel {
+    margin: 10px;
+    border-radius: 20px;
     padding: 13px;
+  }
+  .stepHeader {
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 10px;
+  }
+  .stepNumber {
+    width: 38px;
+    height: 38px;
+    border-radius: 14px;
+  }
+  .classGrid,
+  .modeStrip {
+    grid-template-columns: 1fr;
+  }
+  .classButton,
+  .modeButton {
+    min-height: 0;
+    border-radius: 16px;
+    padding: 10px 11px;
+  }
+  .modeButton span,
+  .modeButton small {
+    display: none;
   }
   .activityChoice {
     grid-template-columns: 32px minmax(0, 1fr) 28px;
@@ -275,5 +384,12 @@
     min-width: 28px;
     height: 28px;
     border-radius: 10px;
+  }
+  .summaryBox {
+    border-radius: 18px;
+    padding: 12px;
+  }
+  .field textarea {
+    min-height: 118px;
   }
 }
