@@ -13,34 +13,15 @@ type FlashcardSaveRequest = {
   totalCards: number;
 };
 
-async function removeDuplicateFlashcardRows(activityId: string, keepId: string) {
-  if (!supabase) return;
-
-  await supabase
-    .from('student_responses')
-    .delete()
-    .eq('student_id', DEMO_STUDENT_ID)
-    .eq('activity_id', activityId)
-    .neq('id', keepId);
-}
-
 export async function POST(request: Request) {
   if (!supabase) {
-    return NextResponse.json(
-      { error: 'Supabase is not configured.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Supabase is not configured.' }, { status: 500 });
   }
 
   const body = (await request.json()) as FlashcardSaveRequest;
 
-  if (!body.activityId) {
-    return NextResponse.json({ error: 'Missing activityId.' }, { status: 400 });
-  }
-
-  if (!body.totalCards || body.totalCards < 1) {
-    return NextResponse.json({ error: 'Missing flashcard count.' }, { status: 400 });
-  }
+  if (!body.activityId) return NextResponse.json({ error: 'Missing activityId.' }, { status: 400 });
+  if (!body.totalCards || body.totalCards < 1) return NextResponse.json({ error: 'Missing flashcard count.' }, { status: 400 });
 
   const ratings = body.ratings ?? {};
   const ratingValues = Object.values(ratings);
@@ -50,9 +31,9 @@ export async function POST(request: Request) {
   const ratedCount = ratingValues.length;
   const completionPercentage = Math.round((ratedCount / body.totalCards) * 100);
   const securePercentage = Math.round((secureCount / body.totalCards) * 100);
-  const revisitCardIds = Object.entries(ratings)
-    .filter(([, rating]) => rating === 'revisit')
-    .map(([cardId]) => cardId);
+  const revisitCardIds = Object.entries(ratings).filter(([, rating]) => rating === 'revisit').map(([cardId]) => cardId);
+  const status = ratedCount >= body.totalCards ? 'complete' : 'in_progress';
+  const now = new Date().toISOString();
 
   const responsePayload = {
     ratings,
@@ -67,69 +48,37 @@ export async function POST(request: Request) {
     securePercentage,
   };
 
-  const status = ratedCount >= body.totalCards ? 'complete' : 'in_progress';
-  const now = new Date().toISOString();
+  const savePayload = {
+    assignment_id: DEMO_ASSIGNMENT_ID,
+    response_type: 'flashcards',
+    response_json: responsePayload,
+    score: secureCount,
+    status,
+    last_saved_at: now,
+    submitted_at: status === 'complete' ? now : null,
+  };
 
-  // Look for the newest existing flashcard response for this student/activity, regardless of assignment.
-  // This prevents dashboards from reading an older duplicate in_progress row after a newer assignment is created.
-  const { data: existingRows } = await supabase
+  const { data: existingRows, error: existingError } = await supabase
     .from('student_responses')
     .select('id')
     .eq('student_id', DEMO_STUDENT_ID)
-    .eq('activity_id', body.activityId)
-    .order('last_saved_at', { ascending: false, nullsFirst: false })
-    .order('started_at', { ascending: false, nullsFirst: false })
-    .limit(1);
+    .eq('activity_id', body.activityId);
 
-  const existing = existingRows?.[0];
+  if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 });
 
-  if (existing?.id) {
-    const { error } = await supabase
-      .from('student_responses')
-      .update({
-        assignment_id: DEMO_ASSIGNMENT_ID,
-        response_type: 'flashcards',
-        response_json: responsePayload,
-        score: secureCount,
-        status,
-        last_saved_at: now,
-        submitted_at: status === 'complete' ? now : null,
-      })
-      .eq('id', existing.id);
+  const existingIds = (existingRows ?? []).map((row) => row.id);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    await removeDuplicateFlashcardRows(body.activityId, existing.id);
-
-    return NextResponse.json({ status: 'updated', savedAt: now, ...responsePayload });
+  if (existingIds.length > 0) {
+    const { error } = await supabase.from('student_responses').update(savePayload).in('id', existingIds);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ status: 'updated', savedAt: now, updatedRows: existingIds.length, ...responsePayload });
   }
 
-  const { data: inserted, error } = await supabase
+  const { error } = await supabase
     .from('student_responses')
-    .insert({
-      student_id: DEMO_STUDENT_ID,
-      assignment_id: DEMO_ASSIGNMENT_ID,
-      activity_id: body.activityId,
-      response_type: 'flashcards',
-      response_json: responsePayload,
-      score: secureCount,
-      status,
-      started_at: now,
-      last_saved_at: now,
-      submitted_at: status === 'complete' ? now : null,
-    })
-    .select('id')
-    .single();
+    .insert({ student_id: DEMO_STUDENT_ID, activity_id: body.activityId, started_at: now, ...savePayload });
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  if (inserted?.id) {
-    await removeDuplicateFlashcardRows(body.activityId, inserted.id);
-  }
-
-  return NextResponse.json({ status: 'created', savedAt: now, ...responsePayload });
+  return NextResponse.json({ status: 'created', savedAt: now, updatedRows: 1, ...responsePayload });
 }
