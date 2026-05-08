@@ -5,6 +5,13 @@ export const pathway1905LessonSections = [
     question: 'In one sentence, explain the balanced judgement about whether 1905 was a turning point.',
     taskType: 'judgement',
     teacherNote: 'Look for a balanced judgement: change/weakening, but survival of Tsarist authority.',
+    media: {
+      type: 'video',
+      title: 'Test video: Russia exam walkthrough',
+      url: 'https://www.youtube.com/watch?v=57AxyoGigXo',
+      caption: 'Test embedded video panel. Watch enough to check that the embed loads and sits cleanly inside the lesson screen.',
+      credit: 'YouTube embed test.',
+    },
   },
   {
     heading: 'Long-term weaknesses in Tsarist authority',
