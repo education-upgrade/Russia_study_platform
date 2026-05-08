@@ -73,8 +73,8 @@ export default async function QuizPage() {
       )}
 
       <section className={styles.footer}>
-        <Link href="/student/lesson/1905/lesson">Previous: lesson notes</Link>
-        <span>Complete the quiz to unlock flashcards.</span>
+        <Link href="/student/lesson/1905/flashcards">Previous: flashcards</Link>
+        <span>Complete the quiz after studying the flashcards.</span>
       </section>
     </main>
   );
