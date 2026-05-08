@@ -66,21 +66,15 @@ export const pathway1905LessonSections = [
 
 export const pathway1905QuizQuestions = [
   {
-    id: 'bloody-sunday-year',
-    question: 'In which year did Bloody Sunday take place?',
-    options: ['1904', '1905', '1906', '1917'],
-    correct: '1905',
-  },
-  {
-    id: 'russo-japanese-war',
-    question: 'Which war exposed the weakness of the Tsarist regime in 1904–05?',
-    options: ['Crimean War', 'First World War', 'Russo-Japanese War', 'Civil War'],
-    correct: 'Russo-Japanese War',
+    id: 'bloody-sunday-date',
+    question: 'When did Bloody Sunday take place?',
+    options: ['January 1905', 'June 1905', 'October 1905', 'April 1906'],
+    correct: 'January 1905',
   },
   {
     id: 'father-gapon',
     question: 'Who led the workers’ petition to the Winter Palace on Bloody Sunday?',
-    options: ['Lenin', 'Trotsky', 'Father Gapon', 'Witte'],
+    options: ['Lenin', 'Trotsky', 'Father Gapon', 'Sergei Witte'],
     correct: 'Father Gapon',
   },
   {
@@ -90,10 +84,28 @@ export const pathway1905QuizQuestions = [
     correct: 'Little Father',
   },
   {
+    id: 'russo-japanese-war',
+    question: 'Which war exposed the weakness of the Tsarist regime in 1904–05?',
+    options: ['Crimean War', 'First World War', 'Russo-Japanese War', 'Civil War'],
+    correct: 'Russo-Japanese War',
+  },
+  {
     id: 'tsushima',
     question: 'Which naval defeat humiliated Russia during the Russo-Japanese War?',
     options: ['Tsushima', 'Sevastopol', 'Kronstadt', 'Borodino'],
     correct: 'Tsushima',
+  },
+  {
+    id: 'long-term-weakness-workers',
+    question: 'Which long-term pressure helped make urban workers receptive to protest by 1905?',
+    options: ['High wages and short hours', 'Poor conditions and low wages', 'Full trade union rights', 'Guaranteed political representation'],
+    correct: 'Poor conditions and low wages',
+  },
+  {
+    id: 'peasant-pressure',
+    question: 'Which issue helps explain continuing peasant unrest before and during 1905?',
+    options: ['Land hunger', 'Collectivisation', 'The New Economic Policy', 'Dekulakisation'],
+    correct: 'Land hunger',
   },
   {
     id: 'potemkin',
@@ -108,10 +120,22 @@ export const pathway1905QuizQuestions = [
     correct: 'A general strike',
   },
   {
+    id: 'st-petersburg-soviet-role',
+    question: 'Why was the St Petersburg Soviet significant?',
+    options: ['It was a royal advisory council', 'It coordinated worker action and showed organised urban opposition', 'It gave the Tsar absolute power', 'It ended the Russo-Japanese War'],
+    correct: 'It coordinated worker action and showed organised urban opposition',
+  },
+  {
     id: 'october-manifesto',
     question: 'What did the October Manifesto promise?',
     options: ['Immediate abdication', 'Civil liberties and an elected Duma', 'Collectivisation', 'Peace, land and bread'],
     correct: 'Civil liberties and an elected Duma',
+  },
+  {
+    id: 'october-manifesto-impact',
+    question: 'How did the October Manifesto help the regime survive?',
+    options: ['It united all opposition groups', 'It split moderates from radicals', 'It abolished the Tsar', 'It transferred power to the Soviet'],
+    correct: 'It split moderates from radicals',
   },
   {
     id: 'duma',
@@ -120,10 +144,16 @@ export const pathway1905QuizQuestions = [
     correct: 'An elected legislative assembly',
   },
   {
-    id: 'soviet',
-    question: 'What was the St Petersburg Soviet?',
-    options: ['A workers’ council', 'A noble assembly', 'A police court', 'A royal family council'],
-    correct: 'A workers’ council',
+    id: 'witte-role',
+    question: 'What was Sergei Witte’s significance in 1905?',
+    options: ['He led the Bolshevik seizure of power', 'He advised concessions that helped stabilise the regime', 'He commanded the Potemkin mutiny', 'He abolished the Okhrana'],
+    correct: 'He advised concessions that helped stabilise the regime',
+  },
+  {
+    id: 'army-loyalty',
+    question: 'Why was army loyalty crucial to the survival of Tsarism in 1905?',
+    options: ['It allowed the regime to repress unrest once opposition divided', 'It gave workers control of Petrograd', 'It forced Nicholas II to abdicate', 'It made the Duma fully democratic'],
+    correct: 'It allowed the regime to repress unrest once opposition divided',
   },
   {
     id: 'survival-factor',
@@ -137,22 +167,38 @@ export const pathway1905QuizQuestions = [
     options: ['It had no impact', 'It weakened autocracy but did not destroy it', 'It created communist rule', 'It ended the Romanov dynasty immediately'],
     correct: 'It weakened autocracy but did not destroy it',
   },
+  {
+    id: 'best-evidence-weakening',
+    question: 'Which evidence best supports the argument that 1905 weakened Tsarist authority?',
+    options: ['The Tsar was forced to issue the October Manifesto', 'The Tsar introduced collectivisation', 'The Bolsheviks won a majority in the Duma', 'Russia won the Russo-Japanese War'],
+    correct: 'The Tsar was forced to issue the October Manifesto',
+  },
 ];
 
 export const pathway1905Flashcards = [
   { id: 'bloody-sunday', front: 'Bloody Sunday', back: '9 January 1905: peaceful protesters were shot by troops, damaging the Tsar’s image as Little Father.' },
   { id: 'father-gapon', front: 'Father Gapon', back: 'Priest who led the workers’ petition to the Winter Palace. His role shows many protesters still appealed to the Tsar rather than initially seeking revolution.' },
+  { id: 'little-father', front: 'Little Father', back: 'Traditional image of the Tsar as a protective paternal ruler. Bloody Sunday badly damaged this image.' },
   { id: 'russo-japanese-war', front: 'Russo-Japanese War', back: '1904–05 conflict that exposed Russian military and administrative weakness, especially after defeat at Tsushima.' },
   { id: 'tsushima', front: 'Tsushima', back: 'May 1905 naval disaster where the Russian Baltic Fleet was destroyed by Japan, humiliating the regime.' },
+  { id: 'industrial-workers', front: 'Urban worker grievances', back: 'Poor conditions, long hours, low wages and overcrowded cities helped make workers receptive to strikes and protest.' },
+  { id: 'peasant-land-hunger', front: 'Peasant land hunger', back: 'Peasants wanted more land and remained frustrated by poverty and obligations, making rural unrest a serious pressure on the regime.' },
   { id: 'october-general-strike', front: 'October General Strike', back: 'A major strike wave that paralysed parts of the empire and forced Nicholas II to issue the October Manifesto.' },
   { id: 'october-manifesto', front: 'October Manifesto', back: 'Concession promising civil liberties and an elected Duma; it split moderates from radicals and helped the regime survive.' },
   { id: 'duma', front: 'Duma', back: 'Elected assembly promised in 1905. It looked like constitutional reform, but the Tsar later limited its power.' },
   { id: 'st-petersburg-soviet', front: 'St Petersburg Soviet', back: 'Workers’ council that coordinated action in 1905 and showed a new form of organised urban opposition.' },
+  { id: 'soviet-significance', front: 'Why the St Petersburg Soviet mattered', back: 'It showed that opposition could become organised and coordinated, not just spontaneous protest.' },
   { id: 'potemkin-mutiny', front: 'Potemkin mutiny', back: 'June 1905 naval mutiny showing some discontent within the armed forces, although the wider army remained loyal enough to protect the regime.' },
+  { id: 'army-loyalty', front: 'Army loyalty', back: 'Most of the army remained loyal. This was crucial because the regime could repress unrest once moderate opposition had been split.' },
   { id: 'witte', front: 'Sergei Witte', back: 'Tsarist minister who helped advise concessions in 1905. His strategy helped divide opposition and stabilise the regime.' },
   { id: 'divided-opposition', front: 'Divided opposition', back: 'Liberals, workers, peasants and revolutionaries wanted different outcomes, making it harder to overthrow the regime.' },
-  { id: 'army-loyalty', front: 'Army loyalty', back: 'Most of the army remained loyal. This was crucial because the regime could repress unrest once moderate opposition had been split.' },
+  { id: 'liberals', front: 'Liberals in 1905', back: 'Many liberals wanted constitutional reform rather than full revolution, so the October Manifesto partly satisfied and divided them.' },
+  { id: 'radicals', front: 'Radicals in 1905', back: 'Socialists and revolutionary groups wanted more fundamental change, but they lacked enough unity and force to remove the regime in 1905.' },
+  { id: 'reform-and-repression', front: 'Reform and repression', back: 'The regime survived by making tactical concessions, then using force once opposition had been divided.' },
   { id: 'limited-turning-point', front: 'Limited turning point', back: '1905 forced concessions and exposed weakness, but autocracy survived and Nicholas II retained significant power.' },
+  { id: 'evidence-weakening', front: 'Evidence that 1905 weakened autocracy', back: 'Bloody Sunday damaged legitimacy, the general strike forced concessions, and the Soviet showed organised opposition.' },
+  { id: 'evidence-survival', front: 'Evidence that 1905 was limited', back: 'The Tsar survived, opposition divided, the army largely stayed loyal and the Duma’s power was later restricted.' },
+  { id: 'causal-chain', front: 'Causal chain: war to concession', back: 'Defeat in war weakened prestige; Bloody Sunday triggered protest; strikes paralysed the state; the October Manifesto offered concessions.' },
   { id: 'essay-judgement', front: 'Best judgement line', back: 'The 1905 Revolution significantly weakened Tsarist authority by exposing autocratic vulnerability, but it was limited because the regime survived through concessions, repression and army loyalty.' },
 ];
 
