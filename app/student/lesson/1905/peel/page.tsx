@@ -79,7 +79,7 @@ export default async function PeelPage() {
 
       <section className={styles.footer}>
         <Link href="/student/lesson/1905/flashcards">Previous: flashcards</Link>
-        <Link href="/student/lesson/1905/confidence">Next: confidence check →</Link>
+        <span>Submit the PEEL response to unlock the confidence check.</span>
       </section>
     </main>
   );
