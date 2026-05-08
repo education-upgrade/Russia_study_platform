@@ -73,8 +73,8 @@ export default async function FlashcardsPage() {
       )}
 
       <section className={styles.footer}>
-        <Link href="/student/lesson/1905/quiz">Previous: quiz</Link>
-        <span>Complete the deck to unlock the next activity.</span>
+        <Link href="/student/lesson/1905/lesson">Previous: lesson notes</Link>
+        <span>Study the deck before completing the quiz.</span>
       </section>
     </main>
   );
