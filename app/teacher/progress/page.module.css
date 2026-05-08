@@ -83,10 +83,17 @@
 .actionStrip { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: center; margin-top: 10px; border-radius: 16px; background: rgba(237, 245, 251, 0.8); padding: 10px 12px; }
 .actionStrip strong { color: var(--navy); font-weight: 950; }
 .actionStrip span { color: var(--muted); font-weight: 760; }
-.commentBox { margin-top: 10px; border-radius: 18px; border: 1px solid rgba(213, 226, 235, 0.95); background: linear-gradient(135deg, rgba(255,255,255,0.92), rgba(237,245,251,0.76)); padding: 12px; }
-.commentHeader { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
-.commentHeader strong { color: var(--navy); font-weight: 950; }
-.commentBox p { margin: 0; color: var(--muted); font-weight: 760; line-height: 1.45; }
+.commentBox { margin-top: 10px; border-radius: 20px; border: 1px solid rgba(213, 226, 235, 0.95); background: linear-gradient(135deg, rgba(255,255,255,0.96), rgba(237,245,251,0.8)); padding: 14px; }
+.commentHeader { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.commentHeader strong { display: block; margin-top: 2px; color: var(--navy); font-size: 1.1rem; font-weight: 950; line-height: 1.1; }
+.commentEyebrow { display: block; color: var(--muted); font-size: 0.68rem; font-weight: 950; letter-spacing: 0.1em; text-transform: uppercase; }
+.feedbackIntro { margin: 0 0 12px; border-radius: 16px; background: rgba(237, 245, 251, 0.82); padding: 10px 12px; color: var(--navy); font-weight: 850; line-height: 1.35; }
+.feedbackGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.feedbackSection { border-radius: 16px; border: 1px solid rgba(213, 226, 235, 0.95); background: rgba(255, 255, 255, 0.78); padding: 12px; }
+.feedbackSection h4 { margin: 0 0 8px; color: var(--navy); font-size: 0.82rem; font-weight: 950; letter-spacing: 0.1em; text-transform: uppercase; }
+.feedbackSection ul { display: grid; gap: 7px; margin: 0; padding-left: 18px; }
+.feedbackSection li { color: var(--muted); font-size: 0.9rem; font-weight: 760; line-height: 1.35; }
+.feedbackSection li::marker { color: var(--navy); }
 .copyButton { border: 1px solid rgba(213, 226, 235, 0.95); border-radius: 999px; background: var(--navy); color: #fff; padding: 8px 12px; font: inherit; font-size: 0.82rem; font-weight: 950; white-space: nowrap; box-shadow: 0 8px 18px rgba(22, 33, 63, 0.12); }
 .details { margin-top: 12px; border-radius: 20px; border: 1px solid rgba(213, 226, 235, 0.95); background: rgba(255,255,255,0.62); padding: 12px 14px; }
 .details summary { cursor: pointer; color: var(--navy); font-weight: 950; }
@@ -98,7 +105,7 @@
 .empty { padding: 16px; border-radius: 18px; background: rgba(255,255,255,0.78); }
 .empty h3 { margin: 0 0 4px; color: var(--navy); }
 .empty p { margin: 0; color: var(--muted); font-weight: 760; }
-@media (max-width: 1050px) { .snapshot { grid-template-columns: repeat(3, minmax(0, 1fr)); } .diagnosticGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1050px) { .snapshot { grid-template-columns: repeat(3, minmax(0, 1fr)); } .diagnosticGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .feedbackGrid { grid-template-columns: 1fr; } }
 @media (max-width: 950px) { .header, .priorityItem, .studentTop, .controls { grid-template-columns: 1fr; } .snapshot, .detailGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 700px) {
   .shell { width: min(100% - 16px, 1120px); padding-top: 8px; }
@@ -114,12 +121,14 @@
   .switchPill { justify-content: space-between; }
   .filterPill { justify-content: space-between; font-size: 0.82rem; }
   .switchPill strong, .filterPill { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .snapshot, .diagnosticGrid, .detailGrid { grid-template-columns: 1fr; }
+  .snapshot, .diagnosticGrid, .detailGrid, .feedbackGrid { grid-template-columns: 1fr; }
   .metric { min-height: 78px; }
   .priorityItem { min-height: 0; }
   .sectionHeader { align-items: flex-start; flex-direction: column; }
   .actionStrip { grid-template-columns: 1fr; }
   .commentHeader { align-items: flex-start; flex-direction: column; }
   .copyButton { width: 100%; }
+  .feedbackIntro { font-size: 0.92rem; }
+  .feedbackSection li { font-size: 0.88rem; }
 }
 @media (max-width: 390px) { .filterStrip { grid-template-columns: 1fr; } }
