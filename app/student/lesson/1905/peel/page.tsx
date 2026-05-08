@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import PeelResponseActivity from '@/components/PeelResponseActivity';
 import { supabase } from '@/lib/supabase';
+import { pathway1905PeelContent } from '@/lib/pathway1905Content';
 import styles from './page.module.css';
 
 type Activity = {
@@ -45,6 +46,7 @@ export default async function PeelPage() {
   const { activity, error } = await getActivity('peel_response');
   const content = activity?.content_json ?? {};
   const pageTitle = cleanPeelTitle(activity?.title);
+  const scaffold = Array.isArray(content.scaffold) ? content.scaffold : pathway1905PeelContent.scaffold;
 
   return (
     <main className={styles.shell}>
@@ -68,9 +70,9 @@ export default async function PeelPage() {
         <section className={styles.panel}>
           <PeelResponseActivity
             activityId={activity.id}
-            question={content.question ?? 'Write a PEEL response.'}
-            stretchQuestion={content.stretchQuestion}
-            scaffold={Array.isArray(content.scaffold) ? content.scaffold : undefined}
+            question={content.question ?? pathway1905PeelContent.question}
+            stretchQuestion={content.stretchQuestion ?? pathway1905PeelContent.stretchQuestion}
+            scaffold={scaffold}
           />
         </section>
       )}
