@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import styles from './FlashcardActivity.module.css';
 
@@ -30,6 +31,7 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
   const [currentIndex, setCurrentIndex] = useState(0);
   const [revealedCardIds, setRevealedCardIds] = useState<string[]>([]);
   const [ratings, setRatings] = useState<Record<string, FlashcardRating>>({});
+  const [completed, setCompleted] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveMessage, setSaveMessage] = useState('');
 
@@ -46,6 +48,11 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
 
   const revisitCards = useMemo(
     () => cards.filter((card, index) => ratings[getCardId(card, index)] === 'revisit'),
+    [cards, ratings]
+  );
+
+  const nearlyCards = useMemo(
+    () => cards.filter((card, index) => ratings[getCardId(card, index)] === 'nearly'),
     [cards, ratings]
   );
 
@@ -89,20 +96,40 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
 
     const nextRatings = { ...ratings, [currentCardId]: rating };
     const nextRevealedCardIds = [...new Set([...revealedCardIds, currentCardId])];
+    const isFinalCard = currentIndex === cards.length - 1;
 
     setRatings(nextRatings);
     setRevealedCardIds(nextRevealedCardIds);
     void saveFlashcards(nextRatings, nextRevealedCardIds);
 
-    if (currentIndex < cards.length - 1) {
+    if (isFinalCard) {
       window.setTimeout(() => {
-        setCurrentIndex((previous) => Math.min(previous + 1, cards.length - 1));
+        setCompleted(true);
       }, 350);
+      return;
     }
+
+    window.setTimeout(() => {
+      setCurrentIndex((previous) => Math.min(previous + 1, cards.length - 1));
+    }, 350);
   }
 
   function goToPreviousCard() {
     setCurrentIndex((previous) => Math.max(previous - 1, 0));
+  }
+
+  function reviewDeck() {
+    setCompleted(false);
+    setCurrentIndex(0);
+  }
+
+  function resetDeck() {
+    setCurrentIndex(0);
+    setRevealedCardIds([]);
+    setRatings({});
+    setCompleted(false);
+    setSaveStatus('idle');
+    setSaveMessage('');
   }
 
   if (!currentCard) {
@@ -111,6 +138,64 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
         <h3>No cards found</h3>
         <p>This activity does not currently have any cards.</p>
       </section>
+    );
+  }
+
+  if (completed || isDeckComplete) {
+    const revisitList = revisitCards.map((card) => card.front).join(' · ');
+    const nearlyList = nearlyCards.map((card) => card.front).join(' · ');
+
+    return (
+      <div className={styles.shell}>
+        <section className={styles.topbar}>
+          <div>
+            <h3>Flashcards complete</h3>
+          </div>
+          <div className={styles.stats} aria-label="Flashcard result statistics">
+            <span>{secureCount}/{cards.length} secure</span>
+            <span>{nearlyCount} nearly</span>
+            <span>{revisitCount} revisit</span>
+          </div>
+        </section>
+
+        <div className={styles.progress} aria-label="Flashcard completion progress">
+          <div style={{ width: '100%' }} />
+        </div>
+
+        <section className={styles.completionSummary}>
+          <h2>{secureCount}/{cards.length}</h2>
+          <p>
+            {revisitCount === 0 && nearlyCount <= 3
+              ? 'Strong flashcard recall. Move on to the PEEL response and apply this knowledge.'
+              : 'Good work. Revisit the weaker cards before applying the knowledge in your PEEL response.'}
+          </p>
+        </section>
+
+        {(revisitCards.length > 0 || nearlyCards.length > 0) && (
+          <section className={styles.completionTargets}>
+            {revisitCards.length > 0 && (
+              <article>
+                <strong>Revisit first</strong>
+                <span>{revisitList}</span>
+              </article>
+            )}
+            {nearlyCards.length > 0 && (
+              <article>
+                <strong>Nearly secure</strong>
+                <span>{nearlyList}</span>
+              </article>
+            )}
+          </section>
+        )}
+
+        <section className={styles.completionNav}>
+          <button type="button" className="button secondary" onClick={reviewDeck}>Review</button>
+          <button type="button" className="button secondary" onClick={resetDeck}>Try again</button>
+          <Link className="button" href="/student/lesson/1905/peel">Next</Link>
+        </section>
+
+        {saveMessage && <p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage}</p>}
+      </div>
     );
   }
 
@@ -173,17 +258,6 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
       </section>
 
       {saveStatus === 'error' && saveMessage && <p className={`${styles.saveMessage} ${styles.error}`}>{saveMessage}</p>}
-
-      {isDeckComplete && (
-        <section className={`${styles.summary} ${revisitCards.length > 0 ? styles.summaryRevisit : styles.summarySecure}`}>
-          <strong>{revisitCards.length > 0 ? 'Revisit before writing' : 'Deck complete'}</strong>
-          {revisitCards.length > 0 ? (
-            <span>{revisitCards.map((card) => card.front).join(' · ')}</span>
-          ) : (
-            <span>No cards marked for revisit.</span>
-          )}
-        </section>
-      )}
     </div>
   );
 }
