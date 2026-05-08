@@ -13,6 +13,17 @@ type FlashcardSaveRequest = {
   totalCards: number;
 };
 
+async function removeDuplicateFlashcardRows(activityId: string, keepId: string) {
+  if (!supabase) return;
+
+  await supabase
+    .from('student_responses')
+    .delete()
+    .eq('student_id', DEMO_STUDENT_ID)
+    .eq('activity_id', activityId)
+    .neq('id', keepId);
+}
+
 export async function POST(request: Request) {
   if (!supabase) {
     return NextResponse.json(
@@ -90,10 +101,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    await removeDuplicateFlashcardRows(body.activityId, existing.id);
+
     return NextResponse.json({ status: 'updated', savedAt: now, ...responsePayload });
   }
 
-  const { error } = await supabase
+  const { data: inserted, error } = await supabase
     .from('student_responses')
     .insert({
       student_id: DEMO_STUDENT_ID,
@@ -106,10 +119,16 @@ export async function POST(request: Request) {
       started_at: now,
       last_saved_at: now,
       submitted_at: status === 'complete' ? now : null,
-    });
+    })
+    .select('id')
+    .single();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (inserted?.id) {
+    await removeDuplicateFlashcardRows(body.activityId, inserted.id);
   }
 
   return NextResponse.json({ status: 'created', savedAt: now, ...responsePayload });
