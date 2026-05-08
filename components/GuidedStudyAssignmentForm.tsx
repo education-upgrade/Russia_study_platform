@@ -16,7 +16,51 @@ type GuidedStudyAssignmentFormProps = {
   classOptions?: ClassOption[];
 };
 
-const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
+type TopicOption = {
+  pathwaySlug: string;
+  lessonTitle: string;
+  title: string;
+  subtitle: string;
+  yearGroup: string;
+  status: 'ready' | 'planned';
+};
+
+const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'flashcards', 'quiz', 'peel_response', 'confidence_exit_ticket'];
+
+const topicOptions: TopicOption[] = [
+  {
+    pathwaySlug: 'russia-1855',
+    lessonTitle: 'Why was Russia difficult to govern in 1855?',
+    title: 'Russia in 1855',
+    subtitle: 'Autocracy, empire, society and problems of government',
+    yearGroup: 'Y12',
+    status: 'ready',
+  },
+  {
+    pathwaySlug: '1905-revolution',
+    lessonTitle: 'Was the 1905 Revolution a turning point for Tsarist Russia?',
+    title: '1905 Revolution',
+    subtitle: 'Causes, events, consequences and limits of change',
+    yearGroup: 'Y12',
+    status: 'ready',
+  },
+  {
+    pathwaySlug: 'feb-oct-1917',
+    lessonTitle: 'Why did the Provisional Government collapse in 1917?',
+    title: 'February to October 1917',
+    subtitle: 'Dual power, Provisional Government failure and Bolshevik success',
+    yearGroup: 'Y12',
+    status: 'planned',
+  },
+  {
+    pathwaySlug: 'stalin-postwar-khrushchev',
+    lessonTitle: 'How far did Stalin and Khrushchev transform the USSR after 1945?',
+    title: 'Stalin and Khrushchev, 1945–64',
+    subtitle: 'Recovery, reform, repression and de-Stalinisation',
+    yearGroup: 'Y13',
+    status: 'planned',
+  },
+];
 
 const fallbackClasses: ClassOption[] = [
   {
@@ -37,19 +81,19 @@ const modeOptions: { value: StudyMode; title: string; description: string; bestF
   {
     value: 'full_guided_study',
     title: 'Full study',
-    description: 'Lesson notes, quiz, flashcards, PEEL and final confidence check.',
+    description: 'Lesson notes, flashcards, quiz, PEEL and final confidence check.',
     bestFor: 'Best for a complete independent study homework.',
   },
   {
     value: 'exam_practice',
     title: 'Exam practice',
-    description: 'Retrieval, flashcards, PEEL and reflection.',
+    description: 'Flashcards, retrieval, PEEL and reflection.',
     bestFor: 'Best when students need written evidence and exam skill.',
   },
   {
     value: 'recap',
     title: 'Recap',
-    description: 'Notes, retrieval, flashcards and reflection.',
+    description: 'Notes, flashcards, retrieval and reflection.',
     bestFor: 'Best when knowledge is insecure or recently taught.',
   },
   {
@@ -62,8 +106,8 @@ const modeOptions: { value: StudyMode; title: string; description: string; bestF
 
 const activityOptions = [
   { value: 'lesson_content', label: 'Lesson notes', description: 'Short explanatory notes.' },
-  { value: 'quiz', label: 'Retrieval quiz', description: 'Trackable knowledge check.' },
   { value: 'flashcards', label: 'Flashcards', description: 'Secure / nearly / revisit ratings.' },
+  { value: 'quiz', label: 'Retrieval quiz', description: 'Trackable knowledge check.' },
   { value: 'peel_response', label: 'PEEL response', description: 'Written exam-skill evidence.' },
   { value: 'confidence_exit_ticket', label: 'Confidence check', description: 'Final reflection.' },
 ];
@@ -74,20 +118,20 @@ function orderSelectedActivities(activityTypes: string[]) {
   return [...activityTypes].sort((first, second) => PATHWAY_ACTIVITY_ORDER.indexOf(first) - PATHWAY_ACTIVITY_ORDER.indexOf(second));
 }
 
-function getDefaultInstructions(mode: StudyMode) {
+function getDefaultInstructions(mode: StudyMode, topicTitle: string) {
   if (mode === 'exam_practice') {
-    return 'Complete the retrieval quiz and flashcards first, then produce a focused PEEL paragraph. Finish with the confidence check.';
+    return `Complete the flashcards and retrieval quiz first, then produce a focused PEEL paragraph on ${topicTitle}. Finish with the confidence check.`;
   }
 
   if (mode === 'recap') {
-    return 'Use the lesson notes, quiz and flashcards to repair weak knowledge. Complete the confidence check last.';
+    return `Use the lesson notes, flashcards and quiz to repair weak knowledge on ${topicTitle}. Complete the confidence check last.`;
   }
 
   if (mode === 'confidence_repair') {
-    return 'Move carefully through the pathway. Complete the confidence check last and be honest about which part still feels insecure.';
+    return `Move carefully through the ${topicTitle} pathway. Complete the confidence check last and be honest about which part still feels insecure.`;
   }
 
-  return 'Complete the full 1905 guided study pathway. The confidence check should be completed last.';
+  return `Complete the full ${topicTitle} guided study pathway. The confidence check should be completed last.`;
 }
 
 function getSelectedModeTitle(mode: StudyMode) {
@@ -101,10 +145,12 @@ function getActivityLabel(activityType: string) {
 export default function GuidedStudyAssignmentForm({ classOptions = fallbackClasses }: GuidedStudyAssignmentFormProps) {
   const usableClassOptions = classOptions.length ? classOptions : fallbackClasses;
   const [classId, setClassId] = useState(usableClassOptions[0]?.id ?? fallbackClasses[0].id);
+  const [topicSlug, setTopicSlug] = useState(topicOptions[0].pathwaySlug);
+  const selectedTopic = topicOptions.find((topic) => topic.pathwaySlug === topicSlug) ?? topicOptions[0];
   const [mode, setMode] = useState<StudyMode>('full_guided_study');
   const [selectedActivities, setSelectedActivities] = useState<string[]>(defaultActivities);
   const [deadlineAt, setDeadlineAt] = useState('');
-  const [instructions, setInstructions] = useState(getDefaultInstructions('full_guided_study'));
+  const [instructions, setInstructions] = useState(getDefaultInstructions('full_guided_study', selectedTopic.title));
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveMessage, setSaveMessage] = useState('');
   const selectedClass = usableClassOptions.find((option) => option.id === classId) ?? usableClassOptions[0];
@@ -124,14 +170,21 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
     setSaveMessage('');
   }
 
+  function updateTopic(nextSlug: string) {
+    const nextTopic = topicOptions.find((topic) => topic.pathwaySlug === nextSlug) ?? topicOptions[0];
+    setTopicSlug(nextSlug);
+    setInstructions(getDefaultInstructions(mode, nextTopic.title));
+    resetSaveState();
+  }
+
   function updateMode(nextMode: StudyMode) {
     setMode(nextMode);
-    setInstructions(getDefaultInstructions(nextMode));
+    setInstructions(getDefaultInstructions(nextMode, selectedTopic.title));
 
     if (nextMode === 'exam_practice') {
-      setSelectedActivities(orderSelectedActivities(['quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket']));
+      setSelectedActivities(orderSelectedActivities(['flashcards', 'quiz', 'peel_response', 'confidence_exit_ticket']));
     } else if (nextMode === 'recap') {
-      setSelectedActivities(orderSelectedActivities(['lesson_content', 'quiz', 'flashcards', 'confidence_exit_ticket']));
+      setSelectedActivities(orderSelectedActivities(['lesson_content', 'flashcards', 'quiz', 'confidence_exit_ticket']));
     } else {
       setSelectedActivities(defaultActivities);
     }
@@ -160,6 +213,8 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           classId,
+          pathwaySlug: selectedTopic.pathwaySlug,
+          lessonTitle: selectedTopic.lessonTitle,
           mode,
           requiredActivityTypes: orderSelectedActivities(selectedActivities),
           deadlineAt: deadlineAt ? new Date(deadlineAt).toISOString() : undefined,
@@ -187,18 +242,42 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
         <header className={styles.header}>
           <div>
             <p className={styles.eyebrow}>Set guided study</p>
-            <h2>1905 Revolution</h2>
-            <p>Move through four simple decisions. Students will only see the next task they need to complete.</p>
+            <h2>{selectedTopic.title}</h2>
+            <p>Move through five simple decisions. Students will only see the next task they need to complete.</p>
           </div>
           <aside className={styles.headerSummary}>
             <span>Ready route</span>
-            <strong>{selectedClass.yearGroup} · {selectedActivities.length} activities</strong>
+            <strong>{selectedTopic.yearGroup} · {selectedActivities.length} activities</strong>
           </aside>
         </header>
 
         <section className={styles.stepPanel}>
           <div className={styles.stepHeader}>
             <span className={styles.stepNumber}>1</span>
+            <div>
+              <p className={styles.eyebrow}>Choose topic</p>
+              <h3>What should students study?</h3>
+            </div>
+          </div>
+          <div className={styles.topicGrid}>
+            {topicOptions.map((topic) => (
+              <button
+                type="button"
+                className={`${styles.topicButton} ${topicSlug === topic.pathwaySlug ? styles.selectedTopic : ''}`}
+                key={topic.pathwaySlug}
+                onClick={() => updateTopic(topic.pathwaySlug)}
+              >
+                <span className={styles.topicMeta}>{topic.yearGroup} · {topic.status === 'ready' ? 'Ready' : 'Planned'}</span>
+                <strong>{topic.title}</strong>
+                <small>{topic.subtitle}</small>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className={styles.stepPanel}>
+          <div className={styles.stepHeader}>
+            <span className={styles.stepNumber}>2</span>
             <div>
               <p className={styles.eyebrow}>Choose class</p>
               <h3>Who is this for?</h3>
@@ -224,7 +303,7 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
 
         <section className={styles.stepPanel}>
           <div className={styles.stepHeader}>
-            <span className={styles.stepNumber}>2</span>
+            <span className={styles.stepNumber}>3</span>
             <div>
               <p className={styles.eyebrow}>Choose route</p>
               <h3>What kind of study?</h3>
@@ -248,7 +327,7 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
 
         <section className={styles.stepPanel}>
           <div className={styles.stepHeader}>
-            <span className={styles.stepNumber}>3</span>
+            <span className={styles.stepNumber}>4</span>
             <div>
               <p className={styles.eyebrow}>Review activities</p>
               <h3>What will students complete?</h3>
@@ -277,7 +356,7 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
 
         <section className={styles.stepPanel}>
           <div className={styles.stepHeader}>
-            <span className={styles.stepNumber}>4</span>
+            <span className={styles.stepNumber}>5</span>
             <div>
               <p className={styles.eyebrow}>Set and save</p>
               <h3>Confirm the assignment</h3>
@@ -315,6 +394,10 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
               <p className={styles.eyebrow}>Teacher check</p>
               <h3>Ready to set</h3>
 
+              <div className={styles.summaryLine}>
+                <span>Topic</span>
+                <strong>{selectedTopic.title}</strong>
+              </div>
               <div className={styles.summaryLine}>
                 <span>Class</span>
                 <strong>{selectedClass.className}</strong>
