@@ -14,6 +14,15 @@ const activityLabels: Record<string, string> = {
   confidence_exit_ticket: 'Confidence check',
 };
 
+const filterLabels: Record<string, string> = {
+  all: 'All students',
+  missing: 'Missing work',
+  quiz: 'Quiz support',
+  flashcards: 'Flashcards revisit',
+  peel: 'PEEL development',
+  confidence: 'Low confidence',
+};
+
 type ResponseJson = {
   maxScore?: number;
   percentage?: number;
@@ -77,6 +86,11 @@ type Membership = {
   class_id: string;
 };
 
+type SearchParams = {
+  classId?: string;
+  filter?: string;
+};
+
 function orderActivityTypes(activityTypes: string[]) {
   return [...activityTypes].sort((first, second) => {
     const firstIndex = PATHWAY_ACTIVITY_ORDER.indexOf(first);
@@ -101,6 +115,13 @@ function formatMode(mode: string) {
 
 function unique(values: string[]) {
   return [...new Set(values.filter(Boolean))];
+}
+
+function buildProgressUrl(classId: string, filter = 'all') {
+  const params = new URLSearchParams();
+  params.set('classId', classId);
+  if (filter !== 'all') params.set('filter', filter);
+  return `/teacher/progress?${params.toString()}`;
 }
 
 function isComplete(activityType: string, response: StudentResponseRow | undefined) {
@@ -183,10 +204,15 @@ function buildStudentSummary(student: StudentProfile, requiredTypes: string[], a
   };
 
   const evidenceTypes = requiredTypes.filter((type) => type !== 'lesson_content');
+  const quizResponse = responseFor('quiz');
+  const flashcardsResponse = responseFor('flashcards');
+  const peelResponse = responseFor('peel_response');
+  const confidenceResponse = responseFor('confidence_exit_ticket');
   const completeCount = evidenceTypes.filter((type) => isComplete(type, responseFor(type))).length;
   const progress = evidenceTypes.length ? Math.round((completeCount / evidenceTypes.length) * 100) : 0;
   const risks = evidenceTypes.map((type) => getRiskFlag(responseFor(type), type));
   const priorityRisk = risks.find((risk) => ['Intervention', 'Needs development', 'Low confidence', 'Revisit needed', 'Missing evidence', 'Incomplete'].includes(risk)) ?? 'On track';
+  const confidenceValue = confidenceResponse?.response_json?.confidence ?? confidenceResponse?.score ?? null;
 
   return {
     id: student.id,
@@ -194,19 +220,36 @@ function buildStudentSummary(student: StudentProfile, requiredTypes: string[], a
     progress,
     completed: completeCount,
     required: evidenceTypes.length,
-    quiz: evidenceText('quiz', responseFor('quiz')),
-    flashcards: evidenceText('flashcards', responseFor('flashcards')),
-    peel: evidenceText('peel_response', responseFor('peel_response')),
-    confidence: evidenceText('confidence_exit_ticket', responseFor('confidence_exit_ticket')),
+    quiz: evidenceText('quiz', quizResponse),
+    flashcards: evidenceText('flashcards', flashcardsResponse),
+    peel: evidenceText('peel_response', peelResponse),
+    confidence: evidenceText('confidence_exit_ticket', confidenceResponse),
     flag: priorityRisk,
     action: nextAction(priorityRisk),
+    hasMissing: evidenceTypes.some((type) => !responseFor(type)),
+    quizSupport: !quizResponse || ((quizResponse.response_json?.percentage ?? 100) < 80),
+    flashcardsSupport: !flashcardsResponse || ((flashcardsResponse.response_json?.revisitCount ?? 0) > 0) || ((flashcardsResponse.response_json?.ratedCount ?? 0) < (flashcardsResponse.response_json?.totalCards ?? 0)),
+    peelSupport: !peelResponse || ((peelResponse.response_json?.wordCount ?? 0) < 40),
+    confidenceSupport: !confidenceResponse || (typeof confidenceValue === 'number' && confidenceValue <= 3),
   };
+}
+
+function filterSummaries<T extends ReturnType<typeof buildStudentSummary>>(summaries: T[], filter: string) {
+  if (filter === 'missing') return summaries.filter((student) => student.hasMissing);
+  if (filter === 'quiz') return summaries.filter((student) => student.quizSupport);
+  if (filter === 'flashcards') return summaries.filter((student) => student.flashcardsSupport);
+  if (filter === 'peel') return summaries.filter((student) => student.peelSupport);
+  if (filter === 'confidence') return summaries.filter((student) => student.confidenceSupport);
+  return summaries;
 }
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export default async function TeacherProgressPage() {
+export default async function TeacherProgressPage({ searchParams }: { searchParams?: Promise<SearchParams> | SearchParams }) {
+  const params = searchParams ? await searchParams : {};
+  const selectedFilter = filterLabels[params.filter ?? ''] ? params.filter as string : 'all';
+
   if (!supabase) {
     return (
       <main className={styles.shell}>
@@ -231,7 +274,8 @@ export default async function TeacherProgressPage() {
     .order('class_name', { ascending: true });
 
   const classes = ((classData ?? []) as TeacherClass[]);
-  const activeClass = classes[0] ?? { id: DEMO_CLASS_ID, class_name: 'Year 12 Russia demo class', year_group: 'Y12' };
+  const selectedClass = classes.find((classItem) => classItem.id === params.classId);
+  const activeClass = selectedClass ?? classes[0] ?? { id: DEMO_CLASS_ID, class_name: 'Year 12 Russia demo class', year_group: 'Y12' };
 
   const { data: assignmentData, error: assignmentError } = await supabase
     .from('guided_study_assignments')
@@ -256,7 +300,8 @@ export default async function TeacherProgressPage() {
   const membershipStudentIds = memberships.map((membership) => membership.student_id);
   const assignmentStudentIds = activeAssignment?.assigned_student_ids ?? [];
   const legacyAssignmentStudentId = activeAssignment?.assigned_student_id ? [activeAssignment.assigned_student_id] : [];
-  const studentIds = unique([...assignmentStudentIds, ...legacyAssignmentStudentId, ...membershipStudentIds, DEMO_STUDENT_ID]);
+  const fallbackStudentIds = activeClass.id === DEMO_CLASS_ID ? [DEMO_STUDENT_ID] : [];
+  const studentIds = unique([...assignmentStudentIds, ...legacyAssignmentStudentId, ...membershipStudentIds, ...fallbackStudentIds]);
 
   const { data: profileData, error: profileError } = studentIds.length
     ? await supabase
@@ -298,6 +343,7 @@ export default async function TeacherProgressPage() {
 
   const responses = (responseData ?? []) as StudentResponseRow[];
   const summaries = students.map((student) => buildStudentSummary(student, requiredTypes, activities, responses));
+  const filteredSummaries = filterSummaries(summaries, selectedFilter);
   const averageProgress = summaries.length ? Math.round(summaries.reduce((total, student) => total + student.progress, 0) / summaries.length) : 0;
   const flaggedStudents = summaries.filter((student) => student.flag !== 'On track');
   const completedStudents = summaries.filter((student) => student.progress === 100).length;
@@ -305,6 +351,14 @@ export default async function TeacherProgressPage() {
     .map((student) => Number((student.quiz.match(/· (\d+)%/) ?? [])[1]))
     .filter((value) => Number.isFinite(value));
   const quizAverage = averageQuiz.length ? Math.round(averageQuiz.reduce((total, value) => total + value, 0) / averageQuiz.length) : null;
+  const filterCounts = {
+    all: summaries.length,
+    missing: summaries.filter((student) => student.hasMissing).length,
+    quiz: summaries.filter((student) => student.quizSupport).length,
+    flashcards: summaries.filter((student) => student.flashcardsSupport).length,
+    peel: summaries.filter((student) => student.peelSupport).length,
+    confidence: summaries.filter((student) => student.confidenceSupport).length,
+  };
   const decision = flaggedStudents.length ? `${flaggedStudents[0].name} needs attention` : 'No urgent action';
   const decisionDetail = flaggedStudents.length ? flaggedStudents[0].action : 'The class is currently on track for the required route.';
 
@@ -335,6 +389,40 @@ export default async function TeacherProgressPage() {
             <span>{decisionDetail}</span>
           </aside>
         </header>
+
+        <section className={styles.controls}>
+          <div>
+            <p className={styles.eyebrow}>Class view</p>
+            <div className={styles.classSwitch}>
+              {classes.length === 0 ? (
+                <span className={`${styles.switchPill} ${styles.activeSwitch}`}>{activeClass.class_name}</span>
+              ) : classes.map((classItem) => (
+                <Link
+                  className={`${styles.switchPill} ${classItem.id === activeClass.id ? styles.activeSwitch : ''}`}
+                  href={buildProgressUrl(classItem.id, selectedFilter)}
+                  key={classItem.id}
+                >
+                  <strong>{classItem.class_name}</strong>
+                  <small>{classItem.year_group}</small>
+                </Link>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className={styles.eyebrow}>Quick filters</p>
+            <div className={styles.filterStrip}>
+              {Object.entries(filterLabels).map(([filterKey, filterLabel]) => (
+                <Link
+                  className={`${styles.filterPill} ${selectedFilter === filterKey ? styles.activeFilter : ''}`}
+                  href={buildProgressUrl(activeClass.id, filterKey)}
+                  key={filterKey}
+                >
+                  {filterLabel} <span>{filterCounts[filterKey as keyof typeof filterCounts] ?? 0}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
 
         <section className={styles.snapshot}>
           <article className={styles.metric}>
@@ -393,20 +481,20 @@ export default async function TeacherProgressPage() {
           <div className={styles.sectionHeader}>
             <div>
               <p className={styles.eyebrow}>Class overview</p>
-              <h2>{activeClass.class_name}</h2>
+              <h2>{filterLabels[selectedFilter]} · {activeClass.class_name}</h2>
             </div>
-            <span className={styles.badge}>{students.length} students</span>
+            <span className={styles.badge}>{filteredSummaries.length}/{summaries.length} shown</span>
           </div>
 
           <article className={styles.studentCard}>
-            {summaries.length === 0 ? (
+            {filteredSummaries.length === 0 ? (
               <div className={styles.empty}>
-                <h3>No students found</h3>
-                <p>Run supabase/multi-class-platform.sql to add demo classes and memberships.</p>
+                <h3>No students match this filter</h3>
+                <p>Switch back to All students or choose another support filter.</p>
               </div>
             ) : (
               <div className={styles.priorityList}>
-                {summaries.map((student) => (
+                {filteredSummaries.map((student) => (
                   <article className={styles.priorityItem} key={student.id}>
                     <div>
                       <strong>{student.name}</strong>
