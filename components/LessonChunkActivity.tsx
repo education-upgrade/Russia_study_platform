@@ -4,10 +4,24 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import styles from './LessonChunkActivity.module.css';
 
+type LessonMedia = {
+  type: 'video' | 'image' | 'source' | 'audio';
+  title?: string;
+  url?: string;
+  embedUrl?: string;
+  alt?: string;
+  caption?: string;
+  sourceText?: string;
+  credit?: string;
+};
+
 type LessonSection = {
   heading: string;
   body: string;
   question?: string;
+  taskType?: 'recall' | 'explain' | 'source_inference' | 'judgement';
+  teacherNote?: string;
+  media?: LessonMedia;
 };
 
 type LessonChunkActivityProps = {
@@ -39,6 +53,98 @@ function countCompletedAnswers(answers: Record<number, string>) {
   return Object.values(answers).filter((answer) => answer.trim().length >= 8).length;
 }
 
+function getYouTubeEmbedUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname.includes('youtu.be')) {
+      const id = parsed.pathname.replace('/', '');
+      return id ? `https://www.youtube-nocookie.com/embed/${id}` : url;
+    }
+    if (parsed.hostname.includes('youtube.com')) {
+      const id = parsed.searchParams.get('v') ?? parsed.pathname.split('/').pop();
+      return id ? `https://www.youtube-nocookie.com/embed/${id}` : url;
+    }
+    return url;
+  } catch {
+    return url;
+  }
+}
+
+function taskTypeLabel(taskType?: LessonSection['taskType']) {
+  if (taskType === 'source_inference') return 'Source check';
+  if (taskType === 'judgement') return 'Judgement check';
+  if (taskType === 'explain') return 'Explain check';
+  return 'Quick check';
+}
+
+function MediaBlock({ media }: { media?: LessonMedia }) {
+  if (!media) return null;
+
+  const title = media.title ?? 'Study resource';
+
+  if (media.type === 'video') {
+    const embedUrl = media.embedUrl ?? (media.url ? getYouTubeEmbedUrl(media.url) : '');
+    return (
+      <aside className={styles.mediaCard}>
+        <div className={styles.mediaHeader}>
+          <span>Video</span>
+          <strong>{title}</strong>
+        </div>
+        {embedUrl ? (
+          <div className={styles.videoFrame}>
+            <iframe
+              src={embedUrl}
+              title={title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          </div>
+        ) : (
+          <div className={styles.mediaPlaceholder}>Video link not added yet.</div>
+        )}
+        {media.caption && <p className={styles.mediaCaption}>{media.caption}</p>}
+      </aside>
+    );
+  }
+
+  if (media.type === 'image') {
+    return (
+      <aside className={styles.mediaCard}>
+        <div className={styles.mediaHeader}>
+          <span>Image</span>
+          <strong>{title}</strong>
+        </div>
+        {media.url ? <img className={styles.mediaImage} src={media.url} alt={media.alt ?? title} /> : <div className={styles.mediaPlaceholder}>Image link not added yet.</div>}
+        {media.caption && <p className={styles.mediaCaption}>{media.caption}</p>}
+      </aside>
+    );
+  }
+
+  if (media.type === 'audio') {
+    return (
+      <aside className={styles.mediaCard}>
+        <div className={styles.mediaHeader}>
+          <span>Audio</span>
+          <strong>{title}</strong>
+        </div>
+        {media.url ? <audio className={styles.audioPlayer} controls src={media.url} /> : <div className={styles.mediaPlaceholder}>Audio link not added yet.</div>}
+        {media.caption && <p className={styles.mediaCaption}>{media.caption}</p>}
+      </aside>
+    );
+  }
+
+  return (
+    <aside className={styles.mediaCard}>
+      <div className={styles.mediaHeader}>
+        <span>Source</span>
+        <strong>{title}</strong>
+      </div>
+      <blockquote className={styles.sourceBox}>{media.sourceText ?? 'Source text not added yet.'}</blockquote>
+      {(media.caption || media.credit) && <p className={styles.mediaCaption}>{media.caption}{media.credit ? ` ${media.credit}` : ''}</p>}
+    </aside>
+  );
+}
+
 export default function LessonChunkActivity({ activityId, title, enquiry, sections, estimatedMinutes, skillFocus, difficulty }: LessonChunkActivityProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
@@ -54,6 +160,7 @@ export default function LessonChunkActivity({ activityId, title, enquiry, sectio
   const answeredPercentage = sections.length ? Math.round((completedCount / sections.length) * 100) : 0;
 
   const sectionQuestion = useMemo(() => buildQuestion(currentSection), [currentSection]);
+  const currentTaskType = taskTypeLabel(currentSection?.taskType);
 
   async function saveLesson(nextAnswers: Record<number, string>, nextIndex: number, finished: boolean) {
     setSaveStatus('saving');
@@ -69,6 +176,7 @@ export default function LessonChunkActivity({ activityId, title, enquiry, sectio
           currentSection: nextIndex,
           totalSections: sections.length,
           finished,
+          sectionHeadings: sections.map((section) => section.heading),
         }),
       });
 
@@ -164,18 +272,19 @@ export default function LessonChunkActivity({ activityId, title, enquiry, sectio
         </div>
       </div>
 
-      <article className={styles.sectionPanel}>
+      <article className={`${styles.sectionPanel} ${currentSection.media ? styles.hasMedia : ''}`}>
         <div className={styles.sectionNumber}>{currentIndex + 1}</div>
         <div className={styles.sectionText}>
           <p className={styles.eyebrow}>Explanation</p>
           <h3>{currentSection.heading}</h3>
           <p>{currentSection.body}</p>
         </div>
+        <MediaBlock media={currentSection.media} />
       </article>
 
       <section className={styles.checkPanel}>
         <div>
-          <p className={styles.eyebrow}>Quick check</p>
+          <p className={styles.eyebrow}>{currentTaskType}</p>
           <h4>{sectionQuestion}</h4>
         </div>
         <textarea
