@@ -56,7 +56,7 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
 
   async function saveFlashcards(nextRatings: Record<string, FlashcardRating>, nextRevealedCardIds: string[]) {
     setSaveStatus('saving');
-    setSaveMessage('Saving progress...');
+    setSaveMessage('');
 
     try {
       const response = await fetch('/api/student-responses/flashcards', {
@@ -77,7 +77,7 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
       }
 
       setSaveStatus('saved');
-      setSaveMessage(`Saved automatically at ${new Date(result.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
+      setSaveMessage('Saved');
     } catch (error) {
       setSaveStatus('error');
       setSaveMessage(error instanceof Error ? error.message : 'Could not save automatically.');
@@ -167,12 +167,12 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
         <button type="button" className="button secondary" onClick={goToPreviousCard} disabled={currentIndex === 0}>
           Previous
         </button>
-        <span className={styles.autoSaveHint}>
-          {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'error' ? 'Autosave failed' : isDeckComplete ? 'Deck saved' : 'Autosaves after each rating'}
+        <span className={`${styles.savePill} ${styles[saveStatus]}`} aria-live="polite">
+          {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'error' ? 'Save failed' : saveStatus === 'saved' ? 'Saved' : ''}
         </span>
       </section>
 
-      {saveMessage && <p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage}</p>}
+      {saveStatus === 'error' && saveMessage && <p className={`${styles.saveMessage} ${styles.error}`}>{saveMessage}</p>}
 
       {isDeckComplete && (
         <section className={`${styles.summary} ${revisitCards.length > 0 ? styles.summaryRevisit : styles.summarySecure}`}>
