@@ -13,7 +13,7 @@ const DEMO_CLASSES = [
 ];
 
 const activityLabels: Record<string, string> = {
-  lesson_content: 'Lesson notes',
+  lesson_content: 'Lesson checks',
   quiz: 'Retrieval quiz',
   flashcards: 'Flashcards',
   peel_response: 'PEEL response',
@@ -46,6 +46,10 @@ type ResponseJson = {
   revisitCount?: number;
   completionPercentage?: number;
   securePercentage?: number;
+  answers?: Record<string, string>;
+  sectionHeadings?: string[];
+  totalSections?: number;
+  completedAnswers?: number;
 };
 
 type StudentResponseRow = { student_id: string; activity_id: string; status: string; score: number | null; response_type: string; response_json: ResponseJson | null; };
@@ -56,6 +60,7 @@ type TeacherClass = { id: string; class_name: string; year_group: string; };
 type Membership = { student_id: string; class_id: string; };
 type SearchParams = { classId?: string; filter?: string; };
 type Feedback = { intro: string; strengths: string[]; targets: string[]; nextSteps: string[]; copyText: string; };
+type LessonCheck = { heading: string; answer: string; answered: boolean; };
 
 function mergeClasses(classData: TeacherClass[]) {
   const classMap = new Map<string, TeacherClass>();
@@ -81,8 +86,12 @@ function unique(values: string[]) { return [...new Set(values.filter(Boolean))];
 function buildProgressUrl(classId: string, filter = 'all') { const params = new URLSearchParams(); params.set('classId', classId); if (filter !== 'all') params.set('filter', filter); return `/teacher/progress?${params.toString()}`; }
 
 function isComplete(activityType: string, response: StudentResponseRow | undefined) {
-  if (activityType === 'lesson_content') return true;
   if (!response) return false;
+  if (activityType === 'lesson_content') {
+    const totalSections = response.response_json?.totalSections ?? 0;
+    const completedAnswers = response.response_json?.completedAnswers ?? response.score ?? 0;
+    return response.status === 'complete' || (totalSections > 0 && completedAnswers >= totalSections);
+  }
   if (activityType === 'flashcards') {
     const ratedCount = response.response_json?.ratedCount ?? 0;
     const totalCards = response.response_json?.totalCards ?? Number.POSITIVE_INFINITY;
@@ -92,7 +101,14 @@ function isComplete(activityType: string, response: StudentResponseRow | undefin
 }
 
 function getRiskFlag(response: StudentResponseRow | undefined, activityType: string) {
-  if (!response) return activityType === 'lesson_content' ? 'Support activity' : 'Missing evidence';
+  if (!response) return 'Missing evidence';
+  if (activityType === 'lesson_content') {
+    const totalSections = response.response_json?.totalSections ?? 0;
+    const completedAnswers = response.response_json?.completedAnswers ?? response.score ?? 0;
+    if (totalSections > 0 && completedAnswers >= totalSections) return 'Complete';
+    if (completedAnswers > 0) return 'Lesson incomplete';
+    return 'Missing evidence';
+  }
   if (activityType === 'peel_response') {
     const wordCount = response.response_json?.wordCount ?? 0;
     if (wordCount < 40) return 'Needs development';
@@ -125,11 +141,30 @@ function getRiskFlag(response: StudentResponseRow | undefined, activityType: str
 }
 
 function getRiskClass(risk: string) {
-  if (risk === 'Secure' || risk === 'Confident' || risk === 'On track') return styles.secure;
+  if (risk === 'Secure' || risk === 'Confident' || risk === 'On track' || risk === 'Complete') return styles.secure;
   if (['Intervention', 'Needs development', 'Low confidence', 'Revisit needed', 'Missing evidence'].includes(risk)) return styles.intervention;
-  if (['Check understanding', 'Check confidence', 'Incomplete', 'Check PEEL depth', 'Consolidate'].includes(risk)) return styles.check;
+  if (['Check understanding', 'Check confidence', 'Incomplete', 'Lesson incomplete', 'Check PEEL depth', 'Consolidate'].includes(risk)) return styles.check;
   if (risk === 'Submitted') return styles.submitted;
   return styles.neutral;
+}
+
+function lessonEvidence(response: StudentResponseRow | undefined) {
+  const json = response?.response_json;
+  const total = json?.totalSections ?? 0;
+  const completed = json?.completedAnswers ?? response?.score ?? 0;
+  const headings = json?.sectionHeadings ?? [];
+  const answers = json?.answers ?? {};
+  const checks: LessonCheck[] = Array.from({ length: Math.max(total, headings.length, Object.keys(answers).length) }).map((_, index) => {
+    const answer = String(answers[String(index)] ?? answers[index] ?? '').trim();
+    return { heading: headings[index] ?? `Section ${index + 1}`, answer, answered: answer.length >= 8 };
+  });
+  return {
+    value: response ? `${completed}/${total || '?'}` : 'Missing',
+    detail: response ? `${completed} comprehension checks completed` : 'no lesson evidence yet',
+    completed,
+    total,
+    checks,
+  };
 }
 
 function quizEvidence(response: StudentResponseRow | undefined) {
@@ -160,6 +195,7 @@ function confidenceEvidence(response: StudentResponseRow | undefined) {
 }
 
 function evidenceText(activityType: string, response: StudentResponseRow | undefined) {
+  if (activityType === 'lesson_content') return lessonEvidence(response).value;
   if (activityType === 'quiz') { const q = quizEvidence(response); return `${q.value}${q.percentage !== null ? ` · ${q.percentage}%` : ''}`; }
   if (activityType === 'flashcards') { const f = flashcardEvidence(response); return f.total ? `${f.secure} secure · ${f.nearly} nearly · ${f.revisit} revisit` : 'Missing'; }
   if (activityType === 'peel_response') return peelEvidence(response).value;
@@ -169,6 +205,7 @@ function evidenceText(activityType: string, response: StudentResponseRow | undef
 
 function nextAction(flag: string) {
   if (flag === 'Missing evidence') return 'Complete the missing task.';
+  if (flag === 'Lesson incomplete') return 'Finish the remaining lesson comprehension checks.';
   if (flag === 'Needs development') return 'Review PEEL explanation and judgement.';
   if (flag === 'Check PEEL depth') return 'Check whether the explanation links back to authority.';
   if (flag === 'Low confidence') return 'Target the least secure area.';
@@ -179,10 +216,13 @@ function nextAction(flag: string) {
   return 'No urgent action.';
 }
 
-function buildStudentFeedback(student: { name: string; completed: number; required: number; quizPercentage: number | null; flashcardsSecure: number; flashcardsNearly: number; flashcardsRevisit: number; peelWords: number; confidence: string; confidenceArea: string; flag: string; action: string; }): Feedback {
+function buildStudentFeedback(student: { name: string; completed: number; required: number; lessonCompleted: number; lessonTotal: number; quizPercentage: number | null; flashcardsSecure: number; flashcardsNearly: number; flashcardsRevisit: number; peelWords: number; confidence: string; confidenceArea: string; flag: string; action: string; }): Feedback {
   const strengths: string[] = [];
   const targets: string[] = [];
   const nextSteps: string[] = [];
+
+  if (student.lessonTotal > 0 && student.lessonCompleted >= student.lessonTotal) strengths.push('You completed all lesson comprehension checks, which shows active engagement with the core explanation.');
+  else if (student.lessonCompleted > 0) targets.push('Return to the lesson and finish the remaining comprehension checks so your understanding is fully evidenced.');
 
   if ((student.quizPercentage ?? 0) >= 90) strengths.push(`Excellent retrieval score of ${student.quizPercentage}%, showing very secure factual knowledge.`);
   else if ((student.quizPercentage ?? 0) >= 75) strengths.push(`Good retrieval score of ${student.quizPercentage}%, showing mostly secure factual knowledge.`);
@@ -209,40 +249,29 @@ function buildStudentFeedback(student: { name: string; completed: number; requir
   if (!cleanNextSteps.length) cleanNextSteps.push('Keep revisiting the 1905 Revolution and aim to use precise evidence in your next written answer.');
 
   const intro = `${student.name}, you have completed ${student.completed}/${student.required} required activities on the 1905 Revolution pathway.`;
-  const copyText = [
-    intro,
-    '',
-    'Strengths:',
-    ...cleanStrengths.map((item) => `• ${item}`),
-    '',
-    'Targets:',
-    ...cleanTargets.map((item) => `• ${item}`),
-    '',
-    'Next step:',
-    ...cleanNextSteps.map((item) => `• ${item}`),
-  ].join('\n');
-
+  const copyText = [intro, '', 'Strengths:', ...cleanStrengths.map((item) => `• ${item}`), '', 'Targets:', ...cleanTargets.map((item) => `• ${item}`), '', 'Next step:', ...cleanNextSteps.map((item) => `• ${item}`)].join('\n');
   return { intro, strengths: cleanStrengths, targets: cleanTargets, nextSteps: cleanNextSteps, copyText };
 }
 
 function buildStudentSummary(student: StudentProfile, requiredTypes: string[], activities: ActivityRow[], responses: StudentResponseRow[]) {
   const studentResponses = responses.filter((response) => response.student_id === student.id);
   const responseFor = (activityType: string) => { const activity = activities.find((item) => item.activity_type === activityType); return activity ? studentResponses.find((response) => response.activity_id === activity.id) : undefined; };
-  const evidenceTypes = requiredTypes.filter((type) => type !== 'lesson_content');
-  const quizResponse = responseFor('quiz'); const flashcardsResponse = responseFor('flashcards'); const peelResponse = responseFor('peel_response'); const confidenceResponse = responseFor('confidence_exit_ticket');
+  const evidenceTypes = requiredTypes;
+  const lessonResponse = responseFor('lesson_content'); const quizResponse = responseFor('quiz'); const flashcardsResponse = responseFor('flashcards'); const peelResponse = responseFor('peel_response'); const confidenceResponse = responseFor('confidence_exit_ticket');
+  const lesson = lessonEvidence(lessonResponse); const quiz = quizEvidence(quizResponse); const flashcards = flashcardEvidence(flashcardsResponse); const peel = peelEvidence(peelResponse); const confidence = confidenceEvidence(confidenceResponse);
   const completeCount = evidenceTypes.filter((type) => isComplete(type, responseFor(type))).length;
   const progress = evidenceTypes.length ? Math.round((completeCount / evidenceTypes.length) * 100) : 0;
   const risks = evidenceTypes.map((type) => getRiskFlag(responseFor(type), type));
-  const priorityRisk = risks.find((risk) => ['Intervention', 'Needs development', 'Low confidence', 'Revisit needed', 'Missing evidence', 'Incomplete', 'Check PEEL depth', 'Check understanding', 'Check confidence', 'Consolidate'].includes(risk)) ?? 'On track';
+  const priorityRisk = risks.find((risk) => ['Intervention', 'Needs development', 'Low confidence', 'Revisit needed', 'Missing evidence', 'Lesson incomplete', 'Incomplete', 'Check PEEL depth', 'Check understanding', 'Check confidence', 'Consolidate'].includes(risk)) ?? 'On track';
   const confidenceValue = confidenceResponse?.response_json?.confidence ?? confidenceResponse?.score ?? null;
-  const quiz = quizEvidence(quizResponse); const flashcards = flashcardEvidence(flashcardsResponse); const peel = peelEvidence(peelResponse); const confidence = confidenceEvidence(confidenceResponse);
   const diagnostics = [
+    { key: 'lesson', label: 'Lesson', value: lesson.value, detail: lesson.detail, flag: getRiskFlag(lessonResponse, 'lesson_content') },
     { key: 'quiz', label: 'Quiz', value: quiz.value, detail: quiz.detail, flag: getRiskFlag(quizResponse, 'quiz') },
     { key: 'flashcards', label: 'Flashcards', value: flashcards.value, detail: flashcards.detail, flag: getRiskFlag(flashcardsResponse, 'flashcards') },
     { key: 'peel', label: 'PEEL', value: peel.value, detail: peel.detail, flag: getRiskFlag(peelResponse, 'peel_response') },
     { key: 'confidence', label: 'Confidence', value: confidence.value, detail: confidence.detail, flag: getRiskFlag(confidenceResponse, 'confidence_exit_ticket') },
   ];
-  const baseSummary = { id: student.id, name: student.display_name, progress, completed: completeCount, required: evidenceTypes.length, quiz: evidenceText('quiz', quizResponse), quizPercentage: quiz.percentage, flashcards: evidenceText('flashcards', flashcardsResponse), flashcardsSecure: flashcards.secure, flashcardsNearly: flashcards.nearly, flashcardsRevisit: flashcards.revisit, peel: evidenceText('peel_response', peelResponse), peelWords: peel.words, confidence: evidenceText('confidence_exit_ticket', confidenceResponse), confidenceArea: confidence.area, diagnostics, flag: priorityRisk, action: nextAction(priorityRisk), hasMissing: evidenceTypes.some((type) => !responseFor(type)), quizSupport: !quizResponse || ((quizResponse.response_json?.percentage ?? 100) < 80), flashcardsSupport: !flashcardsResponse || ((flashcardsResponse.response_json?.revisitCount ?? 0) > 0) || ((flashcardsResponse.response_json?.nearlyCount ?? 0) >= 4) || ((flashcardsResponse.response_json?.ratedCount ?? 0) < (flashcardsResponse.response_json?.totalCards ?? 0)), peelSupport: !peelResponse || ((peelResponse.response_json?.wordCount ?? 0) < 80), confidenceSupport: !confidenceResponse || (typeof confidenceValue === 'number' && confidenceValue <= 3) };
+  const baseSummary = { id: student.id, name: student.display_name, progress, completed: completeCount, required: evidenceTypes.length, lessonChecks: lesson.checks, lessonCompleted: lesson.completed, lessonTotal: lesson.total, quiz: evidenceText('quiz', quizResponse), quizPercentage: quiz.percentage, flashcards: evidenceText('flashcards', flashcardsResponse), flashcardsSecure: flashcards.secure, flashcardsNearly: flashcards.nearly, flashcardsRevisit: flashcards.revisit, peel: evidenceText('peel_response', peelResponse), peelWords: peel.words, confidence: evidenceText('confidence_exit_ticket', confidenceResponse), confidenceArea: confidence.area, diagnostics, flag: priorityRisk, action: nextAction(priorityRisk), hasMissing: evidenceTypes.some((type) => !isComplete(type, responseFor(type))), quizSupport: !quizResponse || ((quizResponse.response_json?.percentage ?? 100) < 80), flashcardsSupport: !flashcardsResponse || ((flashcardsResponse.response_json?.revisitCount ?? 0) > 0) || ((flashcardsResponse.response_json?.nearlyCount ?? 0) >= 4) || ((flashcardsResponse.response_json?.ratedCount ?? 0) < (flashcardsResponse.response_json?.totalCards ?? 0)), peelSupport: !peelResponse || ((peelResponse.response_json?.wordCount ?? 0) < 80), confidenceSupport: !confidenceResponse || (typeof confidenceValue === 'number' && confidenceValue <= 3) };
   return { ...baseSummary, feedback: buildStudentFeedback(baseSummary) };
 }
 
@@ -280,8 +309,8 @@ export default async function TeacherProgressPage({ searchParams }: { searchPara
   const { data: profileData, error: profileError } = studentIds.length ? await supabase.from('app_profiles').select('id, display_name, year_group').in('id', studentIds) : { data: [], error: null };
   const profileRows = (profileData ?? []) as StudentProfile[];
   const students = studentIds.map((id, index) => profileRows.find((p) => p.id === id) ?? { id, display_name: id === DEMO_STUDENT_ID ? 'Demo Student' : `Student ${index + 1}`, year_group: activeClass.year_group });
-  const { data: lesson } = await supabase.from('lessons').select('id, title').eq('title', 'Was the 1905 Revolution a turning point for Tsarist Russia?').single();
-  const { data: activityData } = lesson?.id ? await supabase.from('activities').select('id, activity_type, title').eq('lesson_id', lesson.id) : { data: [] };
+  const { data: lessonRow } = await supabase.from('lessons').select('id, title').eq('title', 'Was the 1905 Revolution a turning point for Tsarist Russia?').single();
+  const { data: activityData } = lessonRow?.id ? await supabase.from('activities').select('id, activity_type, title').eq('lesson_id', lessonRow.id) : { data: [] };
   const activities = (activityData ?? []) as ActivityRow[];
   const activityIds = activities.map((a) => a.id);
   const { data: responseData, error: responseError } = activityIds.length && studentIds.length ? await supabase.from('student_responses').select('student_id, activity_id, status, score, response_type, response_json').in('student_id', studentIds).in('activity_id', activityIds) : { data: [], error: null };
@@ -308,7 +337,7 @@ export default async function TeacherProgressPage({ searchParams }: { searchPara
       <section className={styles.controls}><div><p className={styles.eyebrow}>Class view</p><div className={styles.classSwitch}>{classes.map((c) => <Link className={`${styles.switchPill} ${c.id === activeClass.id ? styles.activeSwitch : ''}`} href={buildProgressUrl(c.id, selectedFilter)} key={c.id}><strong>{c.class_name}</strong><small>{c.year_group}</small></Link>)}</div></div><div><p className={styles.eyebrow}>Quick filters</p><div className={styles.filterStrip}>{Object.entries(filterLabels).map(([key, label]) => <Link className={`${styles.filterPill} ${selectedFilter === key ? styles.activeFilter : ''}`} href={buildProgressUrl(activeClass.id, key)} key={key}>{label} <span>{filterCounts[key as keyof typeof filterCounts] ?? 0}</span></Link>)}</div></div></section>
       <section className={styles.snapshot}><article className={styles.metric}><span>Class</span><strong>{students.length}</strong><small>{activeClass.year_group} students</small></article><article className={styles.metric}><span>Complete</span><strong>{completedStudents}/{students.length || 0}</strong><small>students at 100%</small></article><article className={styles.metric}><span>Quiz avg</span><strong>{quizAverage ?? '-'}</strong><small>{quizAverage === null ? 'no quiz data' : 'average %'}</small></article><article className={styles.metric}><span>Confidence</span><strong>{confidenceAverage ?? '-'}</strong><small>{confidenceAverage === null ? 'no exit data' : 'average /5'}</small></article><article className={styles.metric}><span>Progress</span><strong>{averageProgress}%</strong><small>{activeAssignment ? formatMode(activeAssignment.mode) : 'default route'}</small></article><article className={styles.metric}><span>Revisit</span><strong>{totalRevisit}</strong><small>flashcards marked revisit</small></article></section>
       <section className={styles.priority}><div className={styles.sectionHeader}><div><p className={styles.eyebrow}>Priority students</p><h2>Who needs attention?</h2></div><span className={styles.badge}>{activeAssignment ? formatDate(activeAssignment.deadline_at) : 'No active deadline'}</span></div>{flaggedStudents.length === 0 ? <div className={styles.empty}><h3>No urgent action</h3><p>No students currently have high-priority intervention flags on this route.</p></div> : <div className={styles.priorityList}>{flaggedStudents.slice(0, 5).map((student) => <article className={styles.priorityItem} key={student.id}><div><strong>{student.name}</strong><small>{student.completed}/{student.required} complete</small></div><p>{student.action}</p><span className={`${styles.statusPill} ${getRiskClass(student.flag)}`}>{student.flag}</span></article>)}</div>}</section>
-      <section className={styles.studentEvidence}><div className={styles.sectionHeader}><div><p className={styles.eyebrow}>Class overview</p><h2>{filterLabels[selectedFilter]} · {activeClass.class_name}</h2></div><span className={styles.badge}>{filteredSummaries.length}/{summaries.length} shown</span></div><div className={styles.studentList}>{filteredSummaries.length === 0 ? <div className={styles.empty}><h3>No students match this filter</h3><p>Switch back to All students or choose another support filter.</p></div> : filteredSummaries.map((student) => <article className={styles.studentCard} key={student.id}><div className={styles.studentTop}><div><h3>{student.name}</h3><p>{student.progress}% complete · {student.completed}/{student.required} required activities</p></div><span className={`${styles.statusPill} ${getRiskClass(student.flag)}`}>{student.flag}</span></div><div className={styles.diagnosticGrid}>{student.diagnostics.map((item) => <div className={`${styles.diagnosticBox} ${getRiskClass(item.flag)}`} key={item.key}><span>{item.label}</span><strong>{item.value}</strong><small>{item.detail}</small></div>)}</div><div className={styles.actionStrip}><strong>Suggested action</strong><span>{student.action}</span></div><div className={styles.commentBox}><div className={styles.commentHeader}><div><span className={styles.commentEyebrow}>Student-facing feedback</span><strong>Strengths and targets</strong></div><CopyCommentButton text={student.feedback.copyText} className={styles.copyButton} /></div><p className={styles.feedbackIntro}>{student.feedback.intro}</p><div className={styles.feedbackGrid}><section className={styles.feedbackSection}><h4>Strengths</h4><ul>{student.feedback.strengths.map((item) => <li key={item}>{item}</li>)}</ul></section><section className={styles.feedbackSection}><h4>Targets</h4><ul>{student.feedback.targets.map((item) => <li key={item}>{item}</li>)}</ul></section><section className={styles.feedbackSection}><h4>Next step</h4><ul>{student.feedback.nextSteps.map((item) => <li key={item}>{item}</li>)}</ul></section></div></div></article>)}</div><details className={styles.details}><summary>Open assignment detail</summary><div className={styles.detailGrid}><article className={styles.detailPanel}><h4>Current assignment</h4><p><strong>Class:</strong> {activeClass.class_name}</p><p><strong>Mode:</strong> {activeAssignment ? formatMode(activeAssignment.mode) : 'Default route'}</p><p><strong>Deadline:</strong> {activeAssignment ? formatDate(activeAssignment.deadline_at) : 'No active deadline'}</p><p><strong>Responses found:</strong> {responses.length}</p><p><strong>Classes shown:</strong> {classes.length}</p></article><article className={styles.detailPanel}><h4>Required route</h4>{requiredTypes.map((type, index) => <p key={type}><strong>{index + 1}. {activityLabels[type] ?? type}:</strong> required</p>)}</article></div></details></section>
+      <section className={styles.studentEvidence}><div className={styles.sectionHeader}><div><p className={styles.eyebrow}>Class overview</p><h2>{filterLabels[selectedFilter]} · {activeClass.class_name}</h2></div><span className={styles.badge}>{filteredSummaries.length}/{summaries.length} shown</span></div><div className={styles.studentList}>{filteredSummaries.length === 0 ? <div className={styles.empty}><h3>No students match this filter</h3><p>Switch back to All students or choose another support filter.</p></div> : filteredSummaries.map((student) => <article className={styles.studentCard} key={student.id}><div className={styles.studentTop}><div><h3>{student.name}</h3><p>{student.progress}% complete · {student.completed}/{student.required} required activities</p></div><span className={`${styles.statusPill} ${getRiskClass(student.flag)}`}>{student.flag}</span></div><div className={styles.diagnosticGrid}>{student.diagnostics.map((item) => <div className={`${styles.diagnosticBox} ${getRiskClass(item.flag)}`} key={item.key}><span>{item.label}</span><strong>{item.value}</strong><small>{item.detail}</small></div>)}</div><div className={styles.actionStrip}><strong>Suggested action</strong><span>{student.action}</span></div><details className={styles.lessonChecks}><summary>View lesson comprehension answers</summary>{student.lessonChecks.length === 0 ? <p className={styles.lessonEmpty}>No lesson answers saved yet.</p> : <div className={styles.lessonCheckList}>{student.lessonChecks.map((check, index) => <article className={styles.lessonCheckItem} key={`${check.heading}-${index}`}><div><strong>{index + 1}. {check.heading}</strong><span className={`${styles.statusPill} ${check.answered ? styles.secure : styles.intervention}`}>{check.answered ? 'Answered' : 'Missing'}</span></div><p>{check.answer || 'No answer saved yet.'}</p></article>)}</div>}</details><div className={styles.commentBox}><div className={styles.commentHeader}><div><span className={styles.commentEyebrow}>Student-facing feedback</span><strong>Strengths and targets</strong></div><CopyCommentButton text={student.feedback.copyText} className={styles.copyButton} /></div><p className={styles.feedbackIntro}>{student.feedback.intro}</p><div className={styles.feedbackGrid}><section className={styles.feedbackSection}><h4>Strengths</h4><ul>{student.feedback.strengths.map((item) => <li key={item}>{item}</li>)}</ul></section><section className={styles.feedbackSection}><h4>Targets</h4><ul>{student.feedback.targets.map((item) => <li key={item}>{item}</li>)}</ul></section><section className={styles.feedbackSection}><h4>Next step</h4><ul>{student.feedback.nextSteps.map((item) => <li key={item}>{item}</li>)}</ul></section></div></div></article>)}</div><details className={styles.details}><summary>Open assignment detail</summary><div className={styles.detailGrid}><article className={styles.detailPanel}><h4>Current assignment</h4><p><strong>Class:</strong> {activeClass.class_name}</p><p><strong>Mode:</strong> {activeAssignment ? formatMode(activeAssignment.mode) : 'Default route'}</p><p><strong>Deadline:</strong> {activeAssignment ? formatDate(activeAssignment.deadline_at) : 'No active deadline'}</p><p><strong>Responses found:</strong> {responses.length}</p><p><strong>Classes shown:</strong> {classes.length}</p></article><article className={styles.detailPanel}><h4>Required route</h4>{requiredTypes.map((type, index) => <p key={type}><strong>{index + 1}. {activityLabels[type] ?? type}:</strong> required</p>)}</article></div></details></section>
     </section>
   </main>;
 }
