@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import styles from './GuidedStudyAssignmentForm.module.css';
 
 type StudyMode = 'full_guided_study' | 'exam_practice' | 'recap' | 'confidence_repair';
@@ -25,28 +25,38 @@ const fallbackClasses: ClassOption[] = [
     yearGroup: 'Y12',
     studentCount: 1,
   },
+  {
+    id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+    className: 'Year 13 Russia demo class',
+    yearGroup: 'Y13',
+    studentCount: 0,
+  },
 ];
 
-const modeOptions: { value: StudyMode; title: string; description: string }[] = [
+const modeOptions: { value: StudyMode; title: string; description: string; bestFor: string }[] = [
   {
     value: 'full_guided_study',
     title: 'Full study',
-    description: 'All pathway activities in order.',
+    description: 'Lesson notes, quiz, flashcards, PEEL and final confidence check.',
+    bestFor: 'Best for a complete independent study homework.',
   },
   {
     value: 'exam_practice',
     title: 'Exam practice',
     description: 'Retrieval, flashcards, PEEL and reflection.',
+    bestFor: 'Best when students need written evidence and exam skill.',
   },
   {
     value: 'recap',
     title: 'Recap',
     description: 'Notes, retrieval, flashcards and reflection.',
+    bestFor: 'Best when knowledge is insecure or recently taught.',
   },
   {
     value: 'confidence_repair',
     title: 'Confidence repair',
     description: 'Full pathway with reflection emphasis.',
+    bestFor: 'Best after assessment or low-confidence exit tickets.',
   },
 ];
 
@@ -84,6 +94,10 @@ function getSelectedModeTitle(mode: StudyMode) {
   return modeOptions.find((option) => option.value === mode)?.title ?? 'Guided study';
 }
 
+function getActivityLabel(activityType: string) {
+  return activityOptions.find((activity) => activity.value === activityType)?.label ?? activityType;
+}
+
 export default function GuidedStudyAssignmentForm({ classOptions = fallbackClasses }: GuidedStudyAssignmentFormProps) {
   const usableClassOptions = classOptions.length ? classOptions : fallbackClasses;
   const [classId, setClassId] = useState(usableClassOptions[0]?.id ?? fallbackClasses[0].id);
@@ -94,6 +108,21 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveMessage, setSaveMessage] = useState('');
   const selectedClass = usableClassOptions.find((option) => option.id === classId) ?? usableClassOptions[0];
+  const selectedMode = modeOptions.find((option) => option.value === mode) ?? modeOptions[0];
+  const deadlineLabel = useMemo(() => {
+    if (!deadlineAt) return 'No deadline set';
+    return new Date(deadlineAt).toLocaleString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }, [deadlineAt]);
+
+  function resetSaveState() {
+    setSaveStatus('idle');
+    setSaveMessage('');
+  }
 
   function updateMode(nextMode: StudyMode) {
     setMode(nextMode);
@@ -107,8 +136,7 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
       setSelectedActivities(defaultActivities);
     }
 
-    setSaveStatus('idle');
-    setSaveMessage('');
+    resetSaveState();
   }
 
   function toggleActivity(activityType: string) {
@@ -119,8 +147,7 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
 
       return orderSelectedActivities([...current, activityType]);
     });
-    setSaveStatus('idle');
-    setSaveMessage('');
+    resetSaveState();
   }
 
   async function createAssignment() {
@@ -158,123 +185,176 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
     <div className={styles.builder}>
       <section className={styles.card}>
         <header className={styles.header}>
-          <p className={styles.eyebrow}>Set guided study</p>
-          <h2>1905 Revolution</h2>
-          <p>Choose a class, select the route, set a deadline and send it. The student dashboard will show one clear next task.</p>
+          <div>
+            <p className={styles.eyebrow}>Set guided study</p>
+            <h2>1905 Revolution</h2>
+            <p>Move through four simple decisions. Students will only see the next task they need to complete.</p>
+          </div>
+          <aside className={styles.headerSummary}>
+            <span>Ready route</span>
+            <strong>{selectedClass.yearGroup} · {selectedActivities.length} activities</strong>
+          </aside>
         </header>
 
-        <div className={styles.modeStrip}>
-          {modeOptions.map((option) => (
-            <button
-              type="button"
-              className={`${styles.modeButton} ${mode === option.value ? styles.selected : ''}`}
-              key={option.value}
-              onClick={() => updateMode(option.value)}
-            >
-              <strong>{option.title}</strong>
-              <span>{option.description}</span>
-            </button>
-          ))}
-        </div>
+        <section className={styles.stepPanel}>
+          <div className={styles.stepHeader}>
+            <span className={styles.stepNumber}>1</span>
+            <div>
+              <p className={styles.eyebrow}>Choose class</p>
+              <h3>Who is this for?</h3>
+            </div>
+          </div>
+          <div className={styles.classGrid}>
+            {usableClassOptions.map((option) => (
+              <button
+                type="button"
+                className={`${styles.classButton} ${classId === option.id ? styles.selectedClass : ''}`}
+                key={option.id}
+                onClick={() => {
+                  setClassId(option.id);
+                  resetSaveState();
+                }}
+              >
+                <strong>{option.className}</strong>
+                <span>{option.yearGroup} · {option.studentCount} student{option.studentCount === 1 ? '' : 's'}</span>
+              </button>
+            ))}
+          </div>
+        </section>
 
-        <div className={styles.mainGrid}>
-          <section className={styles.panel}>
-            <p className={styles.eyebrow}>Required student route</p>
-            <h3>Activities</h3>
+        <section className={styles.stepPanel}>
+          <div className={styles.stepHeader}>
+            <span className={styles.stepNumber}>2</span>
+            <div>
+              <p className={styles.eyebrow}>Choose route</p>
+              <h3>What kind of study?</h3>
+            </div>
+          </div>
+          <div className={styles.modeStrip}>
+            {modeOptions.map((option) => (
+              <button
+                type="button"
+                className={`${styles.modeButton} ${mode === option.value ? styles.selected : ''}`}
+                key={option.value}
+                onClick={() => updateMode(option.value)}
+              >
+                <strong>{option.title}</strong>
+                <span>{option.description}</span>
+                <small>{option.bestFor}</small>
+              </button>
+            ))}
+          </div>
+        </section>
 
-            <label className={styles.field} style={{ marginTop: 0, marginBottom: 12 }}>
-              <span>Class</span>
-              <select value={classId} onChange={(event) => setClassId(event.target.value)}>
-                {usableClassOptions.map((option) => (
-                  <option value={option.id} key={option.id}>
-                    {option.className} · {option.yearGroup} · {option.studentCount} student{option.studentCount === 1 ? '' : 's'}
-                  </option>
-                ))}
-              </select>
-            </label>
+        <section className={styles.stepPanel}>
+          <div className={styles.stepHeader}>
+            <span className={styles.stepNumber}>3</span>
+            <div>
+              <p className={styles.eyebrow}>Review activities</p>
+              <h3>What will students complete?</h3>
+            </div>
+          </div>
+          <div className={styles.activityList}>
+            {activityOptions.map((activity) => {
+              const selectedIndex = selectedActivities.indexOf(activity.value);
+              return (
+                <label className={`${styles.activityChoice} ${selectedIndex !== -1 ? styles.selected : ''}`} key={activity.value}>
+                  <input
+                    type="checkbox"
+                    checked={selectedIndex !== -1}
+                    onChange={() => toggleActivity(activity.value)}
+                  />
+                  <span>
+                    <strong>{activity.label}</strong>
+                    <small>{activity.description}</small>
+                  </span>
+                  <span className={styles.orderBadge}>{selectedIndex === -1 ? '–' : selectedIndex + 1}</span>
+                </label>
+              );
+            })}
+          </div>
+        </section>
 
-            <div className={styles.activityList}>
-              {activityOptions.map((activity) => {
-                const selectedIndex = selectedActivities.indexOf(activity.value);
-                return (
-                  <label className={`${styles.activityChoice} ${selectedIndex !== -1 ? styles.selected : ''}`} key={activity.value}>
-                    <input
-                      type="checkbox"
-                      checked={selectedIndex !== -1}
-                      onChange={() => toggleActivity(activity.value)}
-                    />
-                    <span>
-                      <strong>{activity.label}</strong>
-                      <small>{activity.description}</small>
-                    </span>
-                    <span className={styles.orderBadge}>{selectedIndex === -1 ? '–' : selectedIndex + 1}</span>
-                  </label>
-                );
-              })}
+        <section className={styles.stepPanel}>
+          <div className={styles.stepHeader}>
+            <span className={styles.stepNumber}>4</span>
+            <div>
+              <p className={styles.eyebrow}>Set and save</p>
+              <h3>Confirm the assignment</h3>
+            </div>
+          </div>
+
+          <div className={styles.confirmGrid}>
+            <div className={styles.finalControls}>
+              <label className={styles.field}>
+                <span>Deadline</span>
+                <input
+                  type="datetime-local"
+                  value={deadlineAt}
+                  onChange={(event) => {
+                    setDeadlineAt(event.target.value);
+                    resetSaveState();
+                  }}
+                />
+              </label>
+
+              <label className={styles.field}>
+                <span>Student instruction</span>
+                <textarea
+                  value={instructions}
+                  onChange={(event) => {
+                    setInstructions(event.target.value);
+                    resetSaveState();
+                  }}
+                  rows={4}
+                />
+              </label>
             </div>
 
-            <label className={styles.field}>
-              <span>Deadline</span>
-              <input
-                type="datetime-local"
-                value={deadlineAt}
-                onChange={(event) => setDeadlineAt(event.target.value)}
-              />
-            </label>
+            <aside className={styles.summaryBox}>
+              <p className={styles.eyebrow}>Teacher check</p>
+              <h3>Ready to set</h3>
 
-            <label className={styles.field}>
-              <span>Student instruction</span>
-              <textarea
-                value={instructions}
-                onChange={(event) => setInstructions(event.target.value)}
-                rows={4}
-              />
-            </label>
-          </section>
+              <div className={styles.summaryLine}>
+                <span>Class</span>
+                <strong>{selectedClass.className}</strong>
+              </div>
+              <div className={styles.summaryLine}>
+                <span>Students</span>
+                <strong>{selectedClass.studentCount}</strong>
+              </div>
+              <div className={styles.summaryLine}>
+                <span>Route</span>
+                <strong>{getSelectedModeTitle(mode)}</strong>
+              </div>
+              <div className={styles.summaryLine}>
+                <span>Activities</span>
+                <strong>{selectedActivities.map(getActivityLabel).join(' → ')}</strong>
+              </div>
+              <div className={styles.summaryLine}>
+                <span>Deadline</span>
+                <strong>{deadlineLabel}</strong>
+              </div>
+              <div className={styles.summaryLine}>
+                <span>Last activity</span>
+                <strong>{selectedActivities.at(-1) === 'confidence_exit_ticket' ? 'Confidence check' : getActivityLabel(selectedActivities.at(-1) ?? '')}</strong>
+              </div>
 
-          <aside className={`${styles.panel} ${styles.summaryBox}`}>
-            <p className={styles.eyebrow}>Summary</p>
-            <h3>Ready to set</h3>
+              <button
+                type="button"
+                className={styles.submitButton}
+                onClick={createAssignment}
+                disabled={saveStatus === 'saving' || selectedActivities.length === 0}
+              >
+                {saveStatus === 'saving' ? 'Creating...' : `Set for ${selectedClass.yearGroup}`}
+              </button>
 
-            <div className={styles.summaryLine}>
-              <span>Class</span>
-              <strong>{selectedClass.className}</strong>
-            </div>
-            <div className={styles.summaryLine}>
-              <span>Students</span>
-              <strong>{selectedClass.studentCount}</strong>
-            </div>
-            <div className={styles.summaryLine}>
-              <span>Mode</span>
-              <strong>{getSelectedModeTitle(mode)}</strong>
-            </div>
-            <div className={styles.summaryLine}>
-              <span>Activities</span>
-              <strong>{selectedActivities.length} selected</strong>
-            </div>
-            <div className={styles.summaryLine}>
-              <span>Final task</span>
-              <strong>{selectedActivities.includes('confidence_exit_ticket') ? 'Confidence check' : 'Not selected'}</strong>
-            </div>
-            <div className={styles.summaryLine}>
-              <span>Deadline</span>
-              <strong>{deadlineAt ? 'Set' : 'No deadline yet'}</strong>
-            </div>
-
-            <button
-              type="button"
-              className={styles.submitButton}
-              onClick={createAssignment}
-              disabled={saveStatus === 'saving' || selectedActivities.length === 0}
-            >
-              {saveStatus === 'saving' ? 'Creating...' : 'Set guided study'}
-            </button>
-
-            {saveMessage && (
-              <p className={`${styles.saveMessage} ${styles[saveStatus]}`}><strong>Status:</strong> {saveMessage}</p>
-            )}
-          </aside>
-        </div>
+              {saveMessage && (
+                <p className={`${styles.saveMessage} ${styles[saveStatus]}`}><strong>Status:</strong> {saveMessage}</p>
+              )}
+            </aside>
+          </div>
+        </section>
       </section>
     </div>
   );
