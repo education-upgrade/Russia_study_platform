@@ -41,6 +41,9 @@ type StudentResponse = {
   response_type: string;
   status: string;
   response_json: any;
+  last_saved_at?: string | null;
+  submitted_at?: string | null;
+  started_at?: string | null;
 };
 
 type ActivityState = {
@@ -74,13 +77,19 @@ function orderActivityTypes(activityTypes: string[]) {
   });
 }
 
+function getResponseTimestamp(response: StudentResponse) {
+  return new Date(response.last_saved_at ?? response.submitted_at ?? response.started_at ?? 0).getTime();
+}
+
 function isActivityComplete(activityType: string, response: StudentResponse | undefined) {
   if (activityType === 'lesson_content') return true;
   if (!response) return false;
 
   if (activityType === 'flashcards') {
     const json = response.response_json ?? {};
-    return response.status === 'complete' || (json.ratedCount ?? 0) >= (json.totalCards ?? Number.POSITIVE_INFINITY);
+    const ratedCount = Number(json.ratedCount ?? 0);
+    const totalCards = Number(json.totalCards ?? 0);
+    return response.status === 'complete' || (totalCards > 0 && ratedCount >= totalCards);
   }
 
   return response.status === 'complete' || response.status === 'submitted';
@@ -138,14 +147,16 @@ export default async function StudentDashboardPage() {
       const { data: responses } = activityIds.length
         ? await supabase
             .from('student_responses')
-            .select('activity_id, response_type, status, response_json')
+            .select('activity_id, response_type, status, response_json, last_saved_at, submitted_at, started_at')
             .eq('student_id', DEMO_STUDENT_ID)
             .in('activity_id', activityIds)
         : { data: [] };
 
       const responseByActivityType = lessonActivities.reduce<Record<string, StudentResponse | undefined>>((acc, activity) => {
-        const matchingResponse = ((responses ?? []) as StudentResponse[]).find((response) => response.activity_id === activity.id);
-        acc[activity.activity_type] = matchingResponse;
+        const matchingResponses = ((responses ?? []) as StudentResponse[])
+          .filter((response) => response.activity_id === activity.id)
+          .sort((first, second) => getResponseTimestamp(second) - getResponseTimestamp(first));
+        acc[activity.activity_type] = matchingResponses[0];
         return acc;
       }, {});
 
