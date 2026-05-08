@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import FlashcardActivity from '@/components/FlashcardActivity';
 import { supabase } from '@/lib/supabase';
+import { pathway1905Flashcards } from '@/lib/pathway1905Content';
 import styles from './page.module.css';
 
 type Activity = {
@@ -44,6 +45,8 @@ export const revalidate = 0;
 export default async function FlashcardsPage() {
   const { activity, error } = await getActivity('flashcards');
   const pageTitle = cleanFlashcardTitle(activity?.title);
+  const savedCards = Array.isArray(activity?.content_json?.cards) ? activity.content_json.cards : [];
+  const cards = savedCards.length >= 10 ? savedCards : pathway1905Flashcards;
 
   return (
     <main className={styles.shell}>
@@ -63,9 +66,9 @@ export default async function FlashcardsPage() {
         </section>
       )}
 
-      {activity && Array.isArray(activity.content_json?.cards) && (
+      {activity && (
         <section className={styles.panel}>
-          <FlashcardActivity activityId={activity.id} cards={activity.content_json.cards} />
+          <FlashcardActivity activityId={activity.id} cards={cards} />
         </section>
       )}
 
