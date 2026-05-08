@@ -76,8 +76,21 @@
 .secure.selected { background: var(--green); }
 .nearly.selected { background: var(--warm); }
 .revisit.selected { background: var(--rose); }
-.bottomNav { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.bottomNav { display: grid; grid-template-columns: minmax(120px, 0.34fr) minmax(0, 1fr); gap: 8px; align-items: center; }
 .bottomNav button { min-height: 48px; padding-inline: 10px; }
+.autoSaveHint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  border-radius: 999px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255,255,255,0.78);
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 900;
+  text-align: center;
+}
 .saveMessage { margin: 0; text-align: center; color: var(--muted); font-weight: 850; font-size: 0.9rem; }
 .saved { color: #1f6f3d; }
 .error { color: #9c3c3c; }
@@ -97,5 +110,7 @@
   .controls { min-height: 48px; }
   .primary, .rating { min-height: 46px; }
   .ratingRow, .bottomNav { gap: 6px; }
+  .bottomNav { grid-template-columns: 0.8fr 1.2fr; }
   .bottomNav button { min-height: 44px; padding: 8px 6px; font-size: 0.88rem; }
+  .autoSaveHint { min-height: 44px; font-size: 0.76rem; padding: 0 8px; }
 }
