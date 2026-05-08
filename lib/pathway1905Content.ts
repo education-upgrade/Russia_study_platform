@@ -2,34 +2,65 @@ export const pathway1905LessonSections = [
   {
     heading: 'The enquiry',
     body: 'Was the 1905 Revolution a turning point for Tsarist Russia? The answer is balanced. It exposed the weakness of autocracy and forced Nicholas II to make concessions, but it did not destroy Tsarist power. The regime survived by combining reform, repression and the loyalty of the army.',
+    question: 'In one sentence, explain the balanced judgement about whether 1905 was a turning point.',
+    taskType: 'judgement',
+    teacherNote: 'Look for a balanced judgement: change/weakening, but survival of Tsarist authority.',
   },
   {
     heading: 'Long-term weaknesses in Tsarist authority',
     body: 'By 1905, the Russian Empire was still an autocracy with limited political representation. Rapid industrial growth had created urban workers who faced poor conditions, long hours and low wages. Peasants remained frustrated by land hunger and redemption payments. These pressures meant that defeat or crisis could quickly become political opposition.',
+    question: 'Identify one long-term weakness and explain why it made Tsarist authority vulnerable.',
+    taskType: 'explain',
   },
   {
     heading: 'The Russo-Japanese War, 1904–05',
     body: 'War with Japan exposed the weaknesses of the Tsarist state. Russia suffered humiliating defeats, including the destruction of the Baltic Fleet at Tsushima in May 1905. The war damaged the prestige of Nicholas II and made it easier for critics to argue that autocracy was incompetent as well as unfair.',
+    question: 'How did defeat in the Russo-Japanese War weaken Nicholas II’s authority?',
+    taskType: 'explain',
   },
   {
     heading: 'Bloody Sunday',
     body: 'On 9 January 1905, Father Gapon led peaceful workers to the Winter Palace to present a petition. Troops fired on the crowd. This shattered the image of the Tsar as the protective Little Father and turned economic frustration into a wider political crisis.',
+    question: 'Use the source to explain why Bloody Sunday damaged the Tsar’s image as the Little Father.',
+    taskType: 'source_inference',
+    media: {
+      type: 'source',
+      title: 'Bloody Sunday petition, January 1905',
+      sourceText: '“Sire, we workers, our wives and our children have come to you seeking truth and protection. We are impoverished, oppressed and overburdened with labour.”',
+      caption: 'This short extract captures the loyal, petitioning tone of many marchers before troops opened fire.',
+      credit: 'Adapted classroom extract.',
+    },
   },
   {
     heading: 'Spread of unrest',
     body: 'After Bloody Sunday, strikes, peasant disturbances, national minority protests and army/navy mutinies spread across the empire. The Potemkin mutiny in June 1905 showed that loyalty within the armed forces could not be taken for granted, although most of the army remained loyal enough to save the regime.',
+    question: 'Give one example of unrest after Bloody Sunday and explain what it showed about the regime’s authority.',
+    taskType: 'explain',
   },
   {
     heading: 'The St Petersburg Soviet',
     body: 'The St Petersburg Soviet emerged during the October general strike as a workers’ council coordinating action. It gave opposition a more organised form and showed that new revolutionary institutions could challenge state authority in the cities.',
+    question: 'Why was the St Petersburg Soviet a more serious challenge than ordinary protest?',
+    taskType: 'explain',
   },
   {
     heading: 'The October Manifesto',
     body: 'Nicholas II issued the October Manifesto in 1905. It promised civil liberties and an elected Duma. This divided the opposition because liberals were partly satisfied, while radicals wanted deeper change. The manifesto was a tactical concession that helped the regime survive.',
+    question: 'Explain how the October Manifesto helped the regime survive, even though it looked like a concession.',
+    taskType: 'explain',
+    media: {
+      type: 'source',
+      title: 'October Manifesto, 1905',
+      sourceText: '“The population shall be granted the immutable foundations of civic freedom based on the real inviolability of person, freedom of conscience, speech, assembly and association.”',
+      caption: 'The promise of civil liberties helped split moderate liberals from more radical opponents.',
+      credit: 'Adapted classroom extract.',
+    },
   },
   {
     heading: 'Why the regime survived',
     body: 'The Tsarist regime survived because opposition groups were divided, the army largely remained loyal, and Witte used concessions to split moderates from revolutionaries. Repression then followed. This means 1905 weakened autocracy, but it was not a full revolution because the Tsar retained control.',
+    question: 'What was the most important reason the Tsarist regime survived 1905? Give a brief judgement.',
+    taskType: 'judgement',
   },
 ];
 
