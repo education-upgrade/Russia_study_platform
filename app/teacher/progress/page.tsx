@@ -6,6 +6,11 @@ const DEMO_CLASS_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
 const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
 
+const DEMO_CLASSES = [
+  { id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', class_name: 'Year 12 Russia demo class', year_group: 'Y12' },
+  { id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', class_name: 'Year 13 Russia demo class', year_group: 'Y13' },
+];
+
 const activityLabels: Record<string, string> = {
   lesson_content: 'Lesson notes',
   quiz: 'Retrieval quiz',
@@ -90,6 +95,15 @@ type SearchParams = {
   classId?: string;
   filter?: string;
 };
+
+function mergeClasses(classData: TeacherClass[]) {
+  const classMap = new Map<string, TeacherClass>();
+  [...DEMO_CLASSES, ...classData].forEach((classItem) => classMap.set(classItem.id, classItem));
+  return Array.from(classMap.values()).sort((first, second) => {
+    if (first.year_group !== second.year_group) return first.year_group.localeCompare(second.year_group);
+    return first.class_name.localeCompare(second.class_name);
+  });
+}
 
 function orderActivityTypes(activityTypes: string[]) {
   return [...activityTypes].sort((first, second) => {
@@ -273,9 +287,9 @@ export default async function TeacherProgressPage({ searchParams }: { searchPara
     .order('year_group', { ascending: true })
     .order('class_name', { ascending: true });
 
-  const classes = ((classData ?? []) as TeacherClass[]);
+  const classes = mergeClasses((classData ?? []) as TeacherClass[]);
   const selectedClass = classes.find((classItem) => classItem.id === params.classId);
-  const activeClass = selectedClass ?? classes[0] ?? { id: DEMO_CLASS_ID, class_name: 'Year 12 Russia demo class', year_group: 'Y12' };
+  const activeClass = selectedClass ?? classes[0] ?? DEMO_CLASSES[0];
 
   const { data: assignmentData, error: assignmentError } = await supabase
     .from('guided_study_assignments')
@@ -394,9 +408,7 @@ export default async function TeacherProgressPage({ searchParams }: { searchPara
           <div>
             <p className={styles.eyebrow}>Class view</p>
             <div className={styles.classSwitch}>
-              {classes.length === 0 ? (
-                <span className={`${styles.switchPill} ${styles.activeSwitch}`}>{activeClass.class_name}</span>
-              ) : classes.map((classItem) => (
+              {classes.map((classItem) => (
                 <Link
                   className={`${styles.switchPill} ${classItem.id === activeClass.id ? styles.activeSwitch : ''}`}
                   href={buildProgressUrl(classItem.id, selectedFilter)}
@@ -516,6 +528,7 @@ export default async function TeacherProgressPage({ searchParams }: { searchPara
                   <p><strong>Mode:</strong> {activeAssignment ? formatMode(activeAssignment.mode) : 'Default route'}</p>
                   <p><strong>Deadline:</strong> {activeAssignment ? formatDate(activeAssignment.deadline_at) : 'No active deadline'}</p>
                   <p><strong>Responses found:</strong> {responses.length}</p>
+                  <p><strong>Classes shown:</strong> {classes.length}</p>
                 </article>
                 <article className={styles.detailPanel}>
                   <h4>Required route</h4>
