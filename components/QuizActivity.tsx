@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useMemo, useRef, useState } from 'react';
 import styles from './QuizActivity.module.css';
 
@@ -32,9 +32,11 @@ function optionsWithBalancedCorrectPosition(question: QuizQuestion, questionInde
 }
 
 export default function QuizActivity({ activityId, questions }: QuizActivityProps) {
+  const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [completed, setCompleted] = useState(false);
+  const [isMovingNext, setIsMovingNext] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [saveMessage, setSaveMessage] = useState('');
   const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -95,9 +97,11 @@ export default function QuizActivity({ activityId, questions }: QuizActivityProp
 
       setSaveStatus('saved');
       setSaveMessage(isComplete ? `Saved score ${result.score}/${questions.length}` : 'Saved');
+      return true;
     } catch (error) {
       setSaveStatus('error');
       setSaveMessage(error instanceof Error ? error.message : 'Quiz result could not be saved.');
+      return false;
     }
   }
 
@@ -143,8 +147,22 @@ export default function QuizActivity({ activityId, questions }: QuizActivityProp
     setAnswers({});
     setCompleted(false);
     setCurrentIndex(0);
+    setIsMovingNext(false);
     setSaveStatus('idle');
     setSaveMessage('');
+  }
+
+  async function moveToFlashcards() {
+    if (isMovingNext) return;
+    setIsMovingNext(true);
+    const saved = await saveQuiz(answers, true);
+
+    if (saved) {
+      router.push('/student/lesson/1905/flashcards');
+      return;
+    }
+
+    setIsMovingNext(false);
   }
 
   if (!currentQuestion) {
@@ -182,7 +200,9 @@ export default function QuizActivity({ activityId, questions }: QuizActivityProp
         <section className={styles.bottomNav}>
           <button type="button" className="button secondary" onClick={reviewQuiz}>Review</button>
           <button type="button" className="button secondary" onClick={resetQuiz}>Try again</button>
-          <Link className="button" href="/student/lesson/1905/flashcards">Next</Link>
+          <button type="button" className="button" onClick={moveToFlashcards} disabled={isMovingNext || saveStatus === 'saving'}>
+            {isMovingNext || saveStatus === 'saving' ? 'Saving...' : 'Next'}
+          </button>
         </section>
 
         {saveMessage && <p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage}</p>}
