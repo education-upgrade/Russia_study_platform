@@ -4,12 +4,14 @@ import { supabase } from '@/lib/supabase';
 const DEMO_TEACHER_ID = '11111111-1111-1111-1111-111111111111';
 const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
 const DEMO_CLASS_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
+const DEFAULT_PATHWAY_SLUG = '1905-revolution';
+const DEFAULT_LESSON_TITLE = 'Was the 1905 Revolution a turning point for Tsarist Russia?';
+const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'flashcards', 'quiz', 'peel_response', 'confidence_exit_ticket'];
 
 const activityLabels: Record<string, string> = {
   lesson_content: 'Lesson content',
-  quiz: 'Retrieval quiz',
   flashcards: 'Flashcards',
+  quiz: 'Retrieval quiz',
   peel_response: 'PEEL response',
   confidence_exit_ticket: 'Confidence exit ticket',
 };
@@ -21,6 +23,8 @@ type GuidedStudyRequest = {
   instructions?: string;
   classId?: string;
   studentIds?: string[];
+  pathwaySlug?: string;
+  lessonTitle?: string;
 };
 
 type ClassRow = {
@@ -70,6 +74,8 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json()) as GuidedStudyRequest;
+  const pathwaySlug = body.pathwaySlug || DEFAULT_PATHWAY_SLUG;
+  const lessonTitle = body.lessonTitle || DEFAULT_LESSON_TITLE;
   const requiredActivityTypes = orderRequiredActivityTypes(
     body.requiredActivityTypes?.length
       ? body.requiredActivityTypes
@@ -88,12 +94,12 @@ export async function POST(request: Request) {
   const { data: lesson, error: lessonError } = await supabase
     .from('lessons')
     .select('id, title')
-    .eq('title', 'Was the 1905 Revolution a turning point for Tsarist Russia?')
+    .eq('title', lessonTitle)
     .single();
 
   if (lessonError || !lesson) {
     return NextResponse.json(
-      { error: lessonError?.message ?? '1905 lesson not found. Run the lesson seed SQL first.' },
+      { error: lessonError?.message ?? `${lessonTitle} lesson not found. Run the seed SQL for this topic first.` },
       { status: 500 }
     );
   }
@@ -104,7 +110,7 @@ export async function POST(request: Request) {
   const firstStudentId = studentIds[0] ?? DEMO_STUDENT_ID;
 
   const assignmentPayload = {
-    pathway_slug: '1905-revolution',
+    pathway_slug: pathwaySlug,
     lesson_title: lesson.title,
     mode: body.mode,
     required_activity_types: requiredActivityTypes,
@@ -140,5 +146,7 @@ export async function POST(request: Request) {
     assignmentId: data.id,
     createdAt: data.created_at,
     recipientCount: data.recipient_count ?? studentIds.length,
+    pathwaySlug,
+    lessonTitle: lesson.title,
   });
 }
