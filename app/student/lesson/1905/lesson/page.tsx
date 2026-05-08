@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import LessonChunkActivity from '@/components/LessonChunkActivity';
 import { supabase } from '@/lib/supabase';
 import { pathway1905LessonSections } from '@/lib/pathway1905Content';
 import styles from './page.module.css';
@@ -55,7 +56,7 @@ export default async function LessonNotesPage() {
       <div className={styles.topbar}>
         <Link className={styles.backLink} href="/student/lesson/1905">← Pathway</Link>
         <div className={styles.titleBlock}>
-          <p>Lesson notes</p>
+          <p>Chunked lesson</p>
           <h1>{pageTitle}</h1>
         </div>
         <Link className={styles.dashboardLink} href="/student/dashboard">Dashboard</Link>
@@ -68,36 +69,23 @@ export default async function LessonNotesPage() {
           </div>
         )}
 
-        <article className={styles.lessonCard}>
-          <header className={styles.lessonHeader}>
-            <p className={styles.eyebrow}>Core context</p>
+        {activity ? (
+          <LessonChunkActivity
+            activityId={activity.id}
+            title={pageTitle}
+            enquiry={enquiry ?? 'Use these notes to build the core narrative before completing the evidence tasks.'}
+            sections={sections}
+            estimatedMinutes={activity.estimated_minutes ?? 12}
+            skillFocus={activity.skill_focus ?? 'AO1 contextual understanding'}
+            difficulty={activity.difficulty ?? 'secure'}
+          />
+        ) : (
+          <article className={styles.fallbackCard}>
             <h2>{pageTitle}</h2>
-            <p>{enquiry ?? 'Use these notes to build the core narrative before completing the evidence tasks.'}</p>
-            <div className={styles.metaRow}>
-              <span className={styles.badge}>{activity?.estimated_minutes ?? 12} mins</span>
-              <span className={styles.badge}>{activity?.skill_focus ?? 'AO1 contextual understanding'}</span>
-              <span className={styles.badge}>{activity?.difficulty ?? 'secure'}</span>
-            </div>
-          </header>
-
-          <section className={styles.sections}>
-            {sections.map((section: { heading: string; body: string }, sectionIndex: number) => (
-              <article className={styles.note} key={section.heading}>
-                <span className={styles.noteNumber}>{sectionIndex + 1}</span>
-                <div>
-                  <p className={styles.eyebrow}>Explanation</p>
-                  <h3>{section.heading}</h3>
-                  <p>{section.body}</p>
-                </div>
-              </article>
-            ))}
-          </section>
-
-          <nav className={styles.bottomNav}>
-            <Link className={styles.secondaryButton} href="/student/lesson/1905">Return to pathway</Link>
-            <Link className={styles.primaryButton} href="/student/lesson/1905/quiz">Next: retrieval quiz</Link>
-          </nav>
-        </article>
+            <p>The lesson activity could not be loaded yet. Return to the pathway and try again.</p>
+            <Link className={styles.primaryButton} href="/student/lesson/1905">Return to pathway</Link>
+          </article>
+        )}
       </section>
     </main>
   );
