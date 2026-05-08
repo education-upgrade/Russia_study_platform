@@ -1,41 +1,30 @@
 -- Week 1 pathway seed: Russia in 1855
 -- Run this in Supabase SQL Editor after the main schema has been created.
--- It creates the Week 1 lesson and five trackable activities.
+-- This version matches the current MVP schema: lessons has title, enquiry_question,
+-- estimated_minutes and lesson_type. Extra pathway metadata lives in activity content_json.
+
+create unique index if not exists lessons_title_unique_idx on lessons(title);
+create unique index if not exists activities_lesson_type_unique_idx on activities(lesson_id, activity_type);
 
 insert into lessons (
   title,
   enquiry_question,
-  period,
-  topic,
   estimated_minutes,
-  difficulty,
-  content_json
+  lesson_type
 )
 values (
   'Why was Russia difficult to govern in 1855?',
   'Why was Russia difficult to govern in 1855?',
-  '1855-1894',
-  'Russia in 1855',
   45,
-  'secure',
-  jsonb_build_object(
-    'pathwaySlug', 'week-1-russia-1855',
-    'week', 1,
-    'yearGroup', 'Y12',
-    'coursePhase', 'Tsarist Russia: context and reform',
-    'sequence', jsonb_build_array('lesson_content', 'flashcards', 'quiz', 'peel_response', 'confidence_exit_ticket')
-  )
+  'guided_study'
 )
 on conflict (title) do update set
   enquiry_question = excluded.enquiry_question,
-  period = excluded.period,
-  topic = excluded.topic,
   estimated_minutes = excluded.estimated_minutes,
-  difficulty = excluded.difficulty,
-  content_json = excluded.content_json;
+  lesson_type = excluded.lesson_type;
 
 with week1_lesson as (
-  select id from lessons where title = 'Why was Russia difficult to govern in 1855?'
+  select id from lessons where title = 'Why was Russia difficult to govern in 1855?' limit 1
 )
 insert into activities (
   lesson_id,
@@ -63,6 +52,11 @@ from week1_lesson,
     'secure',
     16,
     jsonb_build_object(
+      'pathwaySlug', 'week-1-russia-1855',
+      'week', 1,
+      'yearGroup', 'Y12',
+      'coursePhase', 'Tsarist Russia: context and reform',
+      'sequence', jsonb_build_array('lesson_content', 'flashcards', 'quiz', 'peel_response', 'confidence_exit_ticket'),
       'sections', jsonb_build_array(
         jsonb_build_object('heading','The enquiry','body','Why was Russia difficult to govern in 1855? The answer is not simply that Russia was backward. Russia was vast, socially unequal, overwhelmingly rural, politically autocratic and administratively weak. These features made reform difficult, but they also explain why Tsars feared rapid change.','question','In one sentence, explain why Russia was difficult to govern in 1855.','taskType','judgement'),
         jsonb_build_object('heading','A vast multi-national empire','body','In 1855 Russia was the largest state in Europe and stretched across Europe and Asia. It contained many nationalities, languages and religions. This made communication, law enforcement and political control difficult, especially because transport and administration were underdeveloped.','question','Explain one way Russia’s size and diversity made government difficult.','taskType','explain'),
@@ -84,6 +78,7 @@ from week1_lesson,
     'secure',
     12,
     jsonb_build_object(
+      'pathwaySlug', 'week-1-russia-1855',
       'cards', jsonb_build_array(
         jsonb_build_object('id','russia-1855','front','Russia in 1855','back','A vast, mostly rural, autocratic empire facing social, economic and administrative weaknesses.'),
         jsonb_build_object('id','autocracy','front','Autocracy','back','A political system where the Tsar held ultimate authority and was not answerable to an elected parliament.'),
@@ -117,6 +112,7 @@ from week1_lesson,
     'secure',
     10,
     jsonb_build_object(
+      'pathwaySlug', 'week-1-russia-1855',
       'questions', jsonb_build_array(
         jsonb_build_object('id','tsar-1855','question','Who became Tsar of Russia in 1855?','options',jsonb_build_array('Alexander II','Nicholas II','Alexander III','Lenin'),'correct','Alexander II'),
         jsonb_build_object('id','autocracy-definition','question','What does autocracy mean?','options',jsonb_build_array('Rule by an elected parliament','Rule by one ruler with ultimate authority','Rule by local councils','Rule by trade unions'),'correct','Rule by one ruler with ultimate authority'),
@@ -144,6 +140,7 @@ from week1_lesson,
     'secure',
     12,
     jsonb_build_object(
+      'pathwaySlug', 'week-1-russia-1855',
       'question', 'Explain one reason why Russia was difficult to govern in 1855.',
       'stretchQuestion', 'How important was autocracy in explaining the difficulties of governing Russia in 1855?',
       'scaffold', jsonb_build_array(
@@ -161,6 +158,7 @@ from week1_lesson,
     'secure',
     4,
     jsonb_build_object(
+      'pathwaySlug', 'week-1-russia-1855',
       'prompt', 'How secure do you feel explaining why Russia was difficult to govern in 1855?',
       'leastSecureOptions', jsonb_build_array('Autocracy','Serfdom','Social structure','Economic backwardness','Bureaucracy','Crimean War links')
     )
@@ -174,5 +172,5 @@ on conflict (lesson_id, activity_type) do update set
   content_json = excluded.content_json;
 
 -- Optional check queries. Run after the insert if you want to verify the seed.
--- select title, enquiry_question, content_json->>'pathwaySlug' as pathway_slug from lessons where title = 'Why was Russia difficult to govern in 1855?';
--- select activity_type, title, estimated_minutes from activities where lesson_id = (select id from lessons where title = 'Why was Russia difficult to govern in 1855?') order by case activity_type when 'lesson_content' then 1 when 'flashcards' then 2 when 'quiz' then 3 when 'peel_response' then 4 when 'confidence_exit_ticket' then 5 else 99 end;
+-- select title, enquiry_question, estimated_minutes, lesson_type from lessons where title = 'Why was Russia difficult to govern in 1855?';
+-- select activity_type, title, estimated_minutes from activities where lesson_id = (select id from lessons where title = 'Why was Russia difficult to govern in 1855?' limit 1) order by case activity_type when 'lesson_content' then 1 when 'flashcards' then 2 when 'quiz' then 3 when 'peel_response' then 4 when 'confidence_exit_ticket' then 5 else 99 end;
