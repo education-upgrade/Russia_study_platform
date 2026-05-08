@@ -434,6 +434,41 @@
   .mainCard {
     border-radius: 22px;
   }
+  .controls {
+    gap: 18px;
+    padding: 16px;
+  }
+  .classSwitch {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .filterStrip {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .switchPill,
+  .filterPill {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 46px;
+    padding: 8px 10px;
+  }
+  .switchPill {
+    justify-content: space-between;
+  }
+  .filterPill {
+    justify-content: space-between;
+    font-size: 0.82rem;
+  }
+  .switchPill strong,
+  .filterPill {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .snapshot,
   .evidenceGrid,
   .detailGrid {
@@ -449,14 +484,9 @@
     align-items: flex-start;
     flex-direction: column;
   }
-  .classSwitch,
+}
+@media (max-width: 390px) {
   .filterStrip {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding-bottom: 2px;
-  }
-  .switchPill,
-  .filterPill {
-    flex: 0 0 auto;
+    grid-template-columns: 1fr;
   }
 }
