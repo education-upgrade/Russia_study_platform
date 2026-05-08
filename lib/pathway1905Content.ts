@@ -7,10 +7,10 @@ export const pathway1905LessonSections = [
     teacherNote: 'Look for a balanced judgement: change/weakening, but survival of Tsarist authority.',
     media: {
       type: 'video',
-      title: 'Test video: Russia exam walkthrough',
-      url: 'https://www.youtube.com/watch?v=57AxyoGigXo',
-      caption: 'Test embedded video panel. Watch enough to check that the embed loads and sits cleanly inside the lesson screen.',
-      credit: 'YouTube embed test.',
+      title: 'Video: The 1905 Revolution',
+      url: 'https://youtu.be/RPXCpwbdlAI?si=yUSpgkL-PrPZGhOz',
+      caption: 'Watch the clip, then use the enquiry check to summarise why 1905 weakened Tsarism without destroying it.',
+      credit: 'YouTube classroom clip.',
     },
   },
   {
