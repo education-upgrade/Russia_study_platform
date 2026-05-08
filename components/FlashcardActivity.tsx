@@ -51,27 +51,12 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
 
   function revealCard() {
     if (!currentCardId || isRevealed) return;
-    setRevealedCardIds((previous) => [...previous, currentCardId]);
+    setRevealedCardIds((previous) => [...new Set([...previous, currentCardId])]);
   }
 
-  function rateCard(rating: FlashcardRating) {
-    if (!currentCardId) return;
-    setRatings((previous) => ({ ...previous, [currentCardId]: rating }));
-    setSaveStatus('idle');
-    setSaveMessage('');
-  }
-
-  function goToNextCard() {
-    setCurrentIndex((previous) => Math.min(previous + 1, cards.length - 1));
-  }
-
-  function goToPreviousCard() {
-    setCurrentIndex((previous) => Math.max(previous - 1, 0));
-  }
-
-  async function saveFlashcards() {
+  async function saveFlashcards(nextRatings: Record<string, FlashcardRating>, nextRevealedCardIds: string[]) {
     setSaveStatus('saving');
-    setSaveMessage('Saving...');
+    setSaveMessage('Saving progress...');
 
     try {
       const response = await fetch('/api/student-responses/flashcards', {
@@ -79,8 +64,8 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           activityId,
-          ratings,
-          revealedCardIds,
+          ratings: nextRatings,
+          revealedCardIds: nextRevealedCardIds,
           totalCards: cards.length,
         }),
       });
@@ -92,11 +77,32 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
       }
 
       setSaveStatus('saved');
-      setSaveMessage(`Saved ${new Date(result.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
+      setSaveMessage(`Saved automatically at ${new Date(result.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
     } catch (error) {
       setSaveStatus('error');
-      setSaveMessage(error instanceof Error ? error.message : 'Could not save.');
+      setSaveMessage(error instanceof Error ? error.message : 'Could not save automatically.');
     }
+  }
+
+  function rateCard(rating: FlashcardRating) {
+    if (!currentCardId) return;
+
+    const nextRatings = { ...ratings, [currentCardId]: rating };
+    const nextRevealedCardIds = [...new Set([...revealedCardIds, currentCardId])];
+
+    setRatings(nextRatings);
+    setRevealedCardIds(nextRevealedCardIds);
+    void saveFlashcards(nextRatings, nextRevealedCardIds);
+
+    if (currentIndex < cards.length - 1) {
+      window.setTimeout(() => {
+        setCurrentIndex((previous) => Math.min(previous + 1, cards.length - 1));
+      }, 350);
+    }
+  }
+
+  function goToPreviousCard() {
+    setCurrentIndex((previous) => Math.max(previous - 1, 0));
   }
 
   if (!currentCard) {
@@ -161,12 +167,9 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
         <button type="button" className="button secondary" onClick={goToPreviousCard} disabled={currentIndex === 0}>
           Previous
         </button>
-        <button type="button" className="button secondary" onClick={goToNextCard} disabled={currentIndex === cards.length - 1}>
-          Next
-        </button>
-        <button type="button" className="button" onClick={saveFlashcards} disabled={saveStatus === 'saving'}>
-          {saveStatus === 'saving' ? 'Saving...' : isDeckComplete ? 'Save deck' : 'Save'}
-        </button>
+        <span className={styles.autoSaveHint}>
+          {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'error' ? 'Autosave failed' : isDeckComplete ? 'Deck saved' : 'Autosaves after each rating'}
+        </span>
       </section>
 
       {saveMessage && <p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage}</p>}
