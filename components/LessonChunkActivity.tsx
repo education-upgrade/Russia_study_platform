@@ -32,20 +32,19 @@ type LessonChunkActivityProps = {
   estimatedMinutes: number;
   skillFocus: string;
   difficulty: string;
+  nextHref?: string;
+  nextLabel?: string;
+  completionMessage?: string;
 };
 
 function buildQuestion(section: LessonSection) {
   if (section.question) return section.question;
-
   const heading = section.heading.toLowerCase();
-  if (heading.includes('enquiry')) return 'In one sentence, what is the balanced judgement about whether 1905 was a turning point?';
-  if (heading.includes('weakness')) return 'Identify one long-term weakness that made Tsarist authority vulnerable by 1905.';
-  if (heading.includes('russo') || heading.includes('japanese')) return 'How did the Russo-Japanese War weaken Nicholas II’s authority?';
-  if (heading.includes('bloody')) return 'Why did Bloody Sunday damage the image of the Tsar?';
-  if (heading.includes('unrest')) return 'Give one example of unrest after Bloody Sunday and explain what it showed.';
-  if (heading.includes('soviet')) return 'Why was the St Petersburg Soviet important as a challenge to Tsarist authority?';
-  if (heading.includes('manifesto')) return 'How did the October Manifesto help the regime survive?';
-  if (heading.includes('survived')) return 'What was the most important reason the Tsarist regime survived 1905?';
+  if (heading.includes('enquiry')) return 'In one sentence, explain the balanced judgement from this section.';
+  if (heading.includes('weakness')) return 'Identify one weakness and explain why it mattered.';
+  if (heading.includes('reform')) return 'Explain why reform was needed.';
+  if (heading.includes('society')) return 'Identify one feature of Russian society and explain why it mattered.';
+  if (heading.includes('autocracy')) return 'Explain how autocracy shaped Russia.';
   return 'Write one precise takeaway from this section.';
 }
 
@@ -79,29 +78,18 @@ function taskTypeLabel(taskType?: LessonSection['taskType']) {
 
 function MediaBlock({ media }: { media?: LessonMedia }) {
   if (!media) return null;
-
   const title = media.title ?? 'Study resource';
 
   if (media.type === 'video') {
     const embedUrl = media.embedUrl ?? (media.url ? getYouTubeEmbedUrl(media.url) : '');
     return (
       <aside className={styles.mediaCard}>
-        <div className={styles.mediaHeader}>
-          <span>Video</span>
-          <strong>{title}</strong>
-        </div>
+        <div className={styles.mediaHeader}><span>Video</span><strong>{title}</strong></div>
         {embedUrl ? (
           <div className={styles.videoFrame}>
-            <iframe
-              src={embedUrl}
-              title={title}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-            />
+            <iframe src={embedUrl} title={title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
           </div>
-        ) : (
-          <div className={styles.mediaPlaceholder}>Video link not added yet.</div>
-        )}
+        ) : <div className={styles.mediaPlaceholder}>Video link not added yet.</div>}
         {media.caption && <p className={styles.mediaCaption}>{media.caption}</p>}
       </aside>
     );
@@ -110,10 +98,7 @@ function MediaBlock({ media }: { media?: LessonMedia }) {
   if (media.type === 'image') {
     return (
       <aside className={styles.mediaCard}>
-        <div className={styles.mediaHeader}>
-          <span>Image</span>
-          <strong>{title}</strong>
-        </div>
+        <div className={styles.mediaHeader}><span>Image</span><strong>{title}</strong></div>
         {media.url ? <img className={styles.mediaImage} src={media.url} alt={media.alt ?? title} /> : <div className={styles.mediaPlaceholder}>Image link not added yet.</div>}
         {media.caption && <p className={styles.mediaCaption}>{media.caption}</p>}
       </aside>
@@ -123,10 +108,7 @@ function MediaBlock({ media }: { media?: LessonMedia }) {
   if (media.type === 'audio') {
     return (
       <aside className={styles.mediaCard}>
-        <div className={styles.mediaHeader}>
-          <span>Audio</span>
-          <strong>{title}</strong>
-        </div>
+        <div className={styles.mediaHeader}><span>Audio</span><strong>{title}</strong></div>
         {media.url ? <audio className={styles.audioPlayer} controls src={media.url} /> : <div className={styles.mediaPlaceholder}>Audio link not added yet.</div>}
         {media.caption && <p className={styles.mediaCaption}>{media.caption}</p>}
       </aside>
@@ -135,17 +117,25 @@ function MediaBlock({ media }: { media?: LessonMedia }) {
 
   return (
     <aside className={styles.mediaCard}>
-      <div className={styles.mediaHeader}>
-        <span>Source</span>
-        <strong>{title}</strong>
-      </div>
+      <div className={styles.mediaHeader}><span>Source</span><strong>{title}</strong></div>
       <blockquote className={styles.sourceBox}>{media.sourceText ?? 'Source text not added yet.'}</blockquote>
       {(media.caption || media.credit) && <p className={styles.mediaCaption}>{media.caption}{media.credit ? ` ${media.credit}` : ''}</p>}
     </aside>
   );
 }
 
-export default function LessonChunkActivity({ activityId, title, enquiry, sections, estimatedMinutes, skillFocus, difficulty }: LessonChunkActivityProps) {
+export default function LessonChunkActivity({
+  activityId,
+  title,
+  enquiry,
+  sections,
+  estimatedMinutes,
+  skillFocus,
+  difficulty,
+  nextHref = '/student/lesson/1905/flashcards',
+  nextLabel = 'Next: flashcards',
+  completionMessage = 'You have worked through all sections and completed the short checks. Now study the flashcards before testing yourself in the quiz.',
+}: LessonChunkActivityProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -158,7 +148,6 @@ export default function LessonChunkActivity({ activityId, title, enquiry, sectio
   const completedCount = countCompletedAnswers(answers);
   const progressPercentage = sections.length ? Math.round(((currentIndex + 1) / sections.length) * 100) : 0;
   const answeredPercentage = sections.length ? Math.round((completedCount / sections.length) * 100) : 0;
-
   const sectionQuestion = useMemo(() => buildQuestion(currentSection), [currentSection]);
   const currentTaskType = taskTypeLabel(currentSection?.taskType);
 
@@ -179,10 +168,8 @@ export default function LessonChunkActivity({ activityId, title, enquiry, sectio
           sectionHeadings: sections.map((section) => section.heading),
         }),
       });
-
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? 'Lesson progress could not be saved.');
-
       setSaveStatus('saved');
       setSaveMessage('Saved');
     } catch (error) {
@@ -196,13 +183,8 @@ export default function LessonChunkActivity({ activityId, title, enquiry, sectio
     if (saveStatus === 'error') setSaveStatus('idle');
   }
 
-  function goBack() {
-    setCurrentIndex((previous) => Math.max(previous - 1, 0));
-  }
-
   function continueLesson() {
     if (!canContinue) return;
-
     const nextAnswers = { ...answers, [currentIndex]: currentAnswer };
     const finalSection = currentIndex === sections.length - 1;
 
@@ -218,12 +200,7 @@ export default function LessonChunkActivity({ activityId, title, enquiry, sectio
   }
 
   if (!currentSection) {
-    return (
-      <section className={styles.emptyPanel}>
-        <h2>No lesson sections found</h2>
-        <p>This lesson does not currently have any content sections.</p>
-      </section>
-    );
+    return <section className={styles.emptyPanel}><h2>No lesson sections found</h2><p>This lesson does not currently have any content sections.</p></section>;
   }
 
   if (isFinished) {
@@ -232,7 +209,7 @@ export default function LessonChunkActivity({ activityId, title, enquiry, sectio
         <div className={styles.finishedIcon}>✓</div>
         <p className={styles.eyebrow}>Lesson complete</p>
         <h2>{title}</h2>
-        <p>You have worked through all sections and completed the short checks. Now test the knowledge in the retrieval quiz.</p>
+        <p>{completionMessage}</p>
         <div className={styles.finishedStats}>
           <span>{sections.length}/{sections.length} sections</span>
           <span>{completedCount}/{sections.length} checks answered</span>
@@ -240,7 +217,7 @@ export default function LessonChunkActivity({ activityId, title, enquiry, sectio
         </div>
         <div className={styles.finishedActions}>
           <button type="button" className={styles.secondaryButton} onClick={() => setIsFinished(false)}>Review final section</button>
-          <Link className={styles.primaryButton} href="/student/lesson/1905/quiz">Next: retrieval quiz</Link>
+          <Link className={styles.primaryButton} href={nextHref}>{nextLabel}</Link>
         </div>
         {saveStatus === 'error' && <p className={styles.errorText}>{saveMessage}</p>}
       </section>
@@ -250,59 +227,26 @@ export default function LessonChunkActivity({ activityId, title, enquiry, sectio
   return (
     <section className={styles.shell}>
       <header className={styles.headerPanel}>
-        <div>
-          <p className={styles.eyebrow}>Core context</p>
-          <h2>{title}</h2>
-          <p>{enquiry}</p>
-        </div>
-        <div className={styles.metaStack}>
-          <span>{estimatedMinutes} mins</span>
-          <span>{skillFocus}</span>
-          <span>{difficulty}</span>
-        </div>
+        <div><p className={styles.eyebrow}>Core context</p><h2>{title}</h2><p>{enquiry}</p></div>
+        <div className={styles.metaStack}><span>{estimatedMinutes} mins</span><span>{skillFocus}</span><span>{difficulty}</span></div>
       </header>
-
       <div className={styles.progressArea}>
-        <div className={styles.progressTop}>
-          <strong>Section {currentIndex + 1} of {sections.length}</strong>
-          <span>{answeredPercentage}% checks complete</span>
-        </div>
-        <div className={styles.progressBar} aria-label="Lesson progress">
-          <div style={{ width: `${progressPercentage}%` }} />
-        </div>
+        <div className={styles.progressTop}><strong>Section {currentIndex + 1} of {sections.length}</strong><span>{answeredPercentage}% checks complete</span></div>
+        <div className={styles.progressBar} aria-label="Lesson progress"><div style={{ width: `${progressPercentage}%` }} /></div>
       </div>
-
       <article className={`${styles.sectionPanel} ${currentSection.media ? styles.hasMedia : ''}`}>
         <div className={styles.sectionNumber}>{currentIndex + 1}</div>
-        <div className={styles.sectionText}>
-          <p className={styles.eyebrow}>Explanation</p>
-          <h3>{currentSection.heading}</h3>
-          <p>{currentSection.body}</p>
-        </div>
+        <div className={styles.sectionText}><p className={styles.eyebrow}>Explanation</p><h3>{currentSection.heading}</h3><p>{currentSection.body}</p></div>
         <MediaBlock media={currentSection.media} />
       </article>
-
       <section className={styles.checkPanel}>
-        <div>
-          <p className={styles.eyebrow}>{currentTaskType}</p>
-          <h4>{sectionQuestion}</h4>
-        </div>
-        <textarea
-          value={currentAnswer}
-          onChange={(event) => updateAnswer(event.target.value)}
-          placeholder="Write a short answer before moving on..."
-          aria-label="Lesson comprehension answer"
-        />
+        <div><p className={styles.eyebrow}>{currentTaskType}</p><h4>{sectionQuestion}</h4></div>
+        <textarea value={currentAnswer} onChange={(event) => updateAnswer(event.target.value)} placeholder="Write a short answer before moving on..." aria-label="Lesson comprehension answer" />
       </section>
-
       <nav className={styles.controls}>
-        <button type="button" className={styles.secondaryButton} onClick={goBack} disabled={currentIndex === 0}>Previous</button>
-        <span className={`${styles.savePill} ${styles[saveStatus]}`} aria-live="polite">
-          {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'error' ? 'Save failed' : saveStatus === 'saved' ? 'Saved' : ''}
-        </span>
-        <button type="button" className={styles.primaryButton} onClick={continueLesson} disabled={!canContinue}>
-          {currentIndex === sections.length - 1 ? 'Finish lesson' : 'Continue'}
-        </button>
+        <button type="button" className={styles.secondaryButton} onClick={() => setCurrentIndex((previous) => Math.max(previous - 1, 0))} disabled={currentIndex === 0}>Previous</button>
+        <span className={`${styles.savePill} ${styles[saveStatus]}`} aria-live="polite">{saveStatus === 'saving' ? 'Saving...' : saveStatus === 'error' ? 'Save failed' : saveStatus === 'saved' ? 'Saved' : ''}</span>
+        <button type="button" className={styles.primaryButton} onClick={continueLesson} disabled={!canContinue}>{currentIndex === sections.length - 1 ? 'Finish lesson' : 'Continue'}</button>
       </nav>
       {saveStatus === 'error' && <p className={styles.errorText}>{saveMessage}</p>}
     </section>
