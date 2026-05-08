@@ -11,7 +11,7 @@ const pathwayConfig: Record<string, { title: string; lessonTitle: string; routeB
     lessonTitle: 'Was the 1905 Revolution a turning point for Tsarist Russia?',
     routeBase: '/student/lesson/1905',
   },
-  'russia-in-1855': {
+  'russia-1855': {
     title: 'Russia in 1855',
     lessonTitle: 'Why was Russia difficult to govern in 1855?',
     routeBase: '/student/lesson/1855',
