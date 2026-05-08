@@ -41,7 +41,9 @@ type ResponseJson = {
   totalCards?: number;
   ratedCount?: number;
   secureCount?: number;
+  nearlyCount?: number;
   revisitCount?: number;
+  completionPercentage?: number;
   securePercentage?: number;
 };
 
@@ -155,7 +157,10 @@ function getRiskFlag(response: StudentResponseRow | undefined, activityType: str
   if (!response) return activityType === 'lesson_content' ? 'Support activity' : 'Missing evidence';
 
   if (activityType === 'peel_response') {
-    return (response.response_json?.wordCount ?? 0) < 40 ? 'Needs development' : 'Submitted';
+    const wordCount = response.response_json?.wordCount ?? 0;
+    if (wordCount < 40) return 'Needs development';
+    if (wordCount < 80) return 'Check PEEL depth';
+    return 'Submitted';
   }
 
   if (activityType === 'confidence_exit_ticket') {
@@ -169,9 +174,11 @@ function getRiskFlag(response: StudentResponseRow | undefined, activityType: str
     const totalCards = response.response_json?.totalCards ?? 0;
     const ratedCount = response.response_json?.ratedCount ?? 0;
     const revisitCount = response.response_json?.revisitCount ?? 0;
+    const nearlyCount = response.response_json?.nearlyCount ?? 0;
     const securePercentage = response.response_json?.securePercentage ?? 0;
     if (ratedCount < totalCards) return 'Incomplete';
     if (revisitCount > 0) return 'Revisit needed';
+    if (nearlyCount >= 4) return 'Consolidate';
     if (securePercentage >= 80) return 'Secure';
     return 'Check understanding';
   }
@@ -186,25 +193,80 @@ function getRiskFlag(response: StudentResponseRow | undefined, activityType: str
 function getRiskClass(risk: string) {
   if (risk === 'Secure' || risk === 'Confident' || risk === 'On track') return styles.secure;
   if (risk === 'Intervention' || risk === 'Needs development' || risk === 'Low confidence' || risk === 'Revisit needed' || risk === 'Missing evidence') return styles.intervention;
-  if (risk === 'Check understanding' || risk === 'Check confidence' || risk === 'Incomplete') return styles.check;
+  if (risk === 'Check understanding' || risk === 'Check confidence' || risk === 'Incomplete' || risk === 'Check PEEL depth' || risk === 'Consolidate') return styles.check;
   if (risk === 'Submitted') return styles.submitted;
   return styles.neutral;
 }
 
+function quizEvidence(response: StudentResponseRow | undefined) {
+  const score = response?.score ?? null;
+  const max = response?.response_json?.maxScore ?? null;
+  const percentage = response?.response_json?.percentage ?? null;
+  return {
+    value: score === null ? 'Missing' : `${score}/${max ?? '?'}`,
+    detail: typeof percentage === 'number' ? `${percentage}% retrieval` : 'no quiz evidence yet',
+    percentage,
+  };
+}
+
+function flashcardEvidence(response: StudentResponseRow | undefined) {
+  const total = response?.response_json?.totalCards ?? null;
+  const rated = response?.response_json?.ratedCount ?? 0;
+  const secure = response?.response_json?.secureCount ?? 0;
+  const nearly = response?.response_json?.nearlyCount ?? 0;
+  const revisit = response?.response_json?.revisitCount ?? 0;
+  return {
+    value: total ? `${rated}/${total}` : 'Missing',
+    detail: total ? `${secure} secure · ${nearly} nearly · ${revisit} revisit` : 'no flashcard evidence yet',
+    secure,
+    nearly,
+    revisit,
+    rated,
+    total: total ?? 0,
+  };
+}
+
+function peelEvidence(response: StudentResponseRow | undefined) {
+  const words = response?.response_json?.wordCount ?? 0;
+  return {
+    value: response ? `${words} words` : 'Missing',
+    detail: words >= 80 ? 'developed written evidence' : words >= 40 ? 'submitted but check depth' : 'needs fuller PEEL response',
+    words,
+  };
+}
+
+function confidenceEvidence(response: StudentResponseRow | undefined) {
+  const confidence = response?.response_json?.confidence ?? response?.score ?? null;
+  const area = response?.response_json?.leastSecureArea ?? response?.response_json?.needHelpWith ?? '';
+  return {
+    value: confidence === null ? 'Missing' : `${confidence}/5`,
+    detail: area ? `least secure: ${area}` : confidence === null ? 'no confidence check yet' : 'confidence submitted',
+    confidence,
+    area,
+  };
+}
+
 function evidenceText(activityType: string, response: StudentResponseRow | undefined) {
-  if (!response) return 'Missing';
-  if (activityType === 'quiz') return `${response.score ?? '-'}/${response.response_json?.maxScore ?? '?'}${typeof response.response_json?.percentage === 'number' ? ` · ${response.response_json.percentage}%` : ''}`;
-  if (activityType === 'flashcards') return `${response.response_json?.secureCount ?? 0} secure · ${response.response_json?.revisitCount ?? 0} revisit`;
-  if (activityType === 'peel_response') return `${response.response_json?.wordCount ?? 0} words`;
-  if (activityType === 'confidence_exit_ticket') return `${response.response_json?.confidence ?? response.score ?? '-'}/5`;
-  return response.status;
+  if (activityType === 'quiz') {
+    const quiz = quizEvidence(response);
+    return `${quiz.value}${quiz.percentage !== null ? ` · ${quiz.percentage}%` : ''}`;
+  }
+  if (activityType === 'flashcards') {
+    const flashcards = flashcardEvidence(response);
+    return flashcards.total ? `${flashcards.secure} secure · ${flashcards.nearly} nearly · ${flashcards.revisit} revisit` : 'Missing';
+  }
+  if (activityType === 'peel_response') return peelEvidence(response).value;
+  if (activityType === 'confidence_exit_ticket') return confidenceEvidence(response).value;
+  return response?.status ?? 'Missing';
 }
 
 function nextAction(flag: string) {
   if (flag === 'Missing evidence') return 'Complete the missing task.';
   if (flag === 'Needs development') return 'Review PEEL explanation and judgement.';
+  if (flag === 'Check PEEL depth') return 'Check whether the explanation links back to authority.';
   if (flag === 'Low confidence') return 'Target the least secure area.';
   if (flag === 'Revisit needed') return 'Repeat revisit flashcards.';
+  if (flag === 'Consolidate') return 'Use nearly-secure flashcards for quick recap.';
   if (flag === 'Intervention') return 'Set recap or reteach weak knowledge.';
   if (flag === 'Check understanding' || flag === 'Check confidence' || flag === 'Incomplete') return 'Quick teacher check.';
   return 'No urgent action.';
@@ -225,8 +287,18 @@ function buildStudentSummary(student: StudentProfile, requiredTypes: string[], a
   const completeCount = evidenceTypes.filter((type) => isComplete(type, responseFor(type))).length;
   const progress = evidenceTypes.length ? Math.round((completeCount / evidenceTypes.length) * 100) : 0;
   const risks = evidenceTypes.map((type) => getRiskFlag(responseFor(type), type));
-  const priorityRisk = risks.find((risk) => ['Intervention', 'Needs development', 'Low confidence', 'Revisit needed', 'Missing evidence', 'Incomplete'].includes(risk)) ?? 'On track';
+  const priorityRisk = risks.find((risk) => ['Intervention', 'Needs development', 'Low confidence', 'Revisit needed', 'Missing evidence', 'Incomplete', 'Check PEEL depth', 'Check understanding', 'Check confidence', 'Consolidate'].includes(risk)) ?? 'On track';
   const confidenceValue = confidenceResponse?.response_json?.confidence ?? confidenceResponse?.score ?? null;
+  const quiz = quizEvidence(quizResponse);
+  const flashcards = flashcardEvidence(flashcardsResponse);
+  const peel = peelEvidence(peelResponse);
+  const confidence = confidenceEvidence(confidenceResponse);
+  const diagnostics = [
+    { key: 'quiz', label: 'Quiz', value: quiz.value, detail: quiz.detail, flag: getRiskFlag(quizResponse, 'quiz') },
+    { key: 'flashcards', label: 'Flashcards', value: flashcards.value, detail: flashcards.detail, flag: getRiskFlag(flashcardsResponse, 'flashcards') },
+    { key: 'peel', label: 'PEEL', value: peel.value, detail: peel.detail, flag: getRiskFlag(peelResponse, 'peel_response') },
+    { key: 'confidence', label: 'Confidence', value: confidence.value, detail: confidence.detail, flag: getRiskFlag(confidenceResponse, 'confidence_exit_ticket') },
+  ];
 
   return {
     id: student.id,
@@ -235,15 +307,22 @@ function buildStudentSummary(student: StudentProfile, requiredTypes: string[], a
     completed: completeCount,
     required: evidenceTypes.length,
     quiz: evidenceText('quiz', quizResponse),
+    quizPercentage: quiz.percentage,
     flashcards: evidenceText('flashcards', flashcardsResponse),
+    flashcardsSecure: flashcards.secure,
+    flashcardsNearly: flashcards.nearly,
+    flashcardsRevisit: flashcards.revisit,
     peel: evidenceText('peel_response', peelResponse),
+    peelWords: peel.words,
     confidence: evidenceText('confidence_exit_ticket', confidenceResponse),
+    confidenceArea: confidence.area,
+    diagnostics,
     flag: priorityRisk,
     action: nextAction(priorityRisk),
     hasMissing: evidenceTypes.some((type) => !responseFor(type)),
     quizSupport: !quizResponse || ((quizResponse.response_json?.percentage ?? 100) < 80),
-    flashcardsSupport: !flashcardsResponse || ((flashcardsResponse.response_json?.revisitCount ?? 0) > 0) || ((flashcardsResponse.response_json?.ratedCount ?? 0) < (flashcardsResponse.response_json?.totalCards ?? 0)),
-    peelSupport: !peelResponse || ((peelResponse.response_json?.wordCount ?? 0) < 40),
+    flashcardsSupport: !flashcardsResponse || ((flashcardsResponse.response_json?.revisitCount ?? 0) > 0) || ((flashcardsResponse.response_json?.nearlyCount ?? 0) >= 4) || ((flashcardsResponse.response_json?.ratedCount ?? 0) < (flashcardsResponse.response_json?.totalCards ?? 0)),
+    peelSupport: !peelResponse || ((peelResponse.response_json?.wordCount ?? 0) < 80),
     confidenceSupport: !confidenceResponse || (typeof confidenceValue === 'number' && confidenceValue <= 3),
   };
 }
@@ -361,10 +440,13 @@ export default async function TeacherProgressPage({ searchParams }: { searchPara
   const averageProgress = summaries.length ? Math.round(summaries.reduce((total, student) => total + student.progress, 0) / summaries.length) : 0;
   const flaggedStudents = summaries.filter((student) => student.flag !== 'On track');
   const completedStudents = summaries.filter((student) => student.progress === 100).length;
-  const averageQuiz = summaries
-    .map((student) => Number((student.quiz.match(/· (\d+)%/) ?? [])[1]))
-    .filter((value) => Number.isFinite(value));
+  const averageQuiz = summaries.map((student) => student.quizPercentage).filter((value): value is number => typeof value === 'number');
   const quizAverage = averageQuiz.length ? Math.round(averageQuiz.reduce((total, value) => total + value, 0) / averageQuiz.length) : null;
+  const averageConfidence = summaries
+    .map((student) => Number.parseInt(student.confidence, 10))
+    .filter((value) => Number.isFinite(value));
+  const confidenceAverage = averageConfidence.length ? (averageConfidence.reduce((total, value) => total + value, 0) / averageConfidence.length).toFixed(1) : null;
+  const totalRevisit = summaries.reduce((total, student) => total + student.flashcardsRevisit, 0);
   const filterCounts = {
     all: summaries.length,
     missing: summaries.filter((student) => student.hasMissing).length,
@@ -448,14 +530,24 @@ export default async function TeacherProgressPage({ searchParams }: { searchPara
             <small>students at 100%</small>
           </article>
           <article className={styles.metric}>
+            <span>Quiz avg</span>
+            <strong>{quizAverage ?? '-'}</strong>
+            <small>{quizAverage === null ? 'no quiz data' : 'average %'}</small>
+          </article>
+          <article className={styles.metric}>
+            <span>Confidence</span>
+            <strong>{confidenceAverage ?? '-'}</strong>
+            <small>{confidenceAverage === null ? 'no exit data' : 'average /5'}</small>
+          </article>
+          <article className={styles.metric}>
             <span>Progress</span>
             <strong>{averageProgress}%</strong>
             <small>{activeAssignment ? formatMode(activeAssignment.mode) : 'default route'}</small>
           </article>
           <article className={styles.metric}>
-            <span>Quiz avg</span>
-            <strong>{quizAverage ?? '-'}</strong>
-            <small>{quizAverage === null ? 'no quiz data' : 'average %'}</small>
+            <span>Revisit</span>
+            <strong>{totalRevisit}</strong>
+            <small>flashcards marked revisit</small>
           </article>
         </section>
 
@@ -498,47 +590,59 @@ export default async function TeacherProgressPage({ searchParams }: { searchPara
             <span className={styles.badge}>{filteredSummaries.length}/{summaries.length} shown</span>
           </div>
 
-          <article className={styles.studentCard}>
+          <div className={styles.studentList}>
             {filteredSummaries.length === 0 ? (
               <div className={styles.empty}>
                 <h3>No students match this filter</h3>
                 <p>Switch back to All students or choose another support filter.</p>
               </div>
             ) : (
-              <div className={styles.priorityList}>
-                {filteredSummaries.map((student) => (
-                  <article className={styles.priorityItem} key={student.id}>
+              filteredSummaries.map((student) => (
+                <article className={styles.studentCard} key={student.id}>
+                  <div className={styles.studentTop}>
                     <div>
-                      <strong>{student.name}</strong>
-                      <small>{student.progress}% · {student.completed}/{student.required} complete</small>
+                      <h3>{student.name}</h3>
+                      <p>{student.progress}% complete · {student.completed}/{student.required} required activities</p>
                     </div>
-                    <p>Quiz: {student.quiz} · Flashcards: {student.flashcards} · PEEL: {student.peel} · Confidence: {student.confidence}</p>
                     <span className={`${styles.statusPill} ${getRiskClass(student.flag)}`}>{student.flag}</span>
-                  </article>
-                ))}
-              </div>
+                  </div>
+                  <div className={styles.diagnosticGrid}>
+                    {student.diagnostics.map((item) => (
+                      <div className={`${styles.diagnosticBox} ${getRiskClass(item.flag)}`} key={item.key}>
+                        <span>{item.label}</span>
+                        <strong>{item.value}</strong>
+                        <small>{item.detail}</small>
+                      </div>
+                    ))}
+                  </div>
+                  <div className={styles.actionStrip}>
+                    <strong>Suggested action</strong>
+                    <span>{student.action}</span>
+                  </div>
+                </article>
+              ))
             )}
+          </div>
 
-            <details className={styles.details}>
-              <summary>Open assignment detail</summary>
-              <div className={styles.detailGrid}>
-                <article className={styles.detailPanel}>
-                  <h4>Current assignment</h4>
-                  <p><strong>Class:</strong> {activeClass.class_name}</p>
-                  <p><strong>Mode:</strong> {activeAssignment ? formatMode(activeAssignment.mode) : 'Default route'}</p>
-                  <p><strong>Deadline:</strong> {activeAssignment ? formatDate(activeAssignment.deadline_at) : 'No active deadline'}</p>
-                  <p><strong>Responses found:</strong> {responses.length}</p>
-                  <p><strong>Classes shown:</strong> {classes.length}</p>
-                </article>
-                <article className={styles.detailPanel}>
-                  <h4>Required route</h4>
-                  {requiredTypes.map((type, index) => (
-                    <p key={type}><strong>{index + 1}. {activityLabels[type] ?? type}:</strong> required</p>
-                  ))}
-                </article>
-              </div>
-            </details>
-          </article>
+          <details className={styles.details}>
+            <summary>Open assignment detail</summary>
+            <div className={styles.detailGrid}>
+              <article className={styles.detailPanel}>
+                <h4>Current assignment</h4>
+                <p><strong>Class:</strong> {activeClass.class_name}</p>
+                <p><strong>Mode:</strong> {activeAssignment ? formatMode(activeAssignment.mode) : 'Default route'}</p>
+                <p><strong>Deadline:</strong> {activeAssignment ? formatDate(activeAssignment.deadline_at) : 'No active deadline'}</p>
+                <p><strong>Responses found:</strong> {responses.length}</p>
+                <p><strong>Classes shown:</strong> {classes.length}</p>
+              </article>
+              <article className={styles.detailPanel}>
+                <h4>Required route</h4>
+                {requiredTypes.map((type, index) => (
+                  <p key={type}><strong>{index + 1}. {activityLabels[type] ?? type}:</strong> required</p>
+                ))}
+              </article>
+            </div>
+          </details>
         </section>
       </section>
     </main>
