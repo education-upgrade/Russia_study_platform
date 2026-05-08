@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import QuizActivity from '@/components/QuizActivity';
 import { supabase } from '@/lib/supabase';
+import { pathway1905QuizQuestions } from '@/lib/pathway1905Content';
 import styles from './page.module.css';
 
 type Activity = {
@@ -44,6 +45,8 @@ export const revalidate = 0;
 export default async function QuizPage() {
   const { activity, error } = await getActivity('quiz');
   const pageTitle = cleanQuizTitle(activity?.title);
+  const savedQuestions = Array.isArray(activity?.content_json?.questions) ? activity.content_json.questions : [];
+  const questions = savedQuestions.length >= 10 ? savedQuestions : pathway1905QuizQuestions;
 
   return (
     <main className={styles.shell}>
@@ -63,9 +66,9 @@ export default async function QuizPage() {
         </section>
       )}
 
-      {activity && Array.isArray(activity.content_json?.questions) && (
+      {activity && (
         <section className={styles.panel}>
-          <QuizActivity activityId={activity.id} questions={activity.content_json.questions} />
+          <QuizActivity activityId={activity.id} questions={questions} />
         </section>
       )}
 
