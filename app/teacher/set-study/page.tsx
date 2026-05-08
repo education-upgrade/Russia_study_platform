@@ -13,6 +13,8 @@ type GuidedStudyAssignment = {
   status: string;
   created_at: string;
   recipient_count?: number | null;
+  pathway_slug?: string | null;
+  lesson_title?: string | null;
 };
 
 type ClassOption = {
@@ -94,10 +96,9 @@ export default async function SetStudyPage() {
   if (supabase) {
     const { data, error } = await supabase
       .from('guided_study_assignments')
-      .select('id, mode, required_activity_types, deadline_at, instructions, assigned_class, status, created_at, recipient_count')
-      .eq('pathway_slug', '1905-revolution')
+      .select('id, mode, required_activity_types, deadline_at, instructions, assigned_class, status, created_at, recipient_count, pathway_slug, lesson_title')
       .order('created_at', { ascending: false })
-      .limit(3);
+      .limit(5);
 
     assignments = (data ?? []) as GuidedStudyAssignment[];
     assignmentError = error?.message ?? '';
@@ -124,7 +125,7 @@ export default async function SetStudyPage() {
   return (
     <main className={styles.shell}>
       <div className={styles.topbar}>
-        <span>Teacher / Set guided study / 1905 Revolution</span>
+        <span>Teacher / Set guided study</span>
         <Link className={styles.navButton} href="/teacher/progress">Progress</Link>
         <Link className={styles.navButton} href="/student/dashboard">Student view</Link>
       </div>
@@ -172,8 +173,8 @@ export default async function SetStudyPage() {
                   <small>{assignment.recipient_count ?? 1} student{(assignment.recipient_count ?? 1) === 1 ? '' : 's'} · {assignment.status}</small>
                 </div>
                 <div>
-                  <strong>{formatMode(assignment.mode)}</strong>
-                  <small>{assignment.required_activity_types.length} activities</small>
+                  <strong>{assignment.lesson_title ?? assignment.pathway_slug ?? 'Guided study'}</strong>
+                  <small>{formatMode(assignment.mode)} · {assignment.required_activity_types.length} activities</small>
                 </div>
                 <div>
                   <strong>{formatDate(assignment.deadline_at)}</strong>
