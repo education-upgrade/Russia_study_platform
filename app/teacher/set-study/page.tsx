@@ -40,6 +40,12 @@ const fallbackClasses: ClassOption[] = [
     yearGroup: 'Y12',
     studentCount: 1,
   },
+  {
+    id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+    className: 'Year 13 Russia demo class',
+    yearGroup: 'Y13',
+    studentCount: 0,
+  },
 ];
 
 function formatMode(mode: string) {
@@ -57,14 +63,23 @@ function formatDate(value: string | null) {
 }
 
 function buildClassOptions(classes: TeacherClassRow[], memberships: ClassMembershipRow[]) {
-  if (!classes.length) return fallbackClasses;
+  const classMap = new Map<string, ClassOption>();
 
-  return classes.map((classRow) => ({
-    id: classRow.id,
-    className: classRow.class_name,
-    yearGroup: classRow.year_group,
-    studentCount: memberships.filter((membership) => membership.class_id === classRow.id).length,
-  }));
+  fallbackClasses.forEach((classOption) => classMap.set(classOption.id, classOption));
+
+  classes.forEach((classRow) => {
+    classMap.set(classRow.id, {
+      id: classRow.id,
+      className: classRow.class_name,
+      yearGroup: classRow.year_group,
+      studentCount: memberships.filter((membership) => membership.class_id === classRow.id).length,
+    });
+  });
+
+  return Array.from(classMap.values()).sort((first, second) => {
+    if (first.yearGroup !== second.yearGroup) return first.yearGroup.localeCompare(second.yearGroup);
+    return first.className.localeCompare(second.className);
+  });
 }
 
 export const dynamic = 'force-dynamic';
