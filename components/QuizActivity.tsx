@@ -18,6 +18,19 @@ type QuizActivityProps = {
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
+function optionsWithBalancedCorrectPosition(question: QuizQuestion, questionIndex: number) {
+  const options = [...question.options];
+  const correctIndex = options.indexOf(question.correct);
+
+  if (correctIndex === -1) return options;
+
+  const targetIndex = Math.min(questionIndex % 4, options.length - 1);
+  const [correctOption] = options.splice(correctIndex, 1);
+  options.splice(targetIndex, 0, correctOption);
+
+  return options;
+}
+
 export default function QuizActivity({ activityId, questions }: QuizActivityProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -33,6 +46,7 @@ export default function QuizActivity({ activityId, questions }: QuizActivityProp
 
   const currentQuestion = questions[currentIndex];
   const currentQuestionKey = questionKeys[currentIndex] ?? '';
+  const currentOptions = currentQuestion ? optionsWithBalancedCorrectPosition(currentQuestion, currentIndex) : [];
   const selectedAnswer = answers[currentQuestionKey];
   const answeredCount = questionKeys.filter((key) => Boolean(answers[key])).length;
 
@@ -196,7 +210,7 @@ export default function QuizActivity({ activityId, questions }: QuizActivityProp
       <section className={styles.card}>
         <h2 className={styles.questionText}>{currentQuestion.question}</h2>
         <div className={styles.options}>
-          {currentQuestion.options.map((option) => {
+          {currentOptions.map((option) => {
             const isSelected = selectedAnswer === option;
             const isCorrect = option === currentQuestion.correct;
             const showCorrect = Boolean(selectedAnswer) && isCorrect;
