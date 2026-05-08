@@ -139,7 +139,7 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
     setSaveMessage('');
   }
 
-  async function moveToPeel() {
+  async function moveToQuiz() {
     if (isMovingNext) return;
     setIsMovingNext(true);
 
@@ -150,7 +150,7 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
     const saved = await saveFlashcards(ratings, nextRevealedCardIds);
 
     if (saved) {
-      router.push('/student/lesson/1905/peel');
+      router.push('/student/lesson/1905/quiz');
       return;
     }
 
@@ -191,8 +191,8 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
           <h2>{secureCount}/{cards.length}</h2>
           <p>
             {revisitCount === 0 && nearlyCount <= 3
-              ? 'Strong flashcard recall. Move on to the PEEL response and apply this knowledge.'
-              : 'Good work. Revisit the weaker cards before applying the knowledge in your PEEL response.'}
+              ? 'Strong flashcard recall. Now test this knowledge in the retrieval quiz.'
+              : 'Good work. Revisit the weaker cards, then test the knowledge in the retrieval quiz.'}
           </p>
         </section>
 
@@ -216,7 +216,7 @@ export default function FlashcardActivity({ activityId, cards }: FlashcardActivi
         <section className={styles.completionNav}>
           <button type="button" className="button secondary" onClick={reviewDeck}>Review</button>
           <button type="button" className="button secondary" onClick={resetDeck}>Try again</button>
-          <button type="button" className="button" onClick={moveToPeel} disabled={isMovingNext || saveStatus === 'saving'}>
+          <button type="button" className="button" onClick={moveToQuiz} disabled={isMovingNext || saveStatus === 'saving'}>
             {isMovingNext || saveStatus === 'saving' ? 'Saving...' : 'Next'}
           </button>
         </section>
