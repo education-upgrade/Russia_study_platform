@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import styles from './PeelResponseActivity.module.css';
 
@@ -56,6 +57,7 @@ export default function PeelResponseActivity({
   question,
   stretchQuestion,
 }: PeelResponseActivityProps) {
+  const router = useRouter();
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [values, setValues] = useState<Record<PeelStepKey, string>>({
     point: '',
@@ -66,6 +68,7 @@ export default function PeelResponseActivity({
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [saveMessage, setSaveMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [isMovingNext, setIsMovingNext] = useState(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasMountedRef = useRef(false);
 
@@ -90,7 +93,7 @@ export default function PeelResponseActivity({
       .join('\n\n');
     const nextWordCount = countWords(nextFullResponse);
 
-    if (!nextFullResponse.trim()) return;
+    if (!nextFullResponse.trim()) return false;
 
     setSaveStatus('saving');
     setSaveMessage(status === 'submitted' ? 'Submitting...' : 'Autosaving...');
@@ -121,9 +124,11 @@ export default function PeelResponseActivity({
       setSaveStatus('saved');
       setSaveMessage(status === 'submitted' ? 'Submitted' : 'Saved');
       if (status === 'submitted') setSubmitted(true);
+      return true;
     } catch (error) {
       setSaveStatus('error');
       setSaveMessage(error instanceof Error ? error.message : 'PEEL response could not be saved.');
+      return false;
     }
   }
 
@@ -161,6 +166,21 @@ export default function PeelResponseActivity({
   async function submitResponse() {
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     await saveResponse(values, 'submitted');
+  }
+
+  async function moveToConfidence() {
+    if (isMovingNext) return;
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    setIsMovingNext(true);
+
+    const saved = await saveResponse(values, 'submitted');
+
+    if (saved) {
+      router.push('/student/lesson/1905/confidence');
+      return;
+    }
+
+    setIsMovingNext(false);
   }
 
   return (
@@ -231,15 +251,26 @@ export default function PeelResponseActivity({
           )}
           {saveMessage && <p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage}</p>}
         </div>
-        <button
-          type="button"
-          className={`button ${styles.submitButton}`}
-          onClick={submitResponse}
-          disabled={!hasWriting || saveStatus === 'saving'}
-          style={{ opacity: hasWriting ? 1 : 0.5 }}
-        >
-          {saveStatus === 'saving' ? 'Saving...' : submitted ? 'Update response' : 'Submit response'}
-        </button>
+        <div style={{ display: 'grid', gap: 8 }}>
+          <button
+            type="button"
+            className={`button secondary ${styles.submitButton}`}
+            onClick={submitResponse}
+            disabled={!hasWriting || saveStatus === 'saving'}
+            style={{ opacity: hasWriting ? 1 : 0.5 }}
+          >
+            {saveStatus === 'saving' ? 'Saving...' : submitted ? 'Update response' : 'Submit response'}
+          </button>
+          <button
+            type="button"
+            className={`button ${styles.submitButton}`}
+            onClick={moveToConfidence}
+            disabled={!hasWriting || isMovingNext || saveStatus === 'saving'}
+            style={{ opacity: hasWriting ? 1 : 0.5 }}
+          >
+            {isMovingNext || saveStatus === 'saving' ? 'Saving...' : 'Next'}
+          </button>
+        </div>
       </section>
     </div>
   );
