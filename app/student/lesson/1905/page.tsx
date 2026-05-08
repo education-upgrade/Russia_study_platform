@@ -4,21 +4,21 @@ import styles from './page.module.css';
 
 const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
 
-const TRACKABLE_ACTIVITY_TYPES = ['quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
-const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'quiz', 'flashcards', 'peel_response', 'confidence_exit_ticket'];
+const TRACKABLE_ACTIVITY_TYPES = ['flashcards', 'quiz', 'peel_response', 'confidence_exit_ticket'];
+const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'flashcards', 'quiz', 'peel_response', 'confidence_exit_ticket'];
 
 const activityRouteMap: Record<string, string> = {
   lesson_content: '/student/lesson/1905/lesson',
-  quiz: '/student/lesson/1905/quiz',
   flashcards: '/student/lesson/1905/flashcards',
+  quiz: '/student/lesson/1905/quiz',
   peel_response: '/student/lesson/1905/peel',
   confidence_exit_ticket: '/student/lesson/1905/confidence',
 };
 
 const activityLabels: Record<string, string> = {
   lesson_content: 'Lesson notes',
-  quiz: 'Retrieval quiz',
   flashcards: 'Flashcards',
+  quiz: 'Retrieval quiz',
   peel_response: 'PEEL response',
   confidence_exit_ticket: 'Confidence check',
 };
@@ -127,11 +127,12 @@ function getActivityStatus(activity: Activity, response: StudentResponse | undef
 
   if (activity.activity_type === 'quiz') {
     const percentage = typeof json.percentage === 'number' ? ` · ${json.percentage}%` : '';
+    const isComplete = response.status === 'complete' || response.status === 'submitted';
     return {
-      label: 'Done',
+      label: isComplete ? 'Done' : 'Started',
       detail: `${response.score ?? '-'}/${json.maxScore ?? '?'}${percentage}`,
-      tone: 'complete',
-      isComplete: true,
+      tone: isComplete ? 'complete' : 'started',
+      isComplete,
       isTrackable: true,
     };
   }
@@ -153,22 +154,24 @@ function getActivityStatus(activity: Activity, response: StudentResponse | undef
 
   if (activity.activity_type === 'peel_response') {
     const wordCount = json.wordCount ?? 0;
+    const isComplete = response.status === 'complete' || response.status === 'submitted';
     return {
-      label: 'Done',
+      label: isComplete ? 'Done' : 'Started',
       detail: `${wordCount} words`,
       tone: wordCount < 40 ? 'warning' : 'complete',
-      isComplete: true,
+      isComplete,
       isTrackable: true,
     };
   }
 
   if (activity.activity_type === 'confidence_exit_ticket') {
     const confidence = json.confidence ?? response.score ?? '-';
+    const isComplete = response.status === 'complete' || response.status === 'submitted';
     return {
-      label: 'Done',
+      label: isComplete ? 'Done' : 'Started',
       detail: `Confidence ${confidence}/5`,
       tone: Number(confidence) <= 2 ? 'warning' : 'complete',
-      isComplete: true,
+      isComplete,
       isTrackable: true,
     };
   }
