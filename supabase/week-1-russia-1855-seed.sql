@@ -23,7 +23,7 @@ values (
     'week', 1,
     'yearGroup', 'Y12',
     'coursePhase', 'Tsarist Russia: context and reform',
-    'sequence', array[''lesson_content'', ''flashcards'', ''quiz'', ''peel_response'', ''confidence_exit_ticket'']
+    'sequence', jsonb_build_array('lesson_content', 'flashcards', 'quiz', 'peel_response', 'confidence_exit_ticket')
   )
 )
 on conflict (title) do update set
