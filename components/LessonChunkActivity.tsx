@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import LessonVisualBlock, { type LessonVisual } from './LessonVisualBlock';
 import styles from './LessonChunkActivity.module.css';
 
 type LessonMedia = {
@@ -22,6 +23,7 @@ type LessonSection = {
   taskType?: 'recall' | 'explain' | 'source_inference' | 'judgement';
   teacherNote?: string;
   media?: LessonMedia;
+  visual?: LessonVisual;
 };
 
 type LessonChunkActivityProps = {
@@ -234,10 +236,15 @@ export default function LessonChunkActivity({
         <div className={styles.progressTop}><strong>Section {currentIndex + 1} of {sections.length}</strong><span>{answeredPercentage}% checks complete</span></div>
         <div className={styles.progressBar} aria-label="Lesson progress"><div style={{ width: `${progressPercentage}%` }} /></div>
       </div>
-      <article className={`${styles.sectionPanel} ${currentSection.media ? styles.hasMedia : ''}`}>
+      <article className={`${styles.sectionPanel} ${(currentSection.media || currentSection.visual) ? styles.hasSupport : ''}`}>
         <div className={styles.sectionNumber}>{currentIndex + 1}</div>
         <div className={styles.sectionText}><p className={styles.eyebrow}>Explanation</p><h3>{currentSection.heading}</h3><p>{currentSection.body}</p></div>
-        <MediaBlock media={currentSection.media} />
+        {(currentSection.media || currentSection.visual) && (
+          <div className={styles.supportStack}>
+            <MediaBlock media={currentSection.media} />
+            <LessonVisualBlock visual={currentSection.visual} />
+          </div>
+        )}
       </article>
       <section className={styles.checkPanel}>
         <div><p className={styles.eyebrow}>{currentTaskType}</p><h4>{sectionQuestion}</h4></div>
