@@ -2,6 +2,14 @@ import styles from './LessonVisualBlock.module.css';
 
 export type LessonVisual =
   | {
+      type: 'image';
+      title?: string;
+      label?: string;
+      src: string;
+      alt: string;
+      caption?: string;
+    }
+  | {
       type: 'comparison';
       title?: string;
       leftTitle: string;
@@ -62,6 +70,18 @@ function VisualHeader({ title, label }: { title?: string; label: string }) {
 
 export default function LessonVisualBlock({ visual }: { visual?: LessonVisual }) {
   if (!visual) return null;
+
+  if (visual.type === 'image') {
+    return (
+      <aside className={`${styles.visualCard} ${styles.imageVisualCard}`}>
+        <VisualHeader title={visual.title} label={visual.label ?? 'Visual'} />
+        <div className={styles.imageFrame}>
+          <img src={visual.src} alt={visual.alt} />
+        </div>
+        {visual.caption && <p className={styles.caption}>{visual.caption}</p>}
+      </aside>
+    );
+  }
 
   if (visual.type === 'comparison') {
     return (
