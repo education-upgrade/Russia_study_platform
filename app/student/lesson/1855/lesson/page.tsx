@@ -46,19 +46,21 @@ const FALLBACK_SECTIONS = [
   },
 ];
 
-const VISUALS_BY_HEADING: Record<string, any> = {
-  'autocracy and personal rule': {
-    type: 'comparison',
-    title: 'Autocracy: strength or weakness?',
-    leftTitle: 'Why it helped control',
-    rightTitle: 'Why it made rule difficult',
-    rows: [
-      { left: 'Clear central authority', right: 'Depended heavily on the Tsar’s ability' },
-      { left: 'Could act without parliament', right: 'Limited accountability and representation' },
-      { left: 'Supported by Church and nobility', right: 'Risked slow, top-down decision making' },
+const lessonVisuals = {
+  enquiry: {
+    type: 'conceptMap',
+    title: 'The five linked governing problems',
+    centre: 'Russia was difficult to govern in 1855',
+    branches: [
+      { label: 'Autocracy', note: 'powerful but rigid' },
+      { label: 'Scale', note: 'huge distances' },
+      { label: 'Serfdom', note: 'blocked modernisation' },
+      { label: 'Inequality', note: 'elite landowners vs peasants' },
+      { label: 'Backwardness', note: 'weak transport and industry' },
+      { label: 'Administration', note: 'slow and corrupt' },
     ],
   },
-  'a vast and diverse empire': {
+  empire: {
     type: 'mapNote',
     title: 'Scale, distance and diversity',
     regions: [
@@ -69,7 +71,29 @@ const VISUALS_BY_HEADING: Record<string, any> = {
     ],
     caption: 'The issue is not just size: distance, poor transport and diversity made authority harder to project from the centre.',
   },
-  'a mainly peasant society': {
+  autocracy: {
+    type: 'comparison',
+    title: 'Autocracy: strength or weakness?',
+    leftTitle: 'Why it helped control',
+    rightTitle: 'Why it made rule difficult',
+    rows: [
+      { left: 'Clear central authority', right: 'Depended heavily on the Tsar’s ability' },
+      { left: 'Could act without parliament', right: 'Limited accountability and representation' },
+      { left: 'Supported by Church and nobility', right: 'Risked slow, top-down decision making' },
+    ],
+  },
+  church: {
+    type: 'flow',
+    title: 'How the Church supported authority',
+    steps: [
+      'Orthodox Church promoted obedience',
+      'Tsar was presented as God-appointed',
+      'Peasants were encouraged to accept hierarchy',
+      'Conservative attitudes were reinforced',
+      'Rapid reform became harder to justify',
+    ],
+  },
+  society: {
     type: 'hierarchy',
     title: 'Russian social structure in 1855',
     levels: [
@@ -80,29 +104,58 @@ const VISUALS_BY_HEADING: Record<string, any> = {
       { label: 'Peasants and serfs', note: 'majority of the population' },
     ],
   },
-  'economic and military weakness': {
+  serfdom: {
     type: 'flow',
-    title: 'How backwardness became a governing problem',
+    title: 'How serfdom held Russia back',
     steps: [
-      'Weak transport and limited industry',
-      'Slow movement of troops, goods and information',
-      'Crimean War exposed practical weakness',
-      'Regime appeared powerful but vulnerable',
-      'Pressure for reform increased',
+      'Serfs were legally tied to landowners',
+      'Freedom and mobility were restricted',
+      'Agriculture stayed inefficient',
+      'Industry had limited labour flexibility',
+      'Economic modernisation was slowed',
     ],
   },
-  'pressure for reform': {
-    type: 'conceptMap',
-    title: 'Why reform became difficult to avoid',
-    centre: 'Russia was difficult to govern in 1855',
-    branches: [
-      { label: 'Autocracy', note: 'powerful but rigid' },
-      { label: 'Serfdom', note: 'social and economic blockage' },
-      { label: 'Geography', note: 'distance weakened control' },
-      { label: 'Backwardness', note: 'weaker than rival powers' },
-      { label: 'Crimean War', note: 'exposed weaknesses' },
-      { label: 'Reform risk', note: 'change could undermine authority' },
+  economy: {
+    type: 'comparison',
+    title: 'Russia and more industrialised powers',
+    leftTitle: 'Russia in 1855',
+    rightTitle: 'More industrialised states',
+    rows: [
+      { left: 'Mainly rural and agricultural', right: 'Larger urban industrial workforce' },
+      { left: 'Weak transport links', right: 'Stronger railway networks' },
+      { left: 'Limited state revenue', right: 'Greater capacity to fund armies and reform' },
     ],
+  },
+  administration: {
+    type: 'flow',
+    title: 'From theoretical power to uneven control',
+    steps: [
+      'Tsar held ultimate authority',
+      'Orders passed through bureaucracy',
+      'Officials could be slow or corrupt',
+      'Local control was uneven',
+      'Autocracy was stronger in theory than practice',
+    ],
+  },
+  crimea: {
+    type: 'statBlock',
+    title: 'Crimean War warning signs',
+    stats: [
+      { value: '1853–56', label: 'Crimean War', note: 'exposed weakness' },
+      { value: '3', label: 'major problems', note: 'transport, army, administration' },
+      { value: '1855', label: 'Alexander II inherited crisis', note: 'reform pressure increased' },
+      { value: '1', label: 'central message', note: 'Russia needed modernisation' },
+    ],
+    takeaway: 'The Crimean War mattered because it made Russia’s weaknesses visible and harder for the regime to ignore.',
+  },
+  judgement: {
+    type: 'judgementScale',
+    title: 'Overall judgement',
+    leftLabel: 'One main problem',
+    rightLabel: 'Linked structural weaknesses',
+    markerLabel: 'Stronger judgement',
+    markerPosition: 78,
+    prompt: 'The strongest answers explain how several weaknesses reinforced each other rather than treating them as separate problems.',
   },
 };
 
@@ -135,6 +188,21 @@ function cleanLessonTitle(title: string | undefined | null) {
     .replace(/^Introduction:\s*/i, '');
 }
 
+function getVisualForHeading(heading: string) {
+  const key = heading.toLowerCase();
+  if (key.includes('enquiry')) return lessonVisuals.enquiry;
+  if (key.includes('multi-national') || key.includes('vast') || key.includes('diverse') || key.includes('empire')) return lessonVisuals.empire;
+  if (key.includes('autocracy') || key.includes('tsar')) return lessonVisuals.autocracy;
+  if (key.includes('orthodox') || key.includes('church')) return lessonVisuals.church;
+  if (key.includes('unequal') || key.includes('society') || key.includes('peasant society')) return lessonVisuals.society;
+  if (key.includes('serfdom') || key.includes('serf')) return lessonVisuals.serfdom;
+  if (key.includes('economic') || key.includes('backwardness')) return lessonVisuals.economy;
+  if (key.includes('administrative') || key.includes('bureaucracy')) return lessonVisuals.administration;
+  if (key.includes('crimean') || key.includes('warning')) return lessonVisuals.crimea;
+  if (key.includes('judgement') || key.includes('overall')) return lessonVisuals.judgement;
+  return undefined;
+}
+
 function normaliseSection(section: any) {
   const heading = section.heading ?? section.title ?? 'Lesson section';
   const body = section.body ?? section.content ?? '';
@@ -144,7 +212,7 @@ function normaliseSection(section: any) {
     heading,
     body,
     question,
-    visual: section.visual ?? VISUALS_BY_HEADING[String(heading).toLowerCase()],
+    visual: section.visual ?? getVisualForHeading(String(heading)),
   };
 }
 
