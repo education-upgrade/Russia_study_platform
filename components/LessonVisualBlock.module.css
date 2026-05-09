@@ -19,6 +19,92 @@
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.7);
 }
 
+.imageFrameButton {
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: #fff;
+  padding: 0;
+  cursor: zoom-in;
+}
+
+.imageFrameButton img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.expandHint {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 2;
+  border-radius: 999px;
+  background: rgba(20, 34, 68, 0.88);
+  color: #fff;
+  padding: 6px 10px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.imageModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 18, 34, 0.82);
+  padding: 20px;
+}
+
+.imageModal {
+  position: relative;
+  max-width: min(1400px, 96vw);
+  max-height: 92vh;
+  overflow: auto;
+  border-radius: 24px;
+  background: #fff;
+  padding: 18px;
+}
+
+.imageModal img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 16px;
+}
+
+.imageModal p {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.closeImageButton {
+  position: sticky;
+  top: 0;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 999px;
+  background: var(--navy);
+  color: #fff;
+  padding: 10px 14px;
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+  z-index: 3;
+}
+
 .imageFrame img {
   display: block;
   width: 100%;
@@ -44,256 +130,4 @@
   font-size: 1rem;
   font-weight: 950;
   line-height: 1.12;
-}
-
-.comparisonGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 7px;
-}
-
-.comparisonHeading {
-  border-radius: 14px;
-  background: var(--navy);
-  color: #fff;
-  padding: 8px 10px;
-  font-size: 0.78rem;
-  font-weight: 950;
-  text-align: center;
-}
-
-.comparisonRow {
-  display: contents;
-}
-
-.comparisonRow div,
-.flowStep,
-.timelineEvent,
-.hierarchyLevel,
-.conceptBranch,
-.mapRegion,
-.statItem {
-  border-radius: 14px;
-  border: 1px solid rgba(213, 226, 235, 0.95);
-  background: rgba(255,255,255,0.82);
-  color: var(--navy);
-  padding: 9px 10px;
-  font-size: 0.82rem;
-  font-weight: 780;
-  line-height: 1.3;
-}
-
-.flowList,
-.timeline,
-.hierarchy,
-.conceptBranches,
-.statGrid {
-  display: grid;
-  gap: 8px;
-}
-
-.flowStep {
-  display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-  position: relative;
-}
-
-.flowStep span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 11px;
-  background: var(--navy);
-  color: #fff;
-  font-size: 0.76rem;
-  font-weight: 950;
-}
-
-.flowStep strong,
-.timelineEvent strong,
-.hierarchyLevel strong,
-.conceptBranch strong,
-.mapRegion strong {
-  font-weight: 950;
-}
-
-.timeline {
-  position: relative;
-  padding-left: 10px;
-}
-
-.timelineEvent {
-  border-left: 4px solid var(--navy);
-}
-
-.timelineEvent span {
-  display: block;
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 950;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.hierarchyLevel {
-  text-align: center;
-}
-
-.hierarchyLevel:nth-child(1) {
-  background: var(--navy);
-  color: #fff;
-}
-
-.hierarchyLevel span,
-.conceptBranch span,
-.mapRegion span,
-.statItem small {
-  display: block;
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 760;
-}
-
-.hierarchyLevel:nth-child(1) span {
-  color: rgba(255,255,255,0.78);
-}
-
-.conceptMap {
-  display: grid;
-  gap: 10px;
-}
-
-.conceptCentre {
-  display: flex;
-  min-height: 54px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 18px;
-  background: var(--navy);
-  color: #fff;
-  padding: 10px;
-  text-align: center;
-  font-weight: 950;
-  line-height: 1.18;
-}
-
-.conceptBranches {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.mapNote {
-  position: relative;
-  min-height: 170px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  overflow: hidden;
-  border-radius: 18px;
-  border: 1px solid rgba(213, 226, 235, 0.95);
-  background:
-    radial-gradient(circle at 20% 30%, rgba(225,242,240,0.95), transparent 28%),
-    radial-gradient(circle at 78% 68%, rgba(238,232,248,0.95), transparent 30%),
-    linear-gradient(135deg, rgba(255,255,255,0.88), rgba(237,245,251,0.9));
-  padding: 10px;
-}
-
-.mapRegion {
-  background: rgba(255,255,255,0.78);
-  backdrop-filter: blur(3px);
-}
-
-.statGrid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.statItem strong {
-  display: block;
-  color: var(--navy);
-  font-size: clamp(1.2rem, 3vw, 1.8rem);
-  line-height: 1;
-  letter-spacing: -0.05em;
-}
-
-.statItem span {
-  display: block;
-  margin-top: 5px;
-  color: var(--navy);
-  font-weight: 900;
-  line-height: 1.2;
-}
-
-.caption,
-.takeaway {
-  margin: 9px 0 0;
-  border-radius: 14px;
-  background: rgba(255,255,255,0.74);
-  color: var(--muted);
-  padding: 9px 10px;
-  font-size: 0.8rem;
-  font-weight: 800;
-  line-height: 1.35;
-}
-
-.scaleLabels {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  color: var(--navy);
-  font-size: 0.78rem;
-  font-weight: 950;
-}
-
-.scaleTrack {
-  position: relative;
-  height: 14px;
-  margin: 24px 4px 20px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(238,232,248,1), rgba(225,242,240,1));
-}
-
-.scaleMarker {
-  position: absolute;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  white-space: nowrap;
-  border-radius: 999px;
-  background: var(--navy);
-  color: #fff;
-  padding: 7px 10px;
-  font-size: 0.72rem;
-  font-weight: 950;
-  box-shadow: 0 10px 22px rgba(22, 33, 63, 0.16);
-}
-
-@media (max-width: 760px) {
-  .visualCard {
-    padding: 10px;
-    border-radius: 16px;
-  }
-
-  .comparisonGrid,
-  .conceptBranches,
-  .mapNote,
-  .statGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .mapNote {
-    min-height: 0;
-  }
-
-  .comparisonRow {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 6px;
-  }
-
-  .comparisonHeading:nth-child(2) {
-    margin-top: 6px;
-  }
 }
