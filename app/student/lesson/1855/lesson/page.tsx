@@ -61,15 +61,12 @@ const lessonVisuals = {
     ],
   },
   empire: {
-    type: 'mapNote',
+    type: 'image',
+    label: 'Annotated map',
     title: 'Scale, distance and diversity',
-    regions: [
-      { label: 'European Russia', note: 'political core and main population centre' },
-      { label: 'Siberia', note: 'huge distances and weak communication' },
-      { label: 'Borderlands', note: 'ethnic and religious diversity' },
-      { label: 'Central control', note: 'hard to apply consistently across the empire' },
-    ],
-    caption: 'The issue is not just size: distance, poor transport and diversity made authority harder to project from the centre.',
+    src: '/images/russia-1855-map.svg',
+    alt: 'Annotated map of Russia in 1855 showing European Russia, Siberia, borderlands, St Petersburg, Moscow and Crimea.',
+    caption: 'Use the map to link geography to government: the larger and more diverse the empire, the harder it was to project authority evenly from St Petersburg.',
   },
   autocracy: {
     type: 'comparison',
