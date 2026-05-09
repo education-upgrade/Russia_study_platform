@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import styles from './LessonVisualBlock.module.css';
 
 export type LessonVisual =
@@ -69,16 +72,42 @@ function VisualHeader({ title, label }: { title?: string; label: string }) {
 }
 
 export default function LessonVisualBlock({ visual }: { visual?: LessonVisual }) {
+  const [expandedImage, setExpandedImage] = useState(false);
+
   if (!visual) return null;
 
   if (visual.type === 'image') {
     return (
       <aside className={`${styles.visualCard} ${styles.imageVisualCard}`}>
         <VisualHeader title={visual.title} label={visual.label ?? 'Visual'} />
-        <div className={styles.imageFrame}>
+        <button
+          type="button"
+          className={styles.imageFrameButton}
+          onClick={() => setExpandedImage(true)}
+          aria-label="Expand image"
+        >
+          <span className={styles.expandHint}>Tap to expand</span>
           <img src={visual.src} alt={visual.alt} />
-        </div>
+        </button>
         {visual.caption && <p className={styles.caption}>{visual.caption}</p>}
+
+        {expandedImage && (
+          <div
+            className={styles.imageModalBackdrop}
+            role="dialog"
+            aria-modal="true"
+            aria-label={visual.title ?? 'Expanded lesson image'}
+            onClick={() => setExpandedImage(false)}
+          >
+            <div className={styles.imageModal} onClick={(event) => event.stopPropagation()}>
+              <button type="button" className={styles.closeImageButton} onClick={() => setExpandedImage(false)}>
+                Close ×
+              </button>
+              <img src={visual.src} alt={visual.alt} />
+              {visual.caption && <p>{visual.caption}</p>}
+            </div>
+          </div>
+        )}
       </aside>
     );
   }
