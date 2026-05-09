@@ -15,31 +15,96 @@ type Activity = {
 const LESSON_TITLE = 'Why was Russia difficult to govern in 1855?';
 const FALLBACK_SECTIONS = [
   {
-    title: 'Autocracy and personal rule',
-    content: 'In 1855 Russia was ruled by an autocratic Tsar. Alexander II inherited a system where political authority was concentrated in the monarch, with limited representative institutions and heavy reliance on ministers, officials, the army and the Church.',
-    checkQuestion: 'Why did autocracy make Russia difficult to govern effectively?',
+    heading: 'Autocracy and personal rule',
+    body: 'In 1855 Russia was ruled by an autocratic Tsar. Alexander II inherited a system where political authority was concentrated in the monarch, with limited representative institutions and heavy reliance on ministers, officials, the army and the Church.',
+    question: 'Why did autocracy make Russia difficult to govern effectively?',
+    taskType: 'explain',
   },
   {
-    title: 'A vast and diverse empire',
-    content: 'Russia was enormous, stretching across Europe and Asia. Its size, poor communications and ethnic diversity made it difficult for the central state to control local areas consistently.',
-    checkQuestion: 'How did geography and diversity create problems for central control?',
+    heading: 'A vast and diverse empire',
+    body: 'Russia was enormous, stretching across Europe and Asia. Its size, poor communications and ethnic diversity made it difficult for the central state to control local areas consistently.',
+    question: 'How did geography and diversity create problems for central control?',
+    taskType: 'explain',
   },
   {
-    title: 'A mainly peasant society',
-    content: 'Most Russians were peasants and many were still tied to the land through serfdom. This created economic backwardness, social tension and limits on modernisation.',
-    checkQuestion: 'Why was serfdom a problem for Russia in 1855?',
+    heading: 'A mainly peasant society',
+    body: 'Most Russians were peasants and many were still tied to the land through serfdom. This created economic backwardness, social tension and limits on modernisation.',
+    question: 'Why was serfdom a problem for Russia in 1855?',
+    taskType: 'explain',
   },
   {
-    title: 'Economic and military weakness',
-    content: 'The Crimean War exposed weaknesses in transport, industry, administration and military organisation. Russia appeared powerful but lacked the infrastructure and industrial base of more modern European states.',
-    checkQuestion: 'What did the Crimean War reveal about Russia?',
+    heading: 'Economic and military weakness',
+    body: 'The Crimean War exposed weaknesses in transport, industry, administration and military organisation. Russia appeared powerful but lacked the infrastructure and industrial base of more modern European states.',
+    question: 'What did the Crimean War reveal about Russia?',
+    taskType: 'recall',
   },
   {
-    title: 'Pressure for reform',
-    content: 'By 1855 the Tsarist state faced pressure to reform, but reform was risky because change could weaken autocratic control. This tension shaped Alexander II’s reign.',
-    checkQuestion: 'Why was reform both necessary and dangerous for the Tsar?',
+    heading: 'Pressure for reform',
+    body: 'By 1855 the Tsarist state faced pressure to reform, but reform was risky because change could weaken autocratic control. This tension shaped Alexander II’s reign.',
+    question: 'Why was reform both necessary and dangerous for the Tsar?',
+    taskType: 'judgement',
   },
 ];
+
+const VISUALS_BY_HEADING: Record<string, any> = {
+  'autocracy and personal rule': {
+    type: 'comparison',
+    title: 'Autocracy: strength or weakness?',
+    leftTitle: 'Why it helped control',
+    rightTitle: 'Why it made rule difficult',
+    rows: [
+      { left: 'Clear central authority', right: 'Depended heavily on the Tsar’s ability' },
+      { left: 'Could act without parliament', right: 'Limited accountability and representation' },
+      { left: 'Supported by Church and nobility', right: 'Risked slow, top-down decision making' },
+    ],
+  },
+  'a vast and diverse empire': {
+    type: 'mapNote',
+    title: 'Scale, distance and diversity',
+    regions: [
+      { label: 'European Russia', note: 'political core and main population centre' },
+      { label: 'Siberia', note: 'huge distances and weak communication' },
+      { label: 'Borderlands', note: 'ethnic and religious diversity' },
+      { label: 'Central control', note: 'hard to apply consistently across the empire' },
+    ],
+    caption: 'The issue is not just size: distance, poor transport and diversity made authority harder to project from the centre.',
+  },
+  'a mainly peasant society': {
+    type: 'hierarchy',
+    title: 'Russian social structure in 1855',
+    levels: [
+      { label: 'Tsar', note: 'source of political authority' },
+      { label: 'Nobility and senior officials', note: 'land, status and influence' },
+      { label: 'Clergy and army officers', note: 'supported obedience and order' },
+      { label: 'Small middle class', note: 'limited liberal pressure' },
+      { label: 'Peasants and serfs', note: 'majority of the population' },
+    ],
+  },
+  'economic and military weakness': {
+    type: 'flow',
+    title: 'How backwardness became a governing problem',
+    steps: [
+      'Weak transport and limited industry',
+      'Slow movement of troops, goods and information',
+      'Crimean War exposed practical weakness',
+      'Regime appeared powerful but vulnerable',
+      'Pressure for reform increased',
+    ],
+  },
+  'pressure for reform': {
+    type: 'conceptMap',
+    title: 'Why reform became difficult to avoid',
+    centre: 'Russia was difficult to govern in 1855',
+    branches: [
+      { label: 'Autocracy', note: 'powerful but rigid' },
+      { label: 'Serfdom', note: 'social and economic blockage' },
+      { label: 'Geography', note: 'distance weakened control' },
+      { label: 'Backwardness', note: 'weaker than rival powers' },
+      { label: 'Crimean War', note: 'exposed weaknesses' },
+      { label: 'Reform risk', note: 'change could undermine authority' },
+    ],
+  },
+};
 
 async function getActivity(activityType: string) {
   if (!supabase) return { activity: null, error: 'Supabase is not configured.', enquiry: null };
@@ -70,13 +135,26 @@ function cleanLessonTitle(title: string | undefined | null) {
     .replace(/^Introduction:\s*/i, '');
 }
 
+function normaliseSection(section: any) {
+  const heading = section.heading ?? section.title ?? 'Lesson section';
+  const body = section.body ?? section.content ?? '';
+  const question = section.question ?? section.checkQuestion;
+  return {
+    ...section,
+    heading,
+    body,
+    question,
+    visual: section.visual ?? VISUALS_BY_HEADING[String(heading).toLowerCase()],
+  };
+}
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function LessonNotesPage() {
   const { activity, error, enquiry } = await getActivity('lesson_content');
   const savedSections = Array.isArray(activity?.content_json?.sections) ? activity?.content_json.sections : [];
-  const sections = savedSections.length >= 3 ? savedSections : FALLBACK_SECTIONS;
+  const sections = (savedSections.length >= 3 ? savedSections : FALLBACK_SECTIONS).map(normaliseSection);
   const pageTitle = cleanLessonTitle(activity?.title);
 
   return (
@@ -102,6 +180,8 @@ export default async function LessonNotesPage() {
             estimatedMinutes={activity.estimated_minutes ?? 12}
             skillFocus={activity.skill_focus ?? 'AO1 contextual understanding'}
             difficulty={activity.difficulty ?? 'secure'}
+            nextHref="/student/lesson/1855/flashcards"
+            nextLabel="Next: flashcards"
           />
         ) : (
           <article className={styles.fallbackCard}>
