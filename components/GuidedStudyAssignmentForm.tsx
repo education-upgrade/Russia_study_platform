@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { PATHWAY_ACTIVITY_ORDER, pathwayOptions } from '@/lib/pathwayRegistry';
 import styles from './GuidedStudyAssignmentForm.module.css';
 
 type StudyMode = 'full_guided_study' | 'exam_practice' | 'recap' | 'confidence_repair';
@@ -15,60 +16,6 @@ type ClassOption = {
 type GuidedStudyAssignmentFormProps = {
   classOptions?: ClassOption[];
 };
-
-type TopicOption = {
-  pathwaySlug: string;
-  lessonTitle: string;
-  title: string;
-  subtitle: string;
-  yearGroup: string;
-  status: 'ready' | 'planned';
-};
-
-const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'flashcards', 'quiz', 'peel_response', 'confidence_exit_ticket'];
-
-const topicOptions: TopicOption[] = [
-  {
-    pathwaySlug: 'russia-1855',
-    lessonTitle: 'Why was Russia difficult to govern in 1855?',
-    title: 'Russia in 1855',
-    subtitle: 'Autocracy, empire, society and problems of government',
-    yearGroup: 'Y12',
-    status: 'ready',
-  },
-  {
-    pathwaySlug: 'alexander-ii-reform',
-    lessonTitle: 'Why did Alexander II believe Russia needed reform?',
-    title: 'Alexander II reform',
-    subtitle: 'Crimean War, serfdom, backwardness and reform from above',
-    yearGroup: 'Y12',
-    status: 'ready',
-  },
-  {
-    pathwaySlug: '1905-revolution',
-    lessonTitle: 'Was the 1905 Revolution a turning point for Tsarist Russia?',
-    title: '1905 Revolution',
-    subtitle: 'Causes, events, consequences and limits of change',
-    yearGroup: 'Y12',
-    status: 'ready',
-  },
-  {
-    pathwaySlug: 'feb-oct-1917',
-    lessonTitle: 'Why did the Provisional Government collapse in 1917?',
-    title: 'February to October 1917',
-    subtitle: 'Dual power, Provisional Government failure and Bolshevik success',
-    yearGroup: 'Y12',
-    status: 'planned',
-  },
-  {
-    pathwaySlug: 'stalin-postwar-khrushchev',
-    lessonTitle: 'How far did Stalin and Khrushchev transform the USSR after 1945?',
-    title: 'Stalin and Khrushchev, 1945–64',
-    subtitle: 'Recovery, reform, repression and de-Stalinisation',
-    yearGroup: 'Y13',
-    status: 'planned',
-  },
-];
 
 const fallbackClasses: ClassOption[] = [
   {
@@ -120,10 +67,16 @@ const activityOptions = [
   { value: 'confidence_exit_ticket', label: 'Confidence check', description: 'Final reflection.' },
 ];
 
-const defaultActivities = PATHWAY_ACTIVITY_ORDER;
+const defaultActivities = [...PATHWAY_ACTIVITY_ORDER];
 
 function orderSelectedActivities(activityTypes: string[]) {
-  return [...activityTypes].sort((first, second) => PATHWAY_ACTIVITY_ORDER.indexOf(first) - PATHWAY_ACTIVITY_ORDER.indexOf(second));
+  return [...activityTypes].sort((first, second) => {
+    const firstIndex = PATHWAY_ACTIVITY_ORDER.indexOf(first as typeof PATHWAY_ACTIVITY_ORDER[number]);
+    const secondIndex = PATHWAY_ACTIVITY_ORDER.indexOf(second as typeof PATHWAY_ACTIVITY_ORDER[number]);
+    const safeFirstIndex = firstIndex === -1 ? 999 : firstIndex;
+    const safeSecondIndex = secondIndex === -1 ? 999 : secondIndex;
+    return safeFirstIndex - safeSecondIndex;
+  });
 }
 
 function getDefaultInstructions(mode: StudyMode, topicTitle: string) {
@@ -153,8 +106,8 @@ function getActivityLabel(activityType: string) {
 export default function GuidedStudyAssignmentForm({ classOptions = fallbackClasses }: GuidedStudyAssignmentFormProps) {
   const usableClassOptions = classOptions.length ? classOptions : fallbackClasses;
   const [classId, setClassId] = useState(usableClassOptions[0]?.id ?? fallbackClasses[0].id);
-  const [topicSlug, setTopicSlug] = useState(topicOptions[0].pathwaySlug);
-  const selectedTopic = topicOptions.find((topic) => topic.pathwaySlug === topicSlug) ?? topicOptions[0];
+  const [topicSlug, setTopicSlug] = useState(pathwayOptions[0].pathwaySlug);
+  const selectedTopic = pathwayOptions.find((topic) => topic.pathwaySlug === topicSlug) ?? pathwayOptions[0];
   const [mode, setMode] = useState<StudyMode>('full_guided_study');
   const [selectedActivities, setSelectedActivities] = useState<string[]>(defaultActivities);
   const [deadlineAt, setDeadlineAt] = useState('');
@@ -162,7 +115,6 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveMessage, setSaveMessage] = useState('');
   const selectedClass = usableClassOptions.find((option) => option.id === classId) ?? usableClassOptions[0];
-  const selectedMode = modeOptions.find((option) => option.value === mode) ?? modeOptions[0];
   const deadlineLabel = useMemo(() => {
     if (!deadlineAt) return 'No deadline set';
     return new Date(deadlineAt).toLocaleString('en-GB', {
@@ -179,7 +131,7 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
   }
 
   function updateTopic(nextSlug: string) {
-    const nextTopic = topicOptions.find((topic) => topic.pathwaySlug === nextSlug) ?? topicOptions[0];
+    const nextTopic = pathwayOptions.find((topic) => topic.pathwaySlug === nextSlug) ?? pathwayOptions[0];
     setTopicSlug(nextSlug);
     setInstructions(getDefaultInstructions(mode, nextTopic.title));
     resetSaveState();
@@ -268,7 +220,7 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
             </div>
           </div>
           <div className={styles.topicGrid}>
-            {topicOptions.map((topic) => (
+            {pathwayOptions.map((topic) => (
               <button
                 type="button"
                 className={`${styles.topicButton} ${topicSlug === topic.pathwaySlug ? styles.selectedTopic : ''}`}
