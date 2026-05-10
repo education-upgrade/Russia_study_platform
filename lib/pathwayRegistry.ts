@@ -40,6 +40,15 @@ export const pathwayRegistry: Record<string, PathwayConfig> = {
     status: 'ready',
     routeBase: '/student/lesson/alexander-ii-reform',
   },
+  'emancipation-serfs': {
+    pathwaySlug: 'emancipation-serfs',
+    title: 'Emancipation of the serfs',
+    lessonTitle: 'How far did emancipation improve the lives of Russian peasants?',
+    subtitle: '1861 emancipation, redemption payments, land and the mir',
+    yearGroup: 'Y12',
+    status: 'ready',
+    routeBase: '/student/lesson/emancipation-serfs',
+  },
   '1905-revolution': {
     pathwaySlug: '1905-revolution',
     title: '1905 Revolution',
