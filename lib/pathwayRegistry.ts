@@ -49,6 +49,15 @@ export const pathwayRegistry: Record<string, PathwayConfig> = {
     status: 'ready',
     routeBase: '/student/lesson/emancipation-serfs',
   },
+  'alexander-ii-wider-reforms': {
+    pathwaySlug: 'alexander-ii-wider-reforms',
+    title: 'Alexander II wider reforms',
+    lessonTitle: 'How far did Alexander II modernise Russia through reform?',
+    subtitle: 'Zemstva, judicial reform, military reform, education and limits',
+    yearGroup: 'Y12',
+    status: 'ready',
+    routeBase: '/student/lesson/alexander-ii-wider-reforms',
+  },
   '1905-revolution': {
     pathwaySlug: '1905-revolution',
     title: '1905 Revolution',
