@@ -16,11 +16,13 @@ type Activity = {
 async function getActivity(activityType: string) {
   if (!supabase) return { activity: null, error: 'Supabase is not configured.' };
 
-  const { data: lesson, error: lessonError } = await supabase
+  const { data: lessonRows, error: lessonError } = await supabase
     .from('lessons')
     .select('id')
     .eq('title', alexanderIIReformLessonTitle)
-    .single();
+    .limit(1);
+
+  const lesson = Array.isArray(lessonRows) && lessonRows.length > 0 ? lessonRows[0] : null;
 
   if (lessonError || !lesson) return { activity: null, error: lessonError?.message ?? 'Alexander II reform lesson not found.' };
 
@@ -29,7 +31,8 @@ async function getActivity(activityType: string) {
     .select('id, title, skill_focus, difficulty, estimated_minutes, content_json')
     .eq('lesson_id', lesson.id)
     .eq('activity_type', activityType)
-    .single<Activity>();
+    .limit(1)
+    .maybeSingle<Activity>();
 
   return { activity, error: error?.message ?? '' };
 }
