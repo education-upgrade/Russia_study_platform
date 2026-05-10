@@ -32,6 +32,11 @@ type ClassRow = {
   class_name: string;
 };
 
+type LessonRow = {
+  id: string;
+  title: string;
+};
+
 function orderRequiredActivityTypes(activityTypes: string[]) {
   return [...activityTypes].sort((first, second) => {
     const firstIndex = PATHWAY_ACTIVITY_ORDER.indexOf(first);
@@ -62,10 +67,26 @@ async function getClassName(classId: string) {
     .from('teacher_classes')
     .select('id, class_name')
     .eq('id', classId)
+    .limit(1)
     .maybeSingle<ClassRow>();
 
   if (error || !data) return 'Year 12 Russia demo class';
   return data.class_name;
+}
+
+async function getLessonByTitle(lessonTitle: string) {
+  if (!supabase) return { lesson: null, error: 'Supabase is not configured.' };
+
+  const { data, error } = await supabase
+    .from('lessons')
+    .select('id, title')
+    .eq('title', lessonTitle)
+    .order('created_at', { ascending: true })
+    .limit(1);
+
+  if (error) return { lesson: null, error: error.message };
+  const lesson = Array.isArray(data) && data.length > 0 ? (data[0] as LessonRow) : null;
+  return { lesson, error: lesson ? '' : `${lessonTitle} lesson not found. Run the seed SQL for this topic first.` };
 }
 
 export async function POST(request: Request) {
@@ -91,17 +112,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `Unknown activity type: ${invalidActivities.join(', ')}` }, { status: 400 });
   }
 
-  const { data: lesson, error: lessonError } = await supabase
-    .from('lessons')
-    .select('id, title')
-    .eq('title', lessonTitle)
-    .single();
+  const { lesson, error: lessonError } = await getLessonByTitle(lessonTitle);
 
   if (lessonError || !lesson) {
-    return NextResponse.json(
-      { error: lessonError?.message ?? `${lessonTitle} lesson not found. Run the seed SQL for this topic first.` },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: lessonError ?? `${lessonTitle} lesson not found.` }, { status: 500 });
   }
 
   const classId = body.classId || DEMO_CLASS_ID;
@@ -129,12 +143,13 @@ export async function POST(request: Request) {
     .from('guided_study_assignments')
     .insert(assignmentPayload)
     .select('id, created_at, recipient_count')
-    .single();
+    .limit(1)
+    .maybeSingle();
 
-  if (error) {
+  if (error || !data) {
     return NextResponse.json(
       {
-        error: error.message,
+        error: error?.message ?? 'Assignment could not be created.',
         setupHint: 'If this mentions class_id, teacher_id or assigned_student_ids, run supabase/multi-class-platform.sql in Supabase SQL Editor.',
       },
       { status: 500 }
