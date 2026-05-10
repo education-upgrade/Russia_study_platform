@@ -1,27 +1,9 @@
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { PATHWAY_ACTIVITY_ORDER, getActivityRoute, getPathwayConfig, orderActivityTypes } from '@/lib/pathwayRegistry';
 import styles from './page.module.css';
 
 const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
-const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'flashcards', 'quiz', 'peel_response', 'confidence_exit_ticket'];
-
-const pathwayConfig: Record<string, { title: string; lessonTitle: string; routeBase: string }> = {
-  '1905-revolution': {
-    title: '1905 Revolution',
-    lessonTitle: 'Was the 1905 Revolution a turning point for Tsarist Russia?',
-    routeBase: '/student/lesson/1905',
-  },
-  'russia-1855': {
-    title: 'Russia in 1855',
-    lessonTitle: 'Why was Russia difficult to govern in 1855?',
-    routeBase: '/student/lesson/1855',
-  },
-  'alexander-ii-reform': {
-    title: 'Alexander II reform',
-    lessonTitle: 'Why did Alexander II believe Russia needed reform?',
-    routeBase: '/student/lesson/alexander-ii-reform',
-  },
-};
 
 const activityLabels: Record<string, string> = {
   lesson_content: 'Lesson notes',
@@ -42,10 +24,7 @@ type GuidedStudyAssignment = {
   created_at: string;
 };
 
-type Activity = {
-  id: string;
-  activity_type: string;
-};
+type Activity = { id: string; activity_type: string; };
 
 type StudentResponse = {
   activity_id: string;
@@ -57,35 +36,13 @@ type StudentResponse = {
   started_at?: string | null;
 };
 
-type ActivityState = {
-  type: string;
-  label: string;
-  complete: boolean;
-  href: string;
-};
+type ActivityState = { type: string; label: string; complete: boolean; href: string; };
 
-function formatMode(mode: string) {
-  return mode.replaceAll('_', ' ');
-}
+function formatMode(mode: string) { return mode.replaceAll('_', ' '); }
 
 function formatDate(value: string | null) {
   if (!value) return 'No deadline';
-  return new Date(value).toLocaleString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function orderActivityTypes(activityTypes: string[]) {
-  return [...activityTypes].sort((first, second) => {
-    const firstIndex = PATHWAY_ACTIVITY_ORDER.indexOf(first);
-    const secondIndex = PATHWAY_ACTIVITY_ORDER.indexOf(second);
-    const safeFirstIndex = firstIndex === -1 ? 999 : firstIndex;
-    const safeSecondIndex = secondIndex === -1 ? 999 : secondIndex;
-    return safeFirstIndex - safeSecondIndex;
-  });
+  return new Date(value).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 function getResponseTimestamp(response: StudentResponse) {
@@ -108,18 +65,6 @@ function isActivityComplete(activityType: string, response: StudentResponse | un
 
 function getNextActivity(activityStates: ActivityState[]) {
   return activityStates.find((activity) => !activity.complete) ?? null;
-}
-
-function getActivityRoute(routeBase: string, activityType: string) {
-  const suffixByType: Record<string, string> = {
-    lesson_content: 'lesson',
-    flashcards: 'flashcards',
-    quiz: 'quiz',
-    peel_response: 'peel',
-    confidence_exit_ticket: 'confidence',
-  };
-
-  return `${routeBase}/${suffixByType[activityType] ?? ''}`;
 }
 
 export const dynamic = 'force-dynamic';
@@ -146,11 +91,9 @@ export default async function StudentDashboardPage() {
     assignment = assignmentData as GuidedStudyAssignment | null;
     assignmentError = error?.message ?? '';
 
-    const config = pathwayConfig[assignment?.pathway_slug ?? ''] ?? pathwayConfig['1905-revolution'];
+    const config = getPathwayConfig(assignment?.pathway_slug);
     const requiredActivityTypes = orderActivityTypes(
-      assignment?.required_activity_types?.length
-        ? assignment.required_activity_types
-        : PATHWAY_ACTIVITY_ORDER
+      assignment?.required_activity_types?.length ? assignment.required_activity_types : [...PATHWAY_ACTIVITY_ORDER]
     );
 
     const { data: lessonRows } = await supabase
@@ -198,10 +141,10 @@ export default async function StudentDashboardPage() {
     }
   }
 
-  const config = pathwayConfig[assignment?.pathway_slug ?? ''] ?? pathwayConfig['1905-revolution'];
+  const config = getPathwayConfig(assignment?.pathway_slug);
 
   if (!activityStates.length) {
-    activityStates = orderActivityTypes(PATHWAY_ACTIVITY_ORDER).map((type) => ({
+    activityStates = orderActivityTypes([...PATHWAY_ACTIVITY_ORDER]).map((type) => ({
       type,
       label: activityLabels[type],
       href: getActivityRoute(config.routeBase, type),
@@ -258,11 +201,7 @@ export default async function StudentDashboardPage() {
             {activityStates.map((activity, index) => {
               const isCurrent = nextActivity?.type === activity.type;
               return (
-                <Link
-                  className={`${styles.step} ${activity.complete ? styles.complete : ''} ${isCurrent ? styles.current : ''}`}
-                  href={activity.href}
-                  key={activity.type}
-                >
+                <Link className={`${styles.step} ${activity.complete ? styles.complete : ''} ${isCurrent ? styles.current : ''}`} href={activity.href} key={activity.type}>
                   <span className={styles.stepMark}>{activity.complete ? '✓' : index + 1}</span>
                   <span className={styles.stepTitle}>{activity.label}</span>
                   <span className={styles.stepStatus}>{activity.complete ? 'Done' : isCurrent ? 'Next' : 'To do'}</span>
@@ -273,9 +212,7 @@ export default async function StudentDashboardPage() {
         </section>
       </section>
 
-      {assignmentError && (
-        <div className={styles.error}>Assignment setup warning: {assignmentError}</div>
-      )}
+      {assignmentError && <div className={styles.error}>Assignment setup warning: {assignmentError}</div>}
     </main>
   );
 }
