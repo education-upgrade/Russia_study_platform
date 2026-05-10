@@ -45,6 +45,29 @@ function cleanConfidenceTitle(title: string | undefined | null) {
     .replace(/^Exit ticket:\s*/i, '');
 }
 
+function normaliseScale(scale: unknown): number[] {
+  if (!Array.isArray(scale)) return [1, 2, 3, 4, 5];
+
+  const values = scale
+    .map((item) => {
+      if (typeof item === 'number') return item;
+
+      if (
+        item &&
+        typeof item === 'object' &&
+        'value' in item &&
+        typeof (item as { value?: unknown }).value === 'number'
+      ) {
+        return (item as { value: number }).value;
+      }
+
+      return null;
+    })
+    .filter((item): item is number => typeof item === 'number');
+
+  return values.length ? values : [1, 2, 3, 4, 5];
+}
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -52,6 +75,14 @@ export default async function AlexanderIIReformConfidencePage() {
   const { activity, error } = await getActivity('confidence_exit_ticket');
   const content = activity?.content_json ?? {};
   const pageTitle = cleanConfidenceTitle(activity?.title);
+
+  const scale = normaliseScale(
+    content.scale ?? pathwayAlexanderIIReformConfidenceContent.scale
+  );
+
+  const leastSecureOptions = Array.isArray(content.leastSecureOptions)
+    ? content.leastSecureOptions
+    : pathwayAlexanderIIReformConfidenceContent.leastSecureOptions;
 
   return (
     <main className={styles.shell}>
@@ -76,8 +107,8 @@ export default async function AlexanderIIReformConfidencePage() {
           <ConfidenceExitTicketActivity
             activityId={activity.id}
             prompt={content.prompt ?? pathwayAlexanderIIReformConfidenceContent.prompt}
-            scale={Array.isArray(content.scale) ? content.scale : pathwayAlexanderIIReformConfidenceContent.scale}
-            leastSecureOptions={Array.isArray(content.leastSecureOptions) ? content.leastSecureOptions : pathwayAlexanderIIReformConfidenceContent.leastSecureOptions}
+            scale={scale}
+            leastSecureOptions={leastSecureOptions}
           />
         </section>
       )}
