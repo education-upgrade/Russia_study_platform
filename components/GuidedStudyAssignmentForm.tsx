@@ -37,6 +37,14 @@ const topicOptions: TopicOption[] = [
     status: 'ready',
   },
   {
+    pathwaySlug: 'alexander-ii-reform',
+    lessonTitle: 'Why did Alexander II believe Russia needed reform?',
+    title: 'Alexander II reform',
+    subtitle: 'Crimean War, serfdom, backwardness and reform from above',
+    yearGroup: 'Y12',
+    status: 'ready',
+  },
+  {
     pathwaySlug: '1905-revolution',
     lessonTitle: 'Was the 1905 Revolution a turning point for Tsarist Russia?',
     title: '1905 Revolution',
