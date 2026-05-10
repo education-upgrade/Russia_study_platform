@@ -16,6 +16,11 @@ const pathwayConfig: Record<string, { title: string; lessonTitle: string; routeB
     lessonTitle: 'Why was Russia difficult to govern in 1855?',
     routeBase: '/student/lesson/1855',
   },
+  'alexander-ii-reform': {
+    title: 'Alexander II reform',
+    lessonTitle: 'Why did Alexander II believe Russia needed reform?',
+    routeBase: '/student/lesson/alexander-ii-reform',
+  },
 };
 
 const activityLabels: Record<string, string> = {
@@ -148,11 +153,13 @@ export default async function StudentDashboardPage() {
         : PATHWAY_ACTIVITY_ORDER
     );
 
-    const { data: lesson } = await supabase
+    const { data: lessonRows } = await supabase
       .from('lessons')
       .select('id')
       .eq('title', config.lessonTitle)
-      .single();
+      .limit(1);
+
+    const lesson = Array.isArray(lessonRows) && lessonRows.length > 0 ? lessonRows[0] : null;
 
     if (lesson) {
       const { data: activities } = await supabase
