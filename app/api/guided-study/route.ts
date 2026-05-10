@@ -81,7 +81,6 @@ async function getLessonByTitle(lessonTitle: string) {
     .from('lessons')
     .select('id, title')
     .eq('title', lessonTitle)
-    .order('created_at', { ascending: true })
     .limit(1);
 
   if (error) return { lesson: null, error: error.message };
