@@ -1,8 +1,5 @@
 import Link from 'next/link';
-import FlashcardActivity from '@/components/FlashcardActivity';
-import QuizActivity from '@/components/QuizActivity';
-import PeelResponseActivity from '@/components/PeelResponseActivity';
-import ConfidenceExitTicketActivity from '@/components/ConfidenceExitTicketActivity';
+import GenericActivityRenderer from '@/components/GenericActivityRenderer';
 import { supabase } from '@/lib/supabase';
 import { getPathwayConfig } from '@/lib/pathwayRegistry';
 import { crimeanWarPathwaySlug, pathwayCrimeanWarFlashcards, pathwayCrimeanWarQuizQuestions, pathwayCrimeanWarPeelContent, pathwayCrimeanWarConfidenceContent } from '@/lib/pathwayCrimeanWarContent';
@@ -11,6 +8,8 @@ import styles from '../../1905/flashcards/page.module.css';
 type Activity = { id: string; title: string; content_json: any; };
 const config = getPathwayConfig(crimeanWarPathwaySlug);
 const activityTypeMap: Record<string, string> = { flashcards: 'flashcards', quiz: 'quiz', peel: 'peel_response', confidence: 'confidence_exit_ticket' };
+const nextHrefByType: Record<string, string | undefined> = { flashcards: `${config.routeBase}/quiz`, quiz: `${config.routeBase}/peel`, peel_response: `${config.routeBase}/confidence`, confidence_exit_ticket: undefined };
+const fallbackByType: Record<string, any> = { flashcards: { cards: pathwayCrimeanWarFlashcards }, quiz: { questions: pathwayCrimeanWarQuizQuestions }, peel_response: pathwayCrimeanWarPeelContent, confidence_exit_ticket: pathwayCrimeanWarConfidenceContent };
 
 async function getActivity(activityType: string) {
   if (!supabase) return { activity: null, error: 'Supabase is not configured.' };
@@ -27,10 +26,7 @@ export const revalidate = 0;
 export default async function Page({ params }: { params: Promise<{ activity: string }> }) {
   const { activity: activitySlug } = await params;
   const activityType = activityTypeMap[activitySlug];
-
-  if (!activityType) {
-    return <main className={styles.shell}><section className="card warm"><h1>Activity not found</h1><Link href={config.routeBase}>Return to pathway</Link></section></main>;
-  }
+  if (!activityType) return <main className={styles.shell}><section className="card warm"><h1>Activity not found</h1><Link href={config.routeBase}>Return to pathway</Link></section></main>;
 
   const { activity, error } = await getActivity(activityType);
   const content = activity?.content_json ?? {};
@@ -40,10 +36,7 @@ export default async function Page({ params }: { params: Promise<{ activity: str
     <main className={styles.shell}>
       <div className={styles.topbar}><Link className={styles.backLink} href={config.routeBase}>← Pathway</Link><div className={styles.titleBlock}><p>{activitySlug}</p><h1>{title}</h1></div><Link className={styles.dashboardLink} href="/student/dashboard">Dashboard</Link></div>
       {error && <section className="card warm" style={{ marginTop: 24 }}><h2>Activity not available</h2><p>{error}</p></section>}
-      {activity && activitySlug === 'flashcards' && <section className={styles.panel}><FlashcardActivity activityId={activity.id} cards={Array.isArray(content.cards) && content.cards.length >= 5 ? content.cards : pathwayCrimeanWarFlashcards} nextHref={`${config.routeBase}/quiz`} /></section>}
-      {activity && activitySlug === 'quiz' && <section className={styles.panel}><QuizActivity activityId={activity.id} questions={Array.isArray(content.questions) && content.questions.length >= 5 ? content.questions : pathwayCrimeanWarQuizQuestions} nextHref={`${config.routeBase}/peel`} /></section>}
-      {activity && activitySlug === 'peel' && <section className={styles.panel}><PeelResponseActivity activityId={activity.id} question={content.question ?? pathwayCrimeanWarPeelContent.question} stretchQuestion={content.stretchQuestion ?? pathwayCrimeanWarPeelContent.stretchQuestion} scaffold={Array.isArray(content.scaffold) ? content.scaffold : pathwayCrimeanWarPeelContent.scaffold} nextHref={`${config.routeBase}/confidence`} /></section>}
-      {activity && activitySlug === 'confidence' && <section className={styles.panel}><ConfidenceExitTicketActivity activityId={activity.id} prompt={content.prompt ?? pathwayCrimeanWarConfidenceContent.prompt} scale={Array.isArray(content.scale) ? content.scale : pathwayCrimeanWarConfidenceContent.scale} leastSecureOptions={Array.isArray(content.leastSecureOptions) ? content.leastSecureOptions : pathwayCrimeanWarConfidenceContent.leastSecureOptions} /></section>}
+      {activity && <section className={styles.panel}><GenericActivityRenderer activityId={activity.id} activityType={activityType} content={content} routeBase={config.routeBase} pathwayTitle={config.title} nextHref={nextHrefByType[activityType]} fallbackContent={fallbackByType[activityType]} /></section>}
     </main>
   );
 }
