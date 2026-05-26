@@ -16,6 +16,10 @@ type Props = {
   fallbackContent?: Record<string, any>;
 };
 
+function hasItems(value: unknown) {
+  return Array.isArray(value) && value.length > 0;
+}
+
 export default function GenericActivityRenderer({
   activityId,
   activityType,
@@ -29,7 +33,7 @@ export default function GenericActivityRenderer({
     return (
       <FlashcardActivity
         activityId={activityId}
-        cards={Array.isArray(content.cards) ? content.cards : fallbackContent.cards ?? []}
+        cards={hasItems(content.cards) ? content.cards : fallbackContent.cards ?? []}
         nextHref={nextHref}
       />
     );
@@ -39,7 +43,7 @@ export default function GenericActivityRenderer({
     return (
       <QuizActivity
         activityId={activityId}
-        questions={Array.isArray(content.questions) ? content.questions : fallbackContent.questions ?? []}
+        questions={hasItems(content.questions) ? content.questions : fallbackContent.questions ?? []}
         nextHref={nextHref}
       />
     );
@@ -51,7 +55,7 @@ export default function GenericActivityRenderer({
         activityId={activityId}
         question={content.question ?? fallbackContent.question ?? ''}
         stretchQuestion={content.stretchQuestion ?? fallbackContent.stretchQuestion}
-        scaffold={Array.isArray(content.scaffold) ? content.scaffold : fallbackContent.scaffold}
+        scaffold={hasItems(content.scaffold) ? content.scaffold : fallbackContent.scaffold}
         nextHref={nextHref}
       />
     );
@@ -62,8 +66,8 @@ export default function GenericActivityRenderer({
       <ConfidenceExitTicketActivity
         activityId={activityId}
         prompt={content.prompt ?? fallbackContent.prompt ?? ''}
-        scale={Array.isArray(content.scale) ? content.scale : fallbackContent.scale}
-        leastSecureOptions={Array.isArray(content.leastSecureOptions)
+        scale={hasItems(content.scale) ? content.scale : fallbackContent.scale}
+        leastSecureOptions={hasItems(content.leastSecureOptions)
           ? content.leastSecureOptions
           : fallbackContent.leastSecureOptions}
       />
