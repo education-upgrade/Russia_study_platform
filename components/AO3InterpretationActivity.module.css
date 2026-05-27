@@ -1,0 +1,12 @@
+.shell{display:grid;gap:14px;padding:18px;border-radius:28px;background:rgba(255,255,255,.85);border:1px solid rgba(213,226,235,.95)}
+.header,.interpretationCard,.finalJudgement{padding:16px;border-radius:22px;border:1px solid rgba(213,226,235,.95);background:rgba(255,255,255,.82)}
+.header h2,.interpretationCard h3{margin:0 0 8px;color:var(--navy)}
+.header p,.interpretationCard blockquote{margin:0;color:var(--muted);font-weight:700;line-height:1.5}
+.interpretationCard{display:grid;gap:12px;background:linear-gradient(135deg, rgba(255,255,255,.98), rgba(236,231,247,.7))}
+.interpretationCard label,.finalJudgement label{display:grid;gap:8px}
+.interpretationCard span,.finalJudgement span{font-weight:850;color:var(--navy)}
+.interpretationCard textarea,.finalJudgement textarea{min-height:120px;border-radius:18px;padding:14px;border:1px solid rgba(213,226,235,.95);font:inherit}
+.finalJudgement textarea{min-height:160px}
+.footer{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}
+.footer p{margin:0;color:var(--muted);font-weight:700}
+@media(max-width:700px){.footer{grid-template-columns:1fr}}
