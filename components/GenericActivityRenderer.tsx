@@ -6,6 +6,8 @@ import PeelResponseActivity from './PeelResponseActivity';
 import ConfidenceExitTicketActivity from './ConfidenceExitTicketActivity';
 import TimelineActivity from './TimelineActivity';
 import CardSortActivity from './CardSortActivity';
+import JudgementRankingActivity from './JudgementRankingActivity';
+import AO3InterpretationActivity from './AO3InterpretationActivity';
 import ComingSoonActivityRenderer from './ComingSoonActivityRenderer';
 
 type Props = {
@@ -32,77 +34,36 @@ export default function GenericActivityRenderer({
   fallbackContent = {},
 }: Props) {
   if (activityType === 'flashcards') {
-    return (
-      <FlashcardActivity
-        activityId={activityId}
-        cards={hasItems(content.cards) ? content.cards : fallbackContent.cards ?? []}
-        nextHref={nextHref}
-      />
-    );
+    return <FlashcardActivity activityId={activityId} cards={hasItems(content.cards) ? content.cards : fallbackContent.cards ?? []} nextHref={nextHref} />;
   }
 
   if (activityType === 'quiz') {
-    return (
-      <QuizActivity
-        activityId={activityId}
-        questions={hasItems(content.questions) ? content.questions : fallbackContent.questions ?? []}
-        nextHref={nextHref}
-      />
-    );
+    return <QuizActivity activityId={activityId} questions={hasItems(content.questions) ? content.questions : fallbackContent.questions ?? []} nextHref={nextHref} />;
   }
 
   if (activityType === 'timeline') {
-    return (
-      <TimelineActivity
-        activityId={activityId}
-        events={hasItems(content.events) ? content.events : fallbackContent.events ?? []}
-        nextHref={nextHref}
-      />
-    );
+    return <TimelineActivity activityId={activityId} events={hasItems(content.events) ? content.events : fallbackContent.events ?? []} nextHref={nextHref} />;
   }
 
   if (activityType === 'card_sort') {
-    return (
-      <CardSortActivity
-        activityId={activityId}
-        cards={hasItems(content.cards) ? content.cards : fallbackContent.cards ?? []}
-        categories={hasItems(content.categories) ? content.categories : fallbackContent.categories ?? []}
-        nextHref={nextHref}
-      />
-    );
+    return <CardSortActivity activityId={activityId} cards={hasItems(content.cards) ? content.cards : fallbackContent.cards ?? []} categories={hasItems(content.categories) ? content.categories : fallbackContent.categories ?? []} nextHref={nextHref} />;
+  }
+
+  if (activityType === 'judgement_ranking') {
+    return <JudgementRankingActivity activityId={activityId} factors={hasItems(content.factors) ? content.factors : fallbackContent.factors ?? []} question={content.question ?? fallbackContent.question ?? ''} nextHref={nextHref} />;
+  }
+
+  if (activityType === 'ao3_interpretation') {
+    return <AO3InterpretationActivity activityId={activityId} question={content.question ?? fallbackContent.question ?? ''} interpretations={hasItems(content.interpretations) ? content.interpretations : fallbackContent.interpretations ?? []} nextHref={nextHref} />;
   }
 
   if (activityType === 'peel_response') {
-    return (
-      <PeelResponseActivity
-        activityId={activityId}
-        question={content.question ?? fallbackContent.question ?? ''}
-        stretchQuestion={content.stretchQuestion ?? fallbackContent.stretchQuestion}
-        scaffold={hasItems(content.scaffold) ? content.scaffold : fallbackContent.scaffold}
-        nextHref={nextHref}
-      />
-    );
+    return <PeelResponseActivity activityId={activityId} question={content.question ?? fallbackContent.question ?? ''} stretchQuestion={content.stretchQuestion ?? fallbackContent.stretchQuestion} scaffold={hasItems(content.scaffold) ? content.scaffold : fallbackContent.scaffold} nextHref={nextHref} />;
   }
 
   if (activityType === 'confidence_exit_ticket') {
-    return (
-      <ConfidenceExitTicketActivity
-        activityId={activityId}
-        prompt={content.prompt ?? fallbackContent.prompt ?? ''}
-        scale={hasItems(content.scale) ? content.scale : fallbackContent.scale}
-        leastSecureOptions={hasItems(content.leastSecureOptions)
-          ? content.leastSecureOptions
-          : fallbackContent.leastSecureOptions}
-      />
-    );
+    return <ConfidenceExitTicketActivity activityId={activityId} prompt={content.prompt ?? fallbackContent.prompt ?? ''} scale={hasItems(content.scale) ? content.scale : fallbackContent.scale} leastSecureOptions={hasItems(content.leastSecureOptions) ? content.leastSecureOptions : fallbackContent.leastSecureOptions} />;
   }
 
-  return (
-    <ComingSoonActivityRenderer
-      title={pathwayTitle}
-      activityLabel={activityType}
-      pathwayHref={routeBase}
-      nextHref={nextHref}
-    />
-  );
+  return <ComingSoonActivityRenderer title={pathwayTitle} activityLabel={activityType} pathwayHref={routeBase} nextHref={nextHref} />;
 }
