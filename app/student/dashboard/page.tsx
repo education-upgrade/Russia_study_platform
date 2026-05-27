@@ -1,16 +1,44 @@
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { PATHWAY_ACTIVITY_ORDER, getActivityRoute, getPathwayConfig, orderActivityTypes } from '@/lib/pathwayRegistry';
+import { getPathwayConfig } from '@/lib/pathwayRegistry';
 import styles from './page.module.css';
 
 const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
+
+const DASHBOARD_ACTIVITY_ORDER = [
+  'lesson_content',
+  'flashcards',
+  'quiz',
+  'timeline',
+  'card_sort',
+  'judgement_ranking',
+  'ao3_interpretation',
+  'peel_response',
+  'confidence_exit_ticket',
+];
 
 const activityLabels: Record<string, string> = {
   lesson_content: 'Lesson notes',
   flashcards: 'Flashcards',
   quiz: 'Retrieval quiz',
+  timeline: 'Timeline',
+  card_sort: 'Card sort',
+  judgement_ranking: 'Judgement ranking',
+  ao3_interpretation: 'AO3 interpretation',
   peel_response: 'PEEL response',
   confidence_exit_ticket: 'Confidence check',
+};
+
+const activityRouteSlugs: Record<string, string> = {
+  lesson_content: 'lesson',
+  flashcards: 'flashcards',
+  quiz: 'quiz',
+  timeline: 'timeline',
+  card_sort: 'card-sort',
+  judgement_ranking: 'judgement-ranking',
+  ao3_interpretation: 'ao3',
+  peel_response: 'peel',
+  confidence_exit_ticket: 'confidence',
 };
 
 type GuidedStudyAssignment = {
@@ -43,6 +71,20 @@ function formatMode(mode: string) { return mode.replaceAll('_', ' '); }
 function formatDate(value: string | null) {
   if (!value) return 'No deadline';
   return new Date(value).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+function getActivityRoute(routeBase: string, activityType: string) {
+  return `${routeBase}/${activityRouteSlugs[activityType] ?? activityType}`;
+}
+
+function orderActivityTypes(activityTypes: string[]) {
+  return [...activityTypes].sort((first, second) => {
+    const firstIndex = DASHBOARD_ACTIVITY_ORDER.indexOf(first);
+    const secondIndex = DASHBOARD_ACTIVITY_ORDER.indexOf(second);
+    const safeFirstIndex = firstIndex === -1 ? 999 : firstIndex;
+    const safeSecondIndex = secondIndex === -1 ? 999 : secondIndex;
+    return safeFirstIndex - safeSecondIndex;
+  });
 }
 
 function getResponseTimestamp(response: StudentResponse) {
@@ -92,9 +134,6 @@ export default async function StudentDashboardPage() {
     assignmentError = error?.message ?? '';
 
     const config = getPathwayConfig(assignment?.pathway_slug);
-    const requiredActivityTypes = orderActivityTypes(
-      assignment?.required_activity_types?.length ? assignment.required_activity_types : [...PATHWAY_ACTIVITY_ORDER]
-    );
 
     const { data: lessonRows } = await supabase
       .from('lessons')
@@ -111,6 +150,12 @@ export default async function StudentDashboardPage() {
         .eq('lesson_id', lesson.id);
 
       const lessonActivities = (activities ?? []) as Activity[];
+      const seededActivityTypes = lessonActivities.map((activity) => activity.activity_type);
+      const assignmentActivityTypes = assignment?.required_activity_types?.length ? assignment.required_activity_types : [];
+      const requiredActivityTypes = orderActivityTypes(
+        Array.from(new Set([...assignmentActivityTypes, ...seededActivityTypes]))
+      );
+
       const activityIds = lessonActivities.map((activity) => activity.id);
       const { data: responses } = activityIds.length
         ? await supabase
@@ -144,7 +189,7 @@ export default async function StudentDashboardPage() {
   const config = getPathwayConfig(assignment?.pathway_slug);
 
   if (!activityStates.length) {
-    activityStates = orderActivityTypes([...PATHWAY_ACTIVITY_ORDER]).map((type) => ({
+    activityStates = orderActivityTypes([...DASHBOARD_ACTIVITY_ORDER]).map((type) => ({
       type,
       label: activityLabels[type],
       href: getActivityRoute(config.routeBase, type),
