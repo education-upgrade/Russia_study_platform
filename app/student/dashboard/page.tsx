@@ -30,7 +30,6 @@ const activityLabels: Record<string, string> = {
 };
 
 const activityRouteSlugs: Record<string, string> = {
-  lesson_content: 'lesson',
   flashcards: 'flashcards',
   quiz: 'quiz',
   timeline: 'timeline',
@@ -74,6 +73,7 @@ function formatDate(value: string | null) {
 }
 
 function getActivityRoute(routeBase: string, activityType: string) {
+  if (activityType === 'lesson_content') return routeBase;
   return `${routeBase}/${activityRouteSlugs[activityType] ?? activityType}`;
 }
 
