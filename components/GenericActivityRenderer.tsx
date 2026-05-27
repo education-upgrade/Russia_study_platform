@@ -4,6 +4,8 @@ import FlashcardActivity from './FlashcardActivity';
 import QuizActivity from './QuizActivity';
 import PeelResponseActivity from './PeelResponseActivity';
 import ConfidenceExitTicketActivity from './ConfidenceExitTicketActivity';
+import TimelineActivity from './TimelineActivity';
+import CardSortActivity from './CardSortActivity';
 import ComingSoonActivityRenderer from './ComingSoonActivityRenderer';
 
 type Props = {
@@ -44,6 +46,27 @@ export default function GenericActivityRenderer({
       <QuizActivity
         activityId={activityId}
         questions={hasItems(content.questions) ? content.questions : fallbackContent.questions ?? []}
+        nextHref={nextHref}
+      />
+    );
+  }
+
+  if (activityType === 'timeline') {
+    return (
+      <TimelineActivity
+        activityId={activityId}
+        events={hasItems(content.events) ? content.events : fallbackContent.events ?? []}
+        nextHref={nextHref}
+      />
+    );
+  }
+
+  if (activityType === 'card_sort') {
+    return (
+      <CardSortActivity
+        activityId={activityId}
+        cards={hasItems(content.cards) ? content.cards : fallbackContent.cards ?? []}
+        categories={hasItems(content.categories) ? content.categories : fallbackContent.categories ?? []}
         nextHref={nextHref}
       />
     );
