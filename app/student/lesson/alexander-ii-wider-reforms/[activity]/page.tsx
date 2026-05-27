@@ -5,7 +5,7 @@ import { getPathwayConfig } from '@/lib/pathwayRegistry';
 import { getActivityRouteSlug } from '@/lib/activityTypeRegistry';
 import {
   alexanderIIWiderReformsPathwaySlug,
-  alexanderIIWiderReformsSeedLessonTitle,
+  alexanderIIWiderReformsLessonTitle,
   pathwayAlexanderIIWiderReformsFlashcards,
   pathwayAlexanderIIWiderReformsQuizQuestions,
   pathwayAlexanderIIWiderReformsPeelContent,
@@ -86,7 +86,7 @@ async function getLessonActivities() {
   const { data: lessonRows } = await supabase
     .from('lessons')
     .select('id')
-    .eq('title', alexanderIIWiderReformsSeedLessonTitle)
+    .eq('title', alexanderIIWiderReformsLessonTitle)
     .limit(1);
 
   const lesson = Array.isArray(lessonRows) && lessonRows.length > 0 ? lessonRows[0] : null;
