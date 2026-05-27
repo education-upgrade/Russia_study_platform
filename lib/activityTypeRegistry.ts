@@ -21,6 +21,8 @@ export type ActivityRendererKind =
   | 'flashcards'
   | 'quiz'
   | 'peel'
+  | 'timeline'
+  | 'cardSort'
   | 'confidence'
   | 'comingSoon';
 
@@ -111,7 +113,7 @@ export const activityTypeRegistry: Record<SupportedActivityType, ActivityTypeCon
     routeSlug: 'card-sort',
     label: 'Card sort',
     activityGroup: 'application',
-    renderer: 'comingSoon',
+    renderer: 'cardSort',
     orderWeight: 40,
     isTrackable: true,
     isEvidenceTask: true,
@@ -121,7 +123,7 @@ export const activityTypeRegistry: Record<SupportedActivityType, ActivityTypeCon
     routeSlug: 'timeline',
     label: 'Timeline',
     activityGroup: 'application',
-    renderer: 'comingSoon',
+    renderer: 'timeline',
     orderWeight: 40,
     isTrackable: true,
     isEvidenceTask: true,
@@ -218,26 +220,3 @@ export function orderSupportedActivityTypes(activityTypes: string[]) {
 
 export function getNextActivityType(activityTypes: string[], currentActivityType: string) {
   const orderedTypes = orderSupportedActivityTypes(activityTypes);
-  const currentIndex = orderedTypes.indexOf(currentActivityType);
-  if (currentIndex === -1) return null;
-  return orderedTypes[currentIndex + 1] ?? null;
-}
-
-export function validatePathwayActivityMix(activityTypes: string[]) {
-  const supported = activityTypes.filter(isSupportedActivityType);
-  const unsupported = activityTypes.filter((activityType) => !isSupportedActivityType(activityType));
-  const applicationTasks = supported.filter((activityType) => {
-    const config = getActivityTypeConfig(activityType);
-    return config?.activityGroup === 'application';
-  });
-
-  return {
-    supported,
-    unsupported,
-    hasLesson: supported.includes('lesson_content'),
-    hasRetrieval: supported.includes('flashcards') || supported.includes('quiz'),
-    hasConfidence: supported.includes('confidence_exit_ticket'),
-    applicationTasks,
-    hasLimitedApplicationTasks: applicationTasks.length <= 2,
-  };
-}
