@@ -1,45 +1,144 @@
 import Link from 'next/link';
-import FlashcardActivity from '@/components/FlashcardActivity';
-import QuizActivity from '@/components/QuizActivity';
-import PeelResponseActivity from '@/components/PeelResponseActivity';
-import ConfidenceExitTicketActivity from '@/components/ConfidenceExitTicketActivity';
+import GenericActivityRenderer from '@/components/GenericActivityRenderer';
 import { supabase } from '@/lib/supabase';
 import { getPathwayConfig } from '@/lib/pathwayRegistry';
-import { alexanderIIWiderReformsPathwaySlug, pathwayAlexanderIIWiderReformsFlashcards, pathwayAlexanderIIWiderReformsQuizQuestions, pathwayAlexanderIIWiderReformsPeelContent, pathwayAlexanderIIWiderReformsConfidenceContent } from '@/lib/pathwayAlexanderIIWiderReformsContent';
+import { getActivityRouteSlug } from '@/lib/activityTypeRegistry';
+import {
+  alexanderIIWiderReformsPathwaySlug,
+  alexanderIIWiderReformsSeedLessonTitle,
+  pathwayAlexanderIIWiderReformsFlashcards,
+  pathwayAlexanderIIWiderReformsQuizQuestions,
+  pathwayAlexanderIIWiderReformsPeelContent,
+  pathwayAlexanderIIWiderReformsConfidenceContent,
+} from '@/lib/pathwayAlexanderIIWiderReformsContent';
 import styles from '../../1905/flashcards/page.module.css';
 
-type Activity = { id: string; title: string; content_json: any; };
 const config = getPathwayConfig(alexanderIIWiderReformsPathwaySlug);
-const activityTypeMap: Record<string, string> = { flashcards: 'flashcards', quiz: 'quiz', peel: 'peel_response', confidence: 'confidence_exit_ticket' };
 
-async function getActivity(activityType: string) {
-  if (!supabase) return { activity: null, error: 'Supabase is not configured.' };
-  const { data: lessonRows, error: lessonError } = await supabase.from('lessons').select('id').eq('title', config.lessonTitle).limit(1);
+const preferredActivityOrder = [
+  'lesson_content',
+  'flashcards',
+  'quiz',
+  'judgement_ranking',
+  'ao3_interpretation',
+  'peel_response',
+  'confidence_exit_ticket',
+];
+
+const fallbackContentByActivityType: Record<string, any> = {
+  flashcards: { cards: pathwayAlexanderIIWiderReformsFlashcards },
+  quiz: { questions: pathwayAlexanderIIWiderReformsQuizQuestions },
+  peel_response: pathwayAlexanderIIWiderReformsPeelContent,
+  confidence_exit_ticket: pathwayAlexanderIIWiderReformsConfidenceContent,
+  judgement_ranking: {
+    question: 'Rank Alexander II’s wider reforms from most to least significant.',
+    factors: [
+      { id: 'judicial', title: 'Judicial reform', detail: 'Introduced more modern courts and trial by jury.' },
+      { id: 'military', title: 'Military reform', detail: 'Improved the army after the Crimean War.' },
+      { id: 'zemstva', title: 'Zemstva reform', detail: 'Improved local administration but remained politically limited.' },
+      { id: 'education', title: 'Education reform', detail: 'Expanded educational opportunity and literacy.' }
+    ]
+  },
+  ao3_interpretation: {
+    question: 'Assess the interpretations about the extent of modernisation under Alexander II.',
+    interpretations: [
+      {
+        historian: 'Interpretation A',
+        argument: 'Alexander II genuinely modernised Russia through reform.'
+      },
+      {
+        historian: 'Interpretation B',
+        argument: 'The reforms were significant but remained limited by autocracy.'
+      }
+    ]
+  }
+};
+
+type Activity = {
+  id: string;
+  title: string;
+  activity_type: string;
+  content_json: any;
+};
+
+function getActivityTypeFromSlug(activitySlug: string) {
+  return preferredActivityOrder.find((activityType) => getActivityRouteSlug(activityType) === activitySlug) ?? null;
+}
+
+function orderActivities(activities: Activity[]) {
+  return [...activities].sort((first, second) => {
+    const firstIndex = preferredActivityOrder.indexOf(first.activity_type);
+    const secondIndex = preferredActivityOrder.indexOf(second.activity_type);
+    return (firstIndex === -1 ? 999 : firstIndex) - (secondIndex === -1 ? 999 : secondIndex);
+  });
+}
+
+function getNextHref(activities: Activity[], currentActivityType: string) {
+  const orderedActivities = orderActivities(activities).filter((activity) => activity.activity_type !== 'lesson_content');
+  const currentIndex = orderedActivities.findIndex((activity) => activity.activity_type === currentActivityType);
+  const nextActivity = currentIndex === -1 ? null : orderedActivities[currentIndex + 1];
+  return nextActivity ? `${config.routeBase}/${getActivityRouteSlug(nextActivity.activity_type)}` : undefined;
+}
+
+async function getLessonActivities() {
+  if (!supabase) return { activities: [], error: 'Supabase is not configured.' };
+
+  const { data: lessonRows } = await supabase
+    .from('lessons')
+    .select('id')
+    .eq('title', alexanderIIWiderReformsSeedLessonTitle)
+    .limit(1);
+
   const lesson = Array.isArray(lessonRows) && lessonRows.length > 0 ? lessonRows[0] : null;
-  if (lessonError || !lesson) return { activity: null, error: lessonError?.message ?? 'Lesson not found.' };
-  const { data: activity, error } = await supabase.from('activities').select('id, title, content_json').eq('lesson_id', lesson.id).eq('activity_type', activityType).limit(1).maybeSingle<Activity>();
-  return { activity, error: error?.message ?? '' };
+  if (!lesson) return { activities: [], error: 'Lesson not found.' };
+
+  const { data: activities, error } = await supabase
+    .from('activities')
+    .select('id, title, activity_type, content_json')
+    .eq('lesson_id', lesson.id);
+
+  return { activities: (activities ?? []) as Activity[], error: error?.message ?? '' };
 }
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export default async function Page({ params }: { params: Promise<{ activity: string }> }) {
+export default async function AlexanderIIWiderReformsActivityPage({ params }: { params: Promise<{ activity: string }> }) {
   const { activity: activitySlug } = await params;
-  const activityType = activityTypeMap[activitySlug];
-  if (!activityType) return <main className={styles.shell}><section className="card warm"><h1>Activity not found</h1><Link href={config.routeBase}>Return to pathway</Link></section></main>;
-  const { activity, error } = await getActivity(activityType);
+  const activityType = getActivityTypeFromSlug(activitySlug);
+
+  if (!activityType) {
+    return <main className={styles.shell}><section className="card warm"><h1>Activity not found</h1><Link href={config.routeBase}>Return to pathway</Link></section></main>;
+  }
+
+  const { activities, error } = await getLessonActivities();
+  const activity = activities.find((item) => item.activity_type === activityType) ?? null;
   const content = activity?.content_json ?? {};
-  const title = activity?.title ?? config.title;
+  const nextHref = getNextHref(activities, activityType);
 
   return (
     <main className={styles.shell}>
-      <div className={styles.topbar}><Link className={styles.backLink} href={config.routeBase}>← Pathway</Link><div className={styles.titleBlock}><p>{activitySlug}</p><h1>{title}</h1></div><Link className={styles.dashboardLink} href="/student/dashboard">Dashboard</Link></div>
-      {error && <section className="card warm" style={{ marginTop: 24 }}><h2>Activity not available</h2><p>{error}</p></section>}
-      {activity && activitySlug === 'flashcards' && <section className={styles.panel}><FlashcardActivity activityId={activity.id} cards={Array.isArray(content.cards) && content.cards.length >= 5 ? content.cards : pathwayAlexanderIIWiderReformsFlashcards} nextHref={`${config.routeBase}/quiz`} /></section>}
-      {activity && activitySlug === 'quiz' && <section className={styles.panel}><QuizActivity activityId={activity.id} questions={Array.isArray(content.questions) && content.questions.length >= 5 ? content.questions : pathwayAlexanderIIWiderReformsQuizQuestions} nextHref={`${config.routeBase}/peel`} /></section>}
-      {activity && activitySlug === 'peel' && <section className={styles.panel}><PeelResponseActivity activityId={activity.id} question={content.question ?? pathwayAlexanderIIWiderReformsPeelContent.question} stretchQuestion={content.stretchQuestion ?? pathwayAlexanderIIWiderReformsPeelContent.stretchQuestion} scaffold={Array.isArray(content.scaffold) ? content.scaffold : pathwayAlexanderIIWiderReformsPeelContent.scaffold} nextHref={`${config.routeBase}/confidence`} /></section>}
-      {activity && activitySlug === 'confidence' && <section className={styles.panel}><ConfidenceExitTicketActivity activityId={activity.id} prompt={content.prompt ?? pathwayAlexanderIIWiderReformsConfidenceContent.prompt} scale={Array.isArray(content.scale) ? content.scale : pathwayAlexanderIIWiderReformsConfidenceContent.scale} leastSecureOptions={Array.isArray(content.leastSecureOptions) ? content.leastSecureOptions : pathwayAlexanderIIWiderReformsConfidenceContent.leastSecureOptions} /></section>}
+      <div className={styles.topbar}>
+        <Link className={styles.backLink} href={config.routeBase}>← Pathway</Link>
+        <div className={styles.titleBlock}><p>{activitySlug}</p><h1>{activity?.title ?? config.title}</h1></div>
+        <Link className={styles.dashboardLink} href="/student/dashboard">Dashboard</Link>
+      </div>
+
+      {error && <section className="card warm"><h2>Activity not available</h2><p>{error}</p></section>}
+
+      {activity && (
+        <section className={styles.panel}>
+          <GenericActivityRenderer
+            activityId={activity.id}
+            activityType={activity.activity_type}
+            content={content}
+            routeBase={config.routeBase}
+            pathwayTitle={config.title}
+            nextHref={nextHref}
+            fallbackContent={fallbackContentByActivityType[activity.activity_type]}
+          />
+        </section>
+      )}
     </main>
   );
 }
