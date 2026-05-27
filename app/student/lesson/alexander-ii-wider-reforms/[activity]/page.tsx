@@ -112,12 +112,6 @@ export default async function AlexanderIIWiderReformsActivityPage({ params }: { 
 
   return (
     <main className={styles.shell}>
-      <div className={styles.topbar}>
-        <Link className={styles.backLink} href={config.routeBase}>← Pathway</Link>
-        <div className={styles.titleBlock}><p>{activitySlug}</p><h1>{activity?.title ?? config.title}</h1></div>
-        <Link className={styles.dashboardLink} href={config.routeBase}>Pathway</Link>
-      </div>
-
       {error && <section className="card warm"><h2>Activity not available</h2><p>{error}</p></section>}
 
       {activity && (
