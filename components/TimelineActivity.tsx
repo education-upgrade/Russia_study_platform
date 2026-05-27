@@ -20,7 +20,12 @@ type TimelineActivityProps = {
 };
 
 function getEventId(event: TimelineEvent, index: number) {
-  return event.id ?? `${event.date}-${event.title}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `event-${index + 1}`;
+  const fallbackId = `${event.date}-${event.title}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+
+  return event.id ?? (fallbackId || `event-${index + 1}`);
 }
 
 function countWords(text: string) {
