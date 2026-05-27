@@ -7,7 +7,8 @@ const DEMO_ASSIGNMENT_ID = '44444444-4444-4444-4444-444444444444';
 type ActivitySaveRequest = {
   activityId: string;
   responseType: string;
-  responseJson: Record<string, any>;
+  response?: Record<string, unknown>;
+  responseJson?: Record<string, unknown>;
   score?: number | null;
   status?: 'in_progress' | 'complete' | 'submitted';
 };
@@ -29,19 +30,13 @@ export async function POST(request: Request) {
 
   const responseStatus = body.status ?? 'complete';
   const now = new Date().toISOString();
-
-  const { data: existing } = await supabase
-    .from('student_responses')
-    .select('id')
-    .eq('student_id', DEMO_STUDENT_ID)
-    .eq('assignment_id', DEMO_ASSIGNMENT_ID)
-    .eq('activity_id', body.activityId)
-    .maybeSingle();
+  const responsePayload = body.response ?? body.responseJson ?? {};
 
   const rowPayload = {
+    assignment_id: DEMO_ASSIGNMENT_ID,
     response_type: body.responseType,
     response_json: {
-      ...(body.responseJson ?? {}),
+      ...responsePayload,
       status: responseStatus,
     },
     score: typeof body.score === 'number' ? body.score : null,
@@ -50,26 +45,43 @@ export async function POST(request: Request) {
     submitted_at: responseStatus === 'complete' || responseStatus === 'submitted' ? now : null,
   };
 
-  if (existing?.id) {
+  const { data: existingRows, error: existingError } = await supabase
+    .from('student_responses')
+    .select('id')
+    .eq('student_id', DEMO_STUDENT_ID)
+    .eq('activity_id', body.activityId);
+
+  if (existingError) {
+    return NextResponse.json({ error: existingError.message }, { status: 500 });
+  }
+
+  const existingIds = (existingRows ?? []).map((row) => row.id);
+
+  if (existingIds.length > 0) {
     const { error } = await supabase
       .from('student_responses')
       .update(rowPayload)
-      .eq('id', existing.id);
+      .in('id', existingIds);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ status: 'updated', savedAt: now, responseStatus });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ status: 'updated', savedAt: now, updatedRows: existingIds.length, responseStatus });
   }
 
   const { error } = await supabase
     .from('student_responses')
     .insert({
       student_id: DEMO_STUDENT_ID,
-      assignment_id: DEMO_ASSIGNMENT_ID,
       activity_id: body.activityId,
       started_at: now,
       ...rowPayload,
     });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ status: 'created', savedAt: now, responseStatus });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ status: 'created', savedAt: now, updatedRows: 1, responseStatus });
 }
