@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { getPathwayConfig } from '@/lib/pathwayRegistry';
 import { getActivityLabel, getActivityRouteSlug, isTrackableActivity } from '@/lib/activityTypeRegistry';
-import { alexanderIIWiderReformsPathwaySlug, alexanderIIWiderReformsSeedLessonTitle } from '@/lib/pathwayAlexanderIIWiderReformsContent';
+import { alexanderIIWiderReformsPathwaySlug, alexanderIIWiderReformsLessonTitle } from '@/lib/pathwayAlexanderIIWiderReformsContent';
 import styles from '../1905/page.module.css';
 
 const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
@@ -30,6 +30,7 @@ function orderActivities(activities: Activity[]) {
 }
 
 function getActivityHref(activityType: string) {
+  if (activityType === 'lesson_content') return `${config.routeBase}/lesson`;
   return `${config.routeBase}/${getActivityRouteSlug(activityType)}`;
 }
 
@@ -50,7 +51,7 @@ export default async function AlexanderIIWiderReformsPathwayPage() {
   const { data: lessonRows } = await supabase
     .from('lessons')
     .select('id')
-    .eq('title', alexanderIIWiderReformsSeedLessonTitle)
+    .eq('title', alexanderIIWiderReformsLessonTitle)
     .limit(1);
 
   const lesson = Array.isArray(lessonRows) && lessonRows.length > 0 ? lessonRows[0] : null;
