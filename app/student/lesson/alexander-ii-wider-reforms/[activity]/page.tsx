@@ -5,7 +5,7 @@ import { getPathwayConfig } from '@/lib/pathwayRegistry';
 import { getActivityRouteSlug } from '@/lib/activityTypeRegistry';
 import {
   alexanderIIWiderReformsPathwaySlug,
-  alexanderIIWiderReformsSeedLessonTitle,
+  alexanderIIWiderReformsLessonTitle,
   pathwayAlexanderIIWiderReformsFlashcards,
   pathwayAlexanderIIWiderReformsQuizQuestions,
   pathwayAlexanderIIWiderReformsPeelContent,
@@ -31,25 +31,19 @@ const fallbackContentByActivityType: Record<string, any> = {
   peel_response: pathwayAlexanderIIWiderReformsPeelContent,
   confidence_exit_ticket: pathwayAlexanderIIWiderReformsConfidenceContent,
   judgement_ranking: {
-    question: 'Rank Alexander II’s wider reforms from most to least significant.',
+    question: 'Rank Alexander II wider reforms from most to least significant.',
     factors: [
-      { id: 'judicial', title: 'Judicial reform', detail: 'Introduced more modern courts and trial by jury.' },
+      { id: 'judicial', title: 'Judicial reform', detail: 'Modernised the court system.' },
       { id: 'military', title: 'Military reform', detail: 'Improved the army after the Crimean War.' },
-      { id: 'zemstva', title: 'Zemstva reform', detail: 'Improved local administration but remained politically limited.' },
-      { id: 'education', title: 'Education reform', detail: 'Expanded educational opportunity and literacy.' }
+      { id: 'zemstva', title: 'Zemstva reform', detail: 'Improved local administration but remained limited.' },
+      { id: 'education', title: 'Education reform', detail: 'Expanded educational opportunity.' }
     ]
   },
   ao3_interpretation: {
-    question: 'Assess the interpretations about the extent of modernisation under Alexander II.',
+    question: 'Assess the interpretations about modernisation under Alexander II.',
     interpretations: [
-      {
-        historian: 'Interpretation A',
-        argument: 'Alexander II genuinely modernised Russia through reform.'
-      },
-      {
-        historian: 'Interpretation B',
-        argument: 'The reforms were significant but remained limited by autocracy.'
-      }
+      { historian: 'Interpretation A', argument: 'Alexander II modernised Russia through reform.' },
+      { historian: 'Interpretation B', argument: 'The reforms were significant but limited by autocracy.' }
     ]
   }
 };
@@ -86,7 +80,7 @@ async function getLessonActivities() {
   const { data: lessonRows } = await supabase
     .from('lessons')
     .select('id')
-    .eq('title', alexanderIIWiderReformsSeedLessonTitle)
+    .eq('title', alexanderIIWiderReformsLessonTitle)
     .limit(1);
 
   const lesson = Array.isArray(lessonRows) && lessonRows.length > 0 ? lessonRows[0] : null;
@@ -121,7 +115,7 @@ export default async function AlexanderIIWiderReformsActivityPage({ params }: { 
       <div className={styles.topbar}>
         <Link className={styles.backLink} href={config.routeBase}>← Pathway</Link>
         <div className={styles.titleBlock}><p>{activitySlug}</p><h1>{activity?.title ?? config.title}</h1></div>
-        <Link className={styles.dashboardLink} href="/student/dashboard">Dashboard</Link>
+        <Link className={styles.dashboardLink} href={config.routeBase}>Pathway</Link>
       </div>
 
       {error && <section className="card warm"><h2>Activity not available</h2><p>{error}</p></section>}
