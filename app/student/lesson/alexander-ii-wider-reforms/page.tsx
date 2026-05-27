@@ -97,7 +97,7 @@ export default async function AlexanderIIWiderReformsPathwayPage() {
   return (
     <main className={styles.shell}>
       <div className={styles.topbar}>
-        <Link className={styles.navButton} href="/student/dashboard">← Dashboard</Link>
+        <Link className={styles.navButton} href={config.routeBase}>← Pathway</Link>
         <div className={styles.topTitle}><span>Guided study route</span><strong>{config.title}</strong></div>
         <Link className={styles.navButton} href={nextItem?.href ?? config.routeBase}>Next</Link>
       </div>
