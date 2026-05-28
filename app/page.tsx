@@ -11,8 +11,12 @@ export default function HomePage() {
           1855-1964. The first build focuses on the 1905 Revolution pathway.
         </p>
         <div className="button-row">
-          <Link className="button" href="/student/dashboard">Student dashboard</Link>
-          <Link className="button secondary" href="/teacher/dashboard">Teacher dashboard</Link>
+          <Link className="button" href="/student/lesson/alexander-ii-wider-reforms">
+            Start student pathway
+          </Link>
+          <Link className="button secondary" href="/teacher/dashboard">
+            Teacher dashboard
+          </Link>
         </div>
       </section>
 
