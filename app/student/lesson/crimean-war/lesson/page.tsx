@@ -25,5 +25,29 @@ export default async function Page() {
   const sections = Array.isArray(activity?.content_json?.sections) && activity.content_json.sections.length >= 5 ? activity.content_json.sections : pathwayCrimeanWarLessonSections;
   const title = activity?.title?.replace(/^Lesson notes:\s*/i, '') ?? 'The Crimean War';
 
-  return <main className={styles.shell}><div className={styles.topbar}><Link className={styles.backLink} href={config.routeBase}>← Pathway</Link><div className={styles.titleBlock}><p>Chunked lesson</p><h1>{title}</h1></div><Link className={styles.dashboardLink} href="/student/dashboard">Dashboard</Link></div><section className={styles.panel}>{error && <div className={styles.error}><strong>Activity not available:</strong> {error}</div>}{activity && <LessonChunkActivity activityId={activity.id} title={title} enquiry={enquiry ?? config.lessonTitle} sections={sections} estimatedMinutes={activity.estimated_minutes ?? 12} skillFocus={activity.skill_focus ?? 'AO1 contextual understanding'} difficulty={activity.difficulty ?? 'secure'} nextHref={`${config.routeBase}/flashcards`} nextLabel="Next: flashcards" />}</section></main>;
+  return (
+    <main className={styles.shell}>
+      <div className={styles.topbar}>
+        <Link className={styles.backLink} href={config.routeBase}>← Return to pathway</Link>
+      </div>
+
+      <section className={styles.panel}>
+        {error && <div className={styles.error}><strong>Activity not available:</strong> {error}</div>}
+
+        {activity && (
+          <LessonChunkActivity
+            activityId={activity.id}
+            title={title}
+            enquiry={enquiry ?? config.lessonTitle}
+            sections={sections}
+            estimatedMinutes={activity.estimated_minutes ?? 12}
+            skillFocus={activity.skill_focus ?? 'AO1 contextual understanding'}
+            difficulty={activity.difficulty ?? 'secure'}
+            nextHref={`${config.routeBase}/flashcards`}
+            nextLabel="Next: flashcards"
+          />
+        )}
+      </section>
+    </main>
+  );
 }
