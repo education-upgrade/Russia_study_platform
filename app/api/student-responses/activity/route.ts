@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { resolveVirtualActivityId } from '@/lib/resolveVirtualActivityId';
 
 const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
 const DEMO_ASSIGNMENT_ID = '44444444-4444-4444-4444-444444444444';
@@ -28,6 +29,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing responseType.' }, { status: 400 });
   }
 
+  const resolvedActivityId = await resolveVirtualActivityId(body.activityId);
+
+  if (resolvedActivityId.startsWith('virtual-')) {
+    return NextResponse.json({ error: `Could not resolve activity: ${body.activityId}` }, { status: 500 });
+  }
+
   const responseStatus = body.status ?? 'complete';
   const now = new Date().toISOString();
   const responsePayload = body.response ?? body.responseJson ?? {};
@@ -38,6 +45,7 @@ export async function POST(request: Request) {
     response_json: {
       ...responsePayload,
       status: responseStatus,
+      originalActivityId: body.activityId,
     },
     score: typeof body.score === 'number' ? body.score : null,
     status: responseStatus,
@@ -49,7 +57,7 @@ export async function POST(request: Request) {
     .from('student_responses')
     .select('id')
     .eq('student_id', DEMO_STUDENT_ID)
-    .eq('activity_id', body.activityId);
+    .eq('activity_id', resolvedActivityId);
 
   if (existingError) {
     return NextResponse.json({ error: existingError.message }, { status: 500 });
@@ -67,14 +75,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ status: 'updated', savedAt: now, updatedRows: existingIds.length, responseStatus });
+    return NextResponse.json({ status: 'updated', savedAt: now, updatedRows: existingIds.length, responseStatus, activityId: resolvedActivityId });
   }
 
   const { error } = await supabase
     .from('student_responses')
     .insert({
       student_id: DEMO_STUDENT_ID,
-      activity_id: body.activityId,
+      activity_id: resolvedActivityId,
       started_at: now,
       ...rowPayload,
     });
@@ -83,5 +91,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ status: 'created', savedAt: now, updatedRows: 1, responseStatus });
+  return NextResponse.json({ status: 'created', savedAt: now, updatedRows: 1, responseStatus, activityId: resolvedActivityId });
 }
