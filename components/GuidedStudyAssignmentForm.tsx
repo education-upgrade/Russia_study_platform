@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { PATHWAY_ACTIVITY_ORDER, pathwayOptions } from '@/lib/pathwayRegistry';
+import { getActivityLabel, orderSupportedActivityTypes } from '@/lib/activityTypeRegistry';
+import { pathwayOptions } from '@/lib/pathwayRegistry';
 import styles from './GuidedStudyAssignmentForm.module.css';
 
 type StudyMode = 'full_guided_study' | 'exam_practice' | 'recap' | 'confidence_repair';
@@ -18,31 +19,43 @@ type GuidedStudyAssignmentFormProps = {
 };
 
 const fallbackClasses: ClassOption[] = [
-  {
-    id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-    className: 'Year 12 Russia demo class',
-    yearGroup: 'Y12',
-    studentCount: 1,
-  },
-  {
-    id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-    className: 'Year 13 Russia demo class',
-    yearGroup: 'Y13',
-    studentCount: 0,
-  },
+  { id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', className: 'Year 12 Russia demo class', yearGroup: 'Y12', studentCount: 1 },
+  { id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', className: 'Year 13 Russia demo class', yearGroup: 'Y13', studentCount: 0 },
+];
+
+const fullGuidedStudyActivities = [
+  'lesson_content',
+  'timeline',
+  'flashcards',
+  'quiz',
+  'judgement_ranking',
+  'ao3_interpretation',
+  'peel_response',
+  'confidence_exit_ticket',
+];
+
+const activityOptions = [
+  { value: 'lesson_content', label: 'Lesson notes', description: 'Core explanation and context-building.' },
+  { value: 'timeline', label: 'Timeline', description: 'Chronology, sequencing and turning-point awareness.' },
+  { value: 'flashcards', label: 'Flashcards', description: 'Secure key terms, people and concepts.' },
+  { value: 'quiz', label: 'Retrieval quiz', description: 'Trackable knowledge check.' },
+  { value: 'judgement_ranking', label: 'Judgement ranking', description: 'Rank causes, significance or relative importance.' },
+  { value: 'ao3_interpretation', label: 'AO3 interpretation', description: 'Evaluate historical interpretations.' },
+  { value: 'peel_response', label: 'PEEL response', description: 'Written argument / exam-skill evidence.' },
+  { value: 'confidence_exit_ticket', label: 'Confidence check', description: 'Final metacognitive reflection.' },
 ];
 
 const modeOptions: { value: StudyMode; title: string; description: string; bestFor: string }[] = [
   {
     value: 'full_guided_study',
     title: 'Full study',
-    description: 'Lesson notes, flashcards, quiz, PEEL and final confidence check.',
-    bestFor: 'Best for a complete independent study homework.',
+    description: 'Notes, timeline, retrieval, judgement, AO3, PEEL and confidence.',
+    bestFor: 'Best for a complete independent guided-study pathway.',
   },
   {
     value: 'exam_practice',
     title: 'Exam practice',
-    description: 'Flashcards, retrieval, PEEL and reflection.',
+    description: 'Retrieval, AO3, PEEL and reflection.',
     bestFor: 'Best when students need written evidence and exam skill.',
   },
   {
@@ -59,29 +72,13 @@ const modeOptions: { value: StudyMode; title: string; description: string; bestF
   },
 ];
 
-const activityOptions = [
-  { value: 'lesson_content', label: 'Lesson notes', description: 'Short explanatory notes.' },
-  { value: 'flashcards', label: 'Flashcards', description: 'Secure / nearly / revisit ratings.' },
-  { value: 'quiz', label: 'Retrieval quiz', description: 'Trackable knowledge check.' },
-  { value: 'peel_response', label: 'PEEL response', description: 'Written exam-skill evidence.' },
-  { value: 'confidence_exit_ticket', label: 'Confidence check', description: 'Final reflection.' },
-];
-
-const defaultActivities = [...PATHWAY_ACTIVITY_ORDER];
-
 function orderSelectedActivities(activityTypes: string[]) {
-  return [...activityTypes].sort((first, second) => {
-    const firstIndex = PATHWAY_ACTIVITY_ORDER.indexOf(first as typeof PATHWAY_ACTIVITY_ORDER[number]);
-    const secondIndex = PATHWAY_ACTIVITY_ORDER.indexOf(second as typeof PATHWAY_ACTIVITY_ORDER[number]);
-    const safeFirstIndex = firstIndex === -1 ? 999 : firstIndex;
-    const safeSecondIndex = secondIndex === -1 ? 999 : secondIndex;
-    return safeFirstIndex - safeSecondIndex;
-  });
+  return orderSupportedActivityTypes(activityTypes);
 }
 
 function getDefaultInstructions(mode: StudyMode, topicTitle: string) {
   if (mode === 'exam_practice') {
-    return `Complete the flashcards and retrieval quiz first, then produce a focused PEEL paragraph on ${topicTitle}. Finish with the confidence check.`;
+    return `Complete the retrieval and AO3 tasks first, then produce a focused PEEL paragraph on ${topicTitle}. Finish with the confidence check.`;
   }
 
   if (mode === 'recap') {
@@ -92,15 +89,15 @@ function getDefaultInstructions(mode: StudyMode, topicTitle: string) {
     return `Move carefully through the ${topicTitle} pathway. Complete the confidence check last and be honest about which part still feels insecure.`;
   }
 
-  return `Complete the full ${topicTitle} guided study pathway. The confidence check should be completed last.`;
+  return `Complete the full ${topicTitle} guided study pathway. Build knowledge first, then chronology, judgement, AO3 interpretation and written argument. Complete the confidence check last.`;
 }
 
 function getSelectedModeTitle(mode: StudyMode) {
   return modeOptions.find((option) => option.value === mode)?.title ?? 'Guided study';
 }
 
-function getActivityLabel(activityType: string) {
-  return activityOptions.find((activity) => activity.value === activityType)?.label ?? activityType;
+function getDisplayActivityLabel(activityType: string) {
+  return activityOptions.find((activity) => activity.value === activityType)?.label ?? getActivityLabel(activityType);
 }
 
 export default function GuidedStudyAssignmentForm({ classOptions = fallbackClasses }: GuidedStudyAssignmentFormProps) {
@@ -109,20 +106,16 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
   const [topicSlug, setTopicSlug] = useState(pathwayOptions[0].pathwaySlug);
   const selectedTopic = pathwayOptions.find((topic) => topic.pathwaySlug === topicSlug) ?? pathwayOptions[0];
   const [mode, setMode] = useState<StudyMode>('full_guided_study');
-  const [selectedActivities, setSelectedActivities] = useState<string[]>(defaultActivities);
+  const [selectedActivities, setSelectedActivities] = useState<string[]>(orderSelectedActivities(fullGuidedStudyActivities));
   const [deadlineAt, setDeadlineAt] = useState('');
   const [instructions, setInstructions] = useState(getDefaultInstructions('full_guided_study', selectedTopic.title));
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveMessage, setSaveMessage] = useState('');
   const selectedClass = usableClassOptions.find((option) => option.id === classId) ?? usableClassOptions[0];
+
   const deadlineLabel = useMemo(() => {
     if (!deadlineAt) return 'No deadline set';
-    return new Date(deadlineAt).toLocaleString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return new Date(deadlineAt).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
   }, [deadlineAt]);
 
   function resetSaveState() {
@@ -142,11 +135,11 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
     setInstructions(getDefaultInstructions(nextMode, selectedTopic.title));
 
     if (nextMode === 'exam_practice') {
-      setSelectedActivities(orderSelectedActivities(['flashcards', 'quiz', 'peel_response', 'confidence_exit_ticket']));
+      setSelectedActivities(orderSelectedActivities(['quiz', 'ao3_interpretation', 'peel_response', 'confidence_exit_ticket']));
     } else if (nextMode === 'recap') {
       setSelectedActivities(orderSelectedActivities(['lesson_content', 'flashcards', 'quiz', 'confidence_exit_ticket']));
     } else {
-      setSelectedActivities(defaultActivities);
+      setSelectedActivities(orderSelectedActivities(fullGuidedStudyActivities));
     }
 
     resetSaveState();
@@ -157,7 +150,6 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
       if (current.includes(activityType)) {
         return orderSelectedActivities(current.filter((item) => item !== activityType));
       }
-
       return orderSelectedActivities([...current, activityType]);
     });
     resetSaveState();
@@ -183,13 +175,10 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
       });
 
       const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.setupHint ? `${result.error} ${result.setupHint}` : result.error ?? 'Assignment could not be created.');
-      }
+      if (!response.ok) throw new Error(result.setupHint ? `${result.error} ${result.setupHint}` : result.error ?? 'Assignment could not be created.');
 
       setSaveStatus('saved');
-      setSaveMessage(`Assignment created for ${result.recipientCount ?? selectedClass.studentCount} student${(result.recipientCount ?? selectedClass.studentCount) === 1 ? '' : 's'}.`);
+      setSaveMessage(`Assignment created for ${result.recipientCount ?? selectedClass.studentCount} student${(result.recipientCount ?? selectedClass.studentCount) === 1 ? '' : 's'}. Route: ${result.route ?? selectedActivities.map(getDisplayActivityLabel).join(' → ')}`);
     } catch (error) {
       setSaveStatus('error');
       setSaveMessage(error instanceof Error ? error.message : 'Assignment could not be created.');
@@ -203,7 +192,7 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
           <div>
             <p className={styles.eyebrow}>Set guided study</p>
             <h2>{selectedTopic.title}</h2>
-            <p>Move through five simple decisions. Students will only see the next task they need to complete.</p>
+            <p>Choose the topic, class, route type and the activities students will complete.</p>
           </div>
           <aside className={styles.headerSummary}>
             <span>Ready route</span>
@@ -212,21 +201,10 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
         </header>
 
         <section className={styles.stepPanel}>
-          <div className={styles.stepHeader}>
-            <span className={styles.stepNumber}>1</span>
-            <div>
-              <p className={styles.eyebrow}>Choose topic</p>
-              <h3>What should students study?</h3>
-            </div>
-          </div>
+          <div className={styles.stepHeader}><span className={styles.stepNumber}>1</span><div><p className={styles.eyebrow}>Choose topic</p><h3>What should students study?</h3></div></div>
           <div className={styles.topicGrid}>
             {pathwayOptions.map((topic) => (
-              <button
-                type="button"
-                className={`${styles.topicButton} ${topicSlug === topic.pathwaySlug ? styles.selectedTopic : ''}`}
-                key={topic.pathwaySlug}
-                onClick={() => updateTopic(topic.pathwaySlug)}
-              >
+              <button type="button" className={`${styles.topicButton} ${topicSlug === topic.pathwaySlug ? styles.selectedTopic : ''}`} key={topic.pathwaySlug} onClick={() => updateTopic(topic.pathwaySlug)}>
                 <span className={styles.topicMeta}>{topic.yearGroup} · {topic.status === 'ready' ? 'Ready' : 'Planned'}</span>
                 <strong>{topic.title}</strong>
                 <small>{topic.subtitle}</small>
@@ -236,24 +214,10 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
         </section>
 
         <section className={styles.stepPanel}>
-          <div className={styles.stepHeader}>
-            <span className={styles.stepNumber}>2</span>
-            <div>
-              <p className={styles.eyebrow}>Choose class</p>
-              <h3>Who is this for?</h3>
-            </div>
-          </div>
+          <div className={styles.stepHeader}><span className={styles.stepNumber}>2</span><div><p className={styles.eyebrow}>Choose class</p><h3>Who is this for?</h3></div></div>
           <div className={styles.classGrid}>
             {usableClassOptions.map((option) => (
-              <button
-                type="button"
-                className={`${styles.classButton} ${classId === option.id ? styles.selectedClass : ''}`}
-                key={option.id}
-                onClick={() => {
-                  setClassId(option.id);
-                  resetSaveState();
-                }}
-              >
+              <button type="button" className={`${styles.classButton} ${classId === option.id ? styles.selectedClass : ''}`} key={option.id} onClick={() => { setClassId(option.id); resetSaveState(); }}>
                 <strong>{option.className}</strong>
                 <span>{option.yearGroup} · {option.studentCount} student{option.studentCount === 1 ? '' : 's'}</span>
               </button>
@@ -262,51 +226,25 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
         </section>
 
         <section className={styles.stepPanel}>
-          <div className={styles.stepHeader}>
-            <span className={styles.stepNumber}>3</span>
-            <div>
-              <p className={styles.eyebrow}>Choose route</p>
-              <h3>What kind of study?</h3>
-            </div>
-          </div>
+          <div className={styles.stepHeader}><span className={styles.stepNumber}>3</span><div><p className={styles.eyebrow}>Choose route</p><h3>What kind of study?</h3></div></div>
           <div className={styles.modeStrip}>
             {modeOptions.map((option) => (
-              <button
-                type="button"
-                className={`${styles.modeButton} ${mode === option.value ? styles.selected : ''}`}
-                key={option.value}
-                onClick={() => updateMode(option.value)}
-              >
-                <strong>{option.title}</strong>
-                <span>{option.description}</span>
-                <small>{option.bestFor}</small>
+              <button type="button" className={`${styles.modeButton} ${mode === option.value ? styles.selected : ''}`} key={option.value} onClick={() => updateMode(option.value)}>
+                <strong>{option.title}</strong><span>{option.description}</span><small>{option.bestFor}</small>
               </button>
             ))}
           </div>
         </section>
 
         <section className={styles.stepPanel}>
-          <div className={styles.stepHeader}>
-            <span className={styles.stepNumber}>4</span>
-            <div>
-              <p className={styles.eyebrow}>Review activities</p>
-              <h3>What will students complete?</h3>
-            </div>
-          </div>
+          <div className={styles.stepHeader}><span className={styles.stepNumber}>4</span><div><p className={styles.eyebrow}>Review activities</p><h3>What will students complete?</h3></div></div>
           <div className={styles.activityList}>
             {activityOptions.map((activity) => {
               const selectedIndex = selectedActivities.indexOf(activity.value);
               return (
                 <label className={`${styles.activityChoice} ${selectedIndex !== -1 ? styles.selected : ''}`} key={activity.value}>
-                  <input
-                    type="checkbox"
-                    checked={selectedIndex !== -1}
-                    onChange={() => toggleActivity(activity.value)}
-                  />
-                  <span>
-                    <strong>{activity.label}</strong>
-                    <small>{activity.description}</small>
-                  </span>
+                  <input type="checkbox" checked={selectedIndex !== -1} onChange={() => toggleActivity(activity.value)} />
+                  <span><strong>{activity.label}</strong><small>{activity.description}</small></span>
                   <span className={styles.orderBadge}>{selectedIndex === -1 ? '–' : selectedIndex + 1}</span>
                 </label>
               );
@@ -315,86 +253,24 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
         </section>
 
         <section className={styles.stepPanel}>
-          <div className={styles.stepHeader}>
-            <span className={styles.stepNumber}>5</span>
-            <div>
-              <p className={styles.eyebrow}>Set and save</p>
-              <h3>Confirm the assignment</h3>
-            </div>
-          </div>
-
+          <div className={styles.stepHeader}><span className={styles.stepNumber}>5</span><div><p className={styles.eyebrow}>Set and save</p><h3>Confirm the assignment</h3></div></div>
           <div className={styles.confirmGrid}>
             <div className={styles.finalControls}>
-              <label className={styles.field}>
-                <span>Deadline</span>
-                <input
-                  type="datetime-local"
-                  value={deadlineAt}
-                  onChange={(event) => {
-                    setDeadlineAt(event.target.value);
-                    resetSaveState();
-                  }}
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>Student instruction</span>
-                <textarea
-                  value={instructions}
-                  onChange={(event) => {
-                    setInstructions(event.target.value);
-                    resetSaveState();
-                  }}
-                  rows={4}
-                />
-              </label>
+              <label className={styles.field}><span>Deadline</span><input type="datetime-local" value={deadlineAt} onChange={(event) => { setDeadlineAt(event.target.value); resetSaveState(); }} /></label>
+              <label className={styles.field}><span>Student instruction</span><textarea value={instructions} onChange={(event) => { setInstructions(event.target.value); resetSaveState(); }} rows={4} /></label>
             </div>
 
             <aside className={styles.summaryBox}>
-              <p className={styles.eyebrow}>Teacher check</p>
-              <h3>Ready to set</h3>
-
-              <div className={styles.summaryLine}>
-                <span>Topic</span>
-                <strong>{selectedTopic.title}</strong>
-              </div>
-              <div className={styles.summaryLine}>
-                <span>Class</span>
-                <strong>{selectedClass.className}</strong>
-              </div>
-              <div className={styles.summaryLine}>
-                <span>Students</span>
-                <strong>{selectedClass.studentCount}</strong>
-              </div>
-              <div className={styles.summaryLine}>
-                <span>Route</span>
-                <strong>{getSelectedModeTitle(mode)}</strong>
-              </div>
-              <div className={styles.summaryLine}>
-                <span>Activities</span>
-                <strong>{selectedActivities.map(getActivityLabel).join(' → ')}</strong>
-              </div>
-              <div className={styles.summaryLine}>
-                <span>Deadline</span>
-                <strong>{deadlineLabel}</strong>
-              </div>
-              <div className={styles.summaryLine}>
-                <span>Last activity</span>
-                <strong>{selectedActivities.at(-1) === 'confidence_exit_ticket' ? 'Confidence check' : getActivityLabel(selectedActivities.at(-1) ?? '')}</strong>
-              </div>
-
-              <button
-                type="button"
-                className={styles.submitButton}
-                onClick={createAssignment}
-                disabled={saveStatus === 'saving' || selectedActivities.length === 0}
-              >
-                {saveStatus === 'saving' ? 'Creating...' : `Set for ${selectedClass.yearGroup}`}
-              </button>
-
-              {saveMessage && (
-                <p className={`${styles.saveMessage} ${styles[saveStatus]}`}><strong>Status:</strong> {saveMessage}</p>
-              )}
+              <p className={styles.eyebrow}>Teacher check</p><h3>Ready to set</h3>
+              <div className={styles.summaryLine}><span>Topic</span><strong>{selectedTopic.title}</strong></div>
+              <div className={styles.summaryLine}><span>Class</span><strong>{selectedClass.className}</strong></div>
+              <div className={styles.summaryLine}><span>Students</span><strong>{selectedClass.studentCount}</strong></div>
+              <div className={styles.summaryLine}><span>Route</span><strong>{getSelectedModeTitle(mode)}</strong></div>
+              <div className={styles.summaryLine}><span>Activities</span><strong>{selectedActivities.map(getDisplayActivityLabel).join(' → ')}</strong></div>
+              <div className={styles.summaryLine}><span>Deadline</span><strong>{deadlineLabel}</strong></div>
+              <div className={styles.summaryLine}><span>Last activity</span><strong>{selectedActivities.at(-1) === 'confidence_exit_ticket' ? 'Confidence check' : getDisplayActivityLabel(selectedActivities.at(-1) ?? '')}</strong></div>
+              <button type="button" className={styles.submitButton} onClick={createAssignment} disabled={saveStatus === 'saving' || selectedActivities.length === 0}>{saveStatus === 'saving' ? 'Creating...' : `Set for ${selectedClass.yearGroup}`}</button>
+              {saveMessage && <p className={`${styles.saveMessage} ${styles[saveStatus]}`}><strong>Status:</strong> {saveMessage}</p>}
             </aside>
           </div>
         </section>
