@@ -1,20 +1,22 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { getActivityLabel, isSupportedActivityType, orderSupportedActivityTypes } from '@/lib/activityTypeRegistry';
 
 const DEMO_TEACHER_ID = '11111111-1111-1111-1111-111111111111';
 const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
 const DEMO_CLASS_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-const DEFAULT_PATHWAY_SLUG = '1905-revolution';
-const DEFAULT_LESSON_TITLE = 'Was the 1905 Revolution a turning point for Tsarist Russia?';
-const PATHWAY_ACTIVITY_ORDER = ['lesson_content', 'flashcards', 'quiz', 'peel_response', 'confidence_exit_ticket'];
-
-const activityLabels: Record<string, string> = {
-  lesson_content: 'Lesson content',
-  flashcards: 'Flashcards',
-  quiz: 'Retrieval quiz',
-  peel_response: 'PEEL response',
-  confidence_exit_ticket: 'Confidence exit ticket',
-};
+const DEFAULT_PATHWAY_SLUG = 'russia-1855';
+const DEFAULT_LESSON_TITLE = 'Why was Russia difficult to govern in 1855?';
+const DEFAULT_ACTIVITY_TYPES = [
+  'lesson_content',
+  'timeline',
+  'flashcards',
+  'quiz',
+  'judgement_ranking',
+  'ao3_interpretation',
+  'peel_response',
+  'confidence_exit_ticket',
+];
 
 type GuidedStudyRequest = {
   mode: string;
@@ -27,95 +29,52 @@ type GuidedStudyRequest = {
   lessonTitle?: string;
 };
 
-type ClassRow = {
-  id: string;
-  class_name: string;
-};
-
-type LessonRow = {
-  id: string;
-  title: string;
-};
+type ClassRow = { id: string; class_name: string };
+type LessonRow = { id: string; title: string };
 
 function orderRequiredActivityTypes(activityTypes: string[]) {
-  return [...activityTypes].sort((first, second) => {
-    const firstIndex = PATHWAY_ACTIVITY_ORDER.indexOf(first);
-    const secondIndex = PATHWAY_ACTIVITY_ORDER.indexOf(second);
-    const safeFirstIndex = firstIndex === -1 ? 999 : firstIndex;
-    const safeSecondIndex = secondIndex === -1 ? 999 : secondIndex;
-    return safeFirstIndex - safeSecondIndex;
-  });
+  return orderSupportedActivityTypes(activityTypes.filter(isSupportedActivityType));
 }
 
 async function getClassStudents(classId: string) {
   if (!supabase) return [DEMO_STUDENT_ID];
-
-  const { data, error } = await supabase
-    .from('class_memberships')
-    .select('student_id')
-    .eq('class_id', classId)
-    .eq('status', 'active');
-
+  const { data, error } = await supabase.from('class_memberships').select('student_id').eq('class_id', classId).eq('status', 'active');
   if (error || !data?.length) return [DEMO_STUDENT_ID];
   return data.map((row) => row.student_id as string);
 }
 
 async function getClassName(classId: string) {
   if (!supabase) return 'Year 12 Russia demo class';
-
-  const { data, error } = await supabase
-    .from('teacher_classes')
-    .select('id, class_name')
-    .eq('id', classId)
-    .limit(1)
-    .maybeSingle<ClassRow>();
-
+  const { data, error } = await supabase.from('teacher_classes').select('id, class_name').eq('id', classId).limit(1).maybeSingle<ClassRow>();
   if (error || !data) return 'Year 12 Russia demo class';
   return data.class_name;
 }
 
 async function getLessonByTitle(lessonTitle: string) {
   if (!supabase) return { lesson: null, error: 'Supabase is not configured.' };
-
-  const { data, error } = await supabase
-    .from('lessons')
-    .select('id, title')
-    .eq('title', lessonTitle)
-    .limit(1);
-
+  const { data, error } = await supabase.from('lessons').select('id, title').eq('title', lessonTitle).limit(1);
   if (error) return { lesson: null, error: error.message };
   const lesson = Array.isArray(data) && data.length > 0 ? (data[0] as LessonRow) : null;
   return { lesson, error: lesson ? '' : `${lessonTitle} lesson not found. Run the seed SQL for this topic first.` };
 }
 
 export async function POST(request: Request) {
-  if (!supabase) {
-    return NextResponse.json({ error: 'Supabase is not configured.' }, { status: 500 });
-  }
+  if (!supabase) return NextResponse.json({ error: 'Supabase is not configured.' }, { status: 500 });
 
   const body = (await request.json()) as GuidedStudyRequest;
   const pathwaySlug = body.pathwaySlug || DEFAULT_PATHWAY_SLUG;
   const lessonTitle = body.lessonTitle || DEFAULT_LESSON_TITLE;
-  const requiredActivityTypes = orderRequiredActivityTypes(
-    body.requiredActivityTypes?.length
-      ? body.requiredActivityTypes
-      : PATHWAY_ACTIVITY_ORDER
-  );
+  const requestedTypes = body.requiredActivityTypes?.length ? body.requiredActivityTypes : DEFAULT_ACTIVITY_TYPES;
+  const invalidActivities = requestedTypes.filter((activityType) => !isSupportedActivityType(activityType));
 
-  if (!body.mode) {
-    return NextResponse.json({ error: 'Choose a guided study mode.' }, { status: 400 });
-  }
+  if (!body.mode) return NextResponse.json({ error: 'Choose a guided study mode.' }, { status: 400 });
+  if (invalidActivities.length > 0) return NextResponse.json({ error: `Unknown activity type: ${invalidActivities.join(', ')}` }, { status: 400 });
 
-  const invalidActivities = requiredActivityTypes.filter((activityType) => !activityLabels[activityType]);
-  if (invalidActivities.length > 0) {
-    return NextResponse.json({ error: `Unknown activity type: ${invalidActivities.join(', ')}` }, { status: 400 });
-  }
+  const requiredActivityTypes = orderRequiredActivityTypes(requestedTypes);
+  if (requiredActivityTypes.length === 0) return NextResponse.json({ error: 'Choose at least one supported activity.' }, { status: 400 });
 
   const { lesson, error: lessonError } = await getLessonByTitle(lessonTitle);
-
-  if (lessonError || !lesson) {
-    return NextResponse.json({ error: lessonError ?? `${lessonTitle} lesson not found.` }, { status: 500 });
-  }
+  if (lessonError || !lesson) return NextResponse.json({ error: lessonError ?? `${lessonTitle} lesson not found.` }, { status: 500 });
 
   const classId = body.classId || DEMO_CLASS_ID;
   const className = await getClassName(classId);
@@ -138,21 +97,10 @@ export async function POST(request: Request) {
     status: 'active',
   };
 
-  const { data, error } = await supabase
-    .from('guided_study_assignments')
-    .insert(assignmentPayload)
-    .select('id, created_at, recipient_count')
-    .limit(1)
-    .maybeSingle();
+  const { data, error } = await supabase.from('guided_study_assignments').insert(assignmentPayload).select('id, created_at, recipient_count').limit(1).maybeSingle();
 
   if (error || !data) {
-    return NextResponse.json(
-      {
-        error: error?.message ?? 'Assignment could not be created.',
-        setupHint: 'If this mentions class_id, teacher_id or assigned_student_ids, run supabase/multi-class-platform.sql in Supabase SQL Editor.',
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error?.message ?? 'Assignment could not be created.', setupHint: 'If this mentions class_id, teacher_id or assigned_student_ids, run supabase/multi-class-platform.sql in Supabase SQL Editor.' }, { status: 500 });
   }
 
   return NextResponse.json({
@@ -162,5 +110,7 @@ export async function POST(request: Request) {
     recipientCount: data.recipient_count ?? studentIds.length,
     pathwaySlug,
     lessonTitle: lesson.title,
+    requiredActivityTypes,
+    route: requiredActivityTypes.map(getActivityLabel).join(' → '),
   });
 }
