@@ -1,8 +1,9 @@
 import { supabase } from './supabase';
+import { getPathwayConfig } from './pathwayRegistry';
 
 const STUDENT_ID = '22222222-2222-2222-2222-222222222222';
 
-const ACTIVITY_TYPES = [
+const TYPES = [
   'confidence_exit_ticket',
   'ao3_interpretation',
   'judgement_ranking',
@@ -14,21 +15,26 @@ const ACTIVITY_TYPES = [
   'quiz',
 ];
 
-function parseVirtualId(activityId: string) {
+function parse(activityId: string) {
   if (!activityId.startsWith('virtual-')) return null;
   const value = activityId.replace(/^virtual-/, '');
-  const activityType = ACTIVITY_TYPES.find((type) => value.endsWith(`-${type}`));
+  const activityType = TYPES.find((type) => value.endsWith(`-${type}`));
   if (!activityType) return null;
-  return {
-    pathwaySlug: value.slice(0, -(activityType.length + 1)),
-    activityType,
-  };
+  return { pathwaySlug: value.slice(0, -(activityType.length + 1)), activityType };
+}
+
+function titleFromRegistry(pathwaySlug: string) {
+  try {
+    return getPathwayConfig(pathwaySlug).lessonTitle;
+  } catch {
+    return null;
+  }
 }
 
 export async function resolveVirtualActivityId(activityId: string) {
   if (!supabase || !activityId.startsWith('virtual-')) return activityId;
 
-  const parsed = parseVirtualId(activityId);
+  const parsed = parse(activityId);
   if (!parsed) return activityId;
 
   const { data: assignment } = await supabase
@@ -41,12 +47,13 @@ export async function resolveVirtualActivityId(activityId: string) {
     .limit(1)
     .maybeSingle<{ lesson_title: string | null }>();
 
-  if (!assignment?.lesson_title) return activityId;
+  const lessonTitle = assignment?.lesson_title ?? titleFromRegistry(parsed.pathwaySlug);
+  if (!lessonTitle) return activityId;
 
   const { data: lesson } = await supabase
     .from('lessons')
     .select('id, unit_id')
-    .eq('title', assignment.lesson_title)
+    .eq('title', lessonTitle)
     .limit(1)
     .maybeSingle<{ id: string; unit_id: string | null }>();
 
