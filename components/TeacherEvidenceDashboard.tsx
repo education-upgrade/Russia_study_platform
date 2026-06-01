@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { isTrackableActivity, orderSupportedActivityTypes } from '@/lib/activityTypeRegistry';
 import { aggregateActivityEvidence, normaliseActivityEvidence, type RawActivityResponse } from '@/lib/activityEvidence';
+import { recommendIntervention } from '@/lib/interventionEngine';
 import styles from '@/app/teacher/progress/page.module.css';
 
 const STUDENT_ID = '22222222-2222-2222-2222-222222222222';
@@ -68,8 +69,10 @@ export default async function TeacherEvidenceDashboard() {
     return { activityType, activity, response, evidence };
   });
 
-  const aggregate = aggregateActivityEvidence(evidenceRows.map((row) => row.evidence));
+  const evidence = evidenceRows.map((row) => row.evidence);
+  const aggregate = aggregateActivityEvidence(evidence);
   const flags = evidenceRows.filter((row) => row.evidence.interventionFlag !== 'Submitted');
+  const recommendation = recommendIntervention(evidence);
 
   return (
     <main className={styles.shell}>
@@ -79,8 +82,23 @@ export default async function TeacherEvidenceDashboard() {
           <div><p className={styles.eyebrow}>Live evidence dashboard</p><h1>{assignment.lesson_title ?? 'Guided study'}</h1><p>{assignment.assigned_class} · {formatMode(assignment.mode)} · Deadline: {formatDate(assignment.deadline_at)}</p></div>
           <aside className={styles.decisionCard}><strong>{aggregate.complete}/{aggregate.trackable}</strong><span>{aggregate.completionPercentage}% complete · mastery {aggregate.averageMastery ?? 'n/a'}</span></aside>
         </header>
+
         <section className={styles.snapshot}><article className={styles.metric}><span>Complete</span><strong>{aggregate.complete}</strong><small>saved evidence rows</small></article><article className={styles.metric}><span>Missing</span><strong>{aggregate.missing}</strong><small>tasks still to complete</small></article><article className={styles.metric}><span>Flags</span><strong>{flags.length}</strong><small>teacher checks needed</small></article><article className={styles.metric}><span>Mastery</span><strong>{aggregate.averageMastery ?? '–'}</strong><small>average evidence score</small></article><article className={styles.metric}><span>Confidence</span><strong>{aggregate.averageConfidence ?? '–'}</strong><small>average confidence score</small></article></section>
+
+        <section className={styles.priority}>
+          <div className={styles.sectionHeader}><h2>Recommended next route</h2><span className={styles.badge}>{recommendation.routeMode.replaceAll('_', ' ')}</span></div>
+          <div className={styles.priorityList}>
+            <article className={styles.priorityItem}>
+              <div><strong>{recommendation.title}</strong><small>{recommendation.requiredActivityTypes.join(' → ')}</small></div>
+              <p>{recommendation.rationale}</p>
+              <p>{recommendation.teacherMessage}</p>
+              <span className={`${styles.statusPill} ${styles.intervention}`}>{recommendation.priorityAreas.length ? recommendation.priorityAreas.join(', ') : 'Secure progression'}</span>
+            </article>
+          </div>
+        </section>
+
         <section className={styles.priority}><div className={styles.sectionHeader}><h2>Priority checks</h2><span className={styles.badge}>{flags.length} flagged</span></div><div className={styles.priorityList}>{flags.length ? flags.map((row) => <article className={styles.priorityItem} key={row.activityType}><div><strong>{row.evidence.label}</strong><small>{row.activity?.title ?? 'Content-driven activity'}</small></div><p>{row.evidence.recommendedAction}</p><span className={`${styles.statusPill} ${statusClass(row.evidence.interventionFlag)}`}>{row.evidence.interventionFlag}</span></article>) : <article className={styles.priorityItem}><strong>No urgent checks</strong><p>All available evidence is on track.</p><span className={`${styles.statusPill} ${styles.secure}`}>Secure</span></article>}</div></section>
+
         <section className={styles.studentEvidence}><div className={styles.sectionHeader}><h2>Evidence by activity</h2><span className={styles.badge}>normalised evidence</span></div><div className={styles.studentList}>{evidenceRows.map((row) => <article className={styles.studentCard} key={row.activityType}><div className={styles.studentTop}><div><h3>{row.evidence.label}</h3><p>{row.activity?.title ?? 'Content-driven activity'}</p></div><span className={`${styles.statusPill} ${statusClass(row.evidence.interventionFlag)}`}>{row.evidence.interventionFlag}</span></div><div className={styles.diagnosticGrid}><div className={styles.diagnosticBox}><span>Evidence</span><strong>{row.evidence.evidenceValue}</strong><small>{row.evidence.evidenceSummary}</small></div><div className={styles.diagnosticBox}><span>Mastery</span><strong>{row.evidence.masteryScore ?? '–'}</strong><small>{row.evidence.masteryStatus}</small></div><div className={styles.diagnosticBox}><span>Saved</span><strong>{row.evidence.savedAt ? formatDate(row.evidence.savedAt) : 'Not yet'}</strong><small>{row.response?.response_type ?? 'No response'}</small></div></div></article>)}</div></section>
       </section>
     </main>
