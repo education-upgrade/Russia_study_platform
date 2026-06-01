@@ -1,6 +1,7 @@
 import { orderSupportedActivityTypes } from './activityTypeRegistry';
 import { type ActivityEvidence } from './activityEvidence';
 import { type InterventionRecommendation } from './interventionEngine';
+import { buildDifficultyAdaptationPlan, type DifficultyAdaptationPlan } from './difficultyAdaptationEngine';
 
 export type AdaptivePathwayBlueprint = {
   pathwaySlug: string;
@@ -13,6 +14,7 @@ export type AdaptivePathwayBlueprint = {
   teacherInstructions: string;
   studentInstructions: string;
   successCriteria: string[];
+  difficultyPlan: DifficultyAdaptationPlan;
 };
 
 function scaffoldLevelFor(recommendation: InterventionRecommendation): AdaptivePathwayBlueprint['scaffoldLevel'] {
@@ -39,6 +41,7 @@ export function buildAdaptivePathwayBlueprint(args: {
   recommendation: InterventionRecommendation;
 }): AdaptivePathwayBlueprint {
   const requiredActivityTypes = orderSupportedActivityTypes(args.recommendation.requiredActivityTypes);
+  const difficultyPlan = buildDifficultyAdaptationPlan(args.evidence, requiredActivityTypes);
 
   return {
     pathwaySlug: args.pathwaySlug,
@@ -48,8 +51,9 @@ export function buildAdaptivePathwayBlueprint(args: {
     rationale: args.recommendation.rationale,
     requiredActivityTypes,
     scaffoldLevel: scaffoldLevelFor(args.recommendation),
-    teacherInstructions: args.recommendation.teacherMessage,
+    teacherInstructions: `${args.recommendation.teacherMessage} Difficulty level: ${difficultyPlan.overallLevel}.`,
     studentInstructions: `${args.recommendation.title}: complete the activities in order and use the final confidence check to reflect on progress.`,
     successCriteria: criteriaFor(requiredActivityTypes),
+    difficultyPlan,
   };
 }
