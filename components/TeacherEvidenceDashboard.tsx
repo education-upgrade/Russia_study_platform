@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { isTrackableActivity, orderSupportedActivityTypes } from '@/lib/activityTypeRegistry';
 import { aggregateActivityEvidence, normaliseActivityEvidence, type RawActivityResponse } from '@/lib/activityEvidence';
 import { recommendIntervention } from '@/lib/interventionEngine';
+import AssignRecommendedRouteButton from '@/components/AssignRecommendedRouteButton';
 import styles from '@/app/teacher/progress/page.module.css';
 
 const STUDENT_ID = '22222222-2222-2222-2222-222222222222';
@@ -93,6 +94,13 @@ export default async function TeacherEvidenceDashboard() {
               <p>{recommendation.rationale}</p>
               <p>{recommendation.teacherMessage}</p>
               <span className={`${styles.statusPill} ${styles.intervention}`}>{recommendation.priorityAreas.length ? recommendation.priorityAreas.join(', ') : 'Secure progression'}</span>
+              <AssignRecommendedRouteButton
+                pathwaySlug={assignment.pathway_slug ?? 'russia-1855'}
+                lessonTitle={assignment.lesson_title ?? 'Russia in 1855'}
+                routeMode={recommendation.routeMode}
+                requiredActivityTypes={recommendation.requiredActivityTypes}
+                instructions={recommendation.teacherMessage}
+              />
             </article>
           </div>
         </section>
