@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { isTrackableActivity, orderSupportedActivityTypes } from '@/lib/activityTypeRegistry';
 import { aggregateActivityEvidence, normaliseActivityEvidence, type RawActivityResponse } from '@/lib/activityEvidence';
 import { recommendIntervention } from '@/lib/interventionEngine';
+import { buildAdaptivePathwayBlueprint } from '@/lib/pathwayBlueprintBuilder';
 import AssignRecommendedRouteButton from '@/components/AssignRecommendedRouteButton';
 import styles from '@/app/teacher/progress/page.module.css';
 
@@ -74,6 +75,12 @@ export default async function TeacherEvidenceDashboard() {
   const aggregate = aggregateActivityEvidence(evidence);
   const flags = evidenceRows.filter((row) => row.evidence.interventionFlag !== 'Submitted');
   const recommendation = recommendIntervention(evidence);
+  const blueprint = buildAdaptivePathwayBlueprint({
+    pathwaySlug: assignment.pathway_slug ?? 'russia-1855',
+    lessonTitle: assignment.lesson_title ?? 'Russia in 1855',
+    evidence,
+    recommendation,
+  });
 
   return (
     <main className={styles.shell}>
@@ -87,19 +94,20 @@ export default async function TeacherEvidenceDashboard() {
         <section className={styles.snapshot}><article className={styles.metric}><span>Complete</span><strong>{aggregate.complete}</strong><small>saved evidence rows</small></article><article className={styles.metric}><span>Missing</span><strong>{aggregate.missing}</strong><small>tasks still to complete</small></article><article className={styles.metric}><span>Flags</span><strong>{flags.length}</strong><small>teacher checks needed</small></article><article className={styles.metric}><span>Mastery</span><strong>{aggregate.averageMastery ?? '–'}</strong><small>average evidence score</small></article><article className={styles.metric}><span>Confidence</span><strong>{aggregate.averageConfidence ?? '–'}</strong><small>average confidence score</small></article></section>
 
         <section className={styles.priority}>
-          <div className={styles.sectionHeader}><h2>Recommended next route</h2><span className={styles.badge}>{recommendation.routeMode.replaceAll('_', ' ')}</span></div>
+          <div className={styles.sectionHeader}><h2>Adaptive route blueprint</h2><span className={styles.badge}>{blueprint.scaffoldLevel}</span></div>
           <div className={styles.priorityList}>
             <article className={styles.priorityItem}>
-              <div><strong>{recommendation.title}</strong><small>{recommendation.requiredActivityTypes.join(' → ')}</small></div>
-              <p>{recommendation.rationale}</p>
-              <p>{recommendation.teacherMessage}</p>
-              <span className={`${styles.statusPill} ${styles.intervention}`}>{recommendation.priorityAreas.length ? recommendation.priorityAreas.join(', ') : 'Secure progression'}</span>
+              <div><strong>{blueprint.title}</strong><small>{blueprint.requiredActivityTypes.join(' → ')}</small></div>
+              <p>{blueprint.rationale}</p>
+              <p>{blueprint.teacherInstructions}</p>
+              <p>{blueprint.successCriteria.join(' ')}</p>
+              <span className={`${styles.statusPill} ${styles.intervention}`}>{blueprint.routeMode.replaceAll('_', ' ')}</span>
               <AssignRecommendedRouteButton
-                pathwaySlug={assignment.pathway_slug ?? 'russia-1855'}
-                lessonTitle={assignment.lesson_title ?? 'Russia in 1855'}
-                routeMode={recommendation.routeMode}
-                requiredActivityTypes={recommendation.requiredActivityTypes}
-                instructions={recommendation.teacherMessage}
+                pathwaySlug={blueprint.pathwaySlug}
+                lessonTitle={blueprint.lessonTitle}
+                routeMode={blueprint.routeMode}
+                requiredActivityTypes={blueprint.requiredActivityTypes}
+                instructions={blueprint.teacherInstructions}
               />
             </article>
           </div>
