@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { type AdaptiveRendererSupport } from '@/lib/activityRendererContracts';
 import styles from './PeelResponseActivity.module.css';
 
 type PeelResponseActivityProps = {
@@ -10,13 +11,14 @@ type PeelResponseActivityProps = {
   stretchQuestion?: string;
   scaffold?: string[];
   nextHref?: string;
+  adaptiveSupport?: AdaptiveRendererSupport;
 };
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 type PeelStepKey = 'point' | 'evidence' | 'explain' | 'link';
 type PeelStep = { key: PeelStepKey; title: string; prompt: string; placeholder: string; };
 
-const steps: PeelStep[] = [
+const baseSteps: PeelStep[] = [
   { key: 'point', title: 'Point', prompt: 'Make one clear argument that answers the question directly.', placeholder: 'One important reason Russia was difficult to govern was...' },
   { key: 'evidence', title: 'Evidence', prompt: 'Add precise knowledge: dates, events, key terms or consequences.', placeholder: 'For example, Russia was a vast empire with...' },
   { key: 'explain', title: 'Explain', prompt: 'Explain why the evidence mattered. Show the impact on the question.', placeholder: 'This mattered because it made government difficult by...' },
@@ -27,8 +29,35 @@ function countWords(text: string) {
   return text.trim().length === 0 ? 0 : text.trim().split(/\s+/).length;
 }
 
-export default function PeelResponseActivity({ activityId, question, stretchQuestion, nextHref = '/student/lesson/1905/confidence' }: PeelResponseActivityProps) {
+function getAdaptiveSteps(level: AdaptiveRendererSupport['difficultyLevel']): PeelStep[] {
+  if (level === 'scaffolded') {
+    return baseSteps.map((step) => ({
+      ...step,
+      prompt: `${step.prompt} Use the starter to keep your answer focused.`,
+    }));
+  }
+
+  if (level === 'stretch') {
+    return baseSteps.map((step) => {
+      if (step.key === 'explain') return { ...step, prompt: 'Develop the explanation by showing why this factor mattered more or less than another factor.' };
+      if (step.key === 'link') return { ...step, prompt: 'End with a comparative judgement about significance, extent or limitation.' };
+      return step;
+    });
+  }
+
+  return baseSteps;
+}
+
+function minimumWords(level: AdaptiveRendererSupport['difficultyLevel']) {
+  if (level === 'scaffolded') return 60;
+  if (level === 'stretch') return 120;
+  return 90;
+}
+
+export default function PeelResponseActivity({ activityId, question, stretchQuestion, nextHref = '/student/lesson/1905/confidence', adaptiveSupport }: PeelResponseActivityProps) {
   const router = useRouter();
+  const steps = useMemo(() => getAdaptiveSteps(adaptiveSupport?.difficultyLevel), [adaptiveSupport?.difficultyLevel]);
+  const targetWords = minimumWords(adaptiveSupport?.difficultyLevel);
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [values, setValues] = useState<Record<PeelStepKey, string>>({ point: '', evidence: '', explain: '', link: '' });
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
@@ -39,11 +68,12 @@ export default function PeelResponseActivity({ activityId, question, stretchQues
   const hasMountedRef = useRef(false);
   const activeStep = steps[activeStepIndex];
 
-  const fullResponse = useMemo(() => steps.map((step) => values[step.key].trim()).filter(Boolean).join('\n\n'), [values]);
+  const fullResponse = useMemo(() => steps.map((step) => values[step.key].trim()).filter(Boolean).join('\n\n'), [values, steps]);
   const wordCount = countWords(fullResponse);
   const completedSections = steps.filter((step) => values[step.key].trim().length > 0).length;
   const progressPercentage = Math.round((completedSections / steps.length) * 100);
   const hasWriting = wordCount > 0;
+  const meetsWordTarget = wordCount >= targetWords;
 
   async function saveResponse(nextValues: Record<PeelStepKey, string>, status: 'draft' | 'submitted') {
     const nextFullResponse = steps.map((step) => nextValues[step.key].trim()).filter(Boolean).join('\n\n');
@@ -55,7 +85,7 @@ export default function PeelResponseActivity({ activityId, question, stretchQues
       const response = await fetch('/api/student-responses/peel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ activityId, question, point: nextValues.point, evidence: nextValues.evidence, explain: nextValues.explain, link: nextValues.link, fullResponse: nextFullResponse, wordCount: nextWordCount, status }),
+        body: JSON.stringify({ activityId, question, point: nextValues.point, evidence: nextValues.evidence, explain: nextValues.explain, link: nextValues.link, fullResponse: nextFullResponse, wordCount: nextWordCount, status, adaptiveSupport, targetWords }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? 'PEEL response could not be saved.');
@@ -102,8 +132,8 @@ export default function PeelResponseActivity({ activityId, question, stretchQues
 
   return (
     <div className={styles.shell}>
-      <section className={styles.topbar}><div><h3>PEEL response</h3></div><div className={styles.stats}><span>{completedSections}/4 sections</span><span>{wordCount} words</span><span>{saveStatus === 'saving' ? 'saving' : saveStatus === 'saved' ? 'saved' : submitted ? 'submitted' : 'ready'}</span></div></section>
-      <section className={styles.prompt}><p><strong>Question:</strong> {question}</p>{stretchQuestion && <p><strong>Stretch:</strong> {stretchQuestion}</p>}</section>
+      <section className={styles.topbar}><div><h3>PEEL response</h3></div><div className={styles.stats}><span>{completedSections}/4 sections</span><span>{wordCount} words</span><span>target {targetWords}</span><span>{saveStatus === 'saving' ? 'saving' : saveStatus === 'saved' ? 'saved' : submitted ? 'submitted' : 'ready'}</span></div></section>
+      <section className={styles.prompt}><p><strong>Question:</strong> {question}</p>{stretchQuestion && adaptiveSupport?.difficultyLevel === 'stretch' && <p><strong>Stretch:</strong> {stretchQuestion}</p>}{adaptiveSupport?.successTarget && <p><strong>Success target:</strong> {adaptiveSupport.successTarget}</p>}</section>
       <div className={styles.progress}><div style={{ width: `${progressPercentage}%` }} /></div>
       <section className={styles.writer}>
         <div className={styles.stepTabs}>{steps.map((step, index) => <button type="button" key={step.key} className={`${styles.stepTab}${activeStepIndex === index ? ` ${styles.activeTab}` : ''}${activeStepIndex !== index && values[step.key].trim().length > 0 ? ` ${styles.completedTab}` : ''}`} onClick={() => setActiveStepIndex(index)}>{step.title}</button>)}</div>
@@ -111,7 +141,7 @@ export default function PeelResponseActivity({ activityId, question, stretchQues
         <div className={styles.stepNav}><button type="button" className="button secondary" onClick={() => setActiveStepIndex((previous) => Math.max(previous - 1, 0))} disabled={activeStepIndex === 0}>Previous</button><button type="button" className="button secondary" onClick={() => setActiveStepIndex((previous) => Math.min(previous + 1, steps.length - 1))} disabled={activeStepIndex === steps.length - 1}>Next section</button></div>
       </section>
       <section className={styles.submitRow}>
-        <div>{submitted ? <div className={styles.submittedBox}>Submitted. Your teacher can now view this response.</div> : fullResponse ? <div className={styles.preview}>{fullResponse}</div> : <p className={styles.saveMessage}>Build your answer one section at a time.</p>}{saveMessage && <p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage}</p>}</div>
+        <div>{submitted ? <div className={styles.submittedBox}>Submitted. Your teacher can now view this response.</div> : fullResponse ? <div className={styles.preview}>{fullResponse}</div> : <p className={styles.saveMessage}>Build your answer one section at a time.</p>}{hasWriting && !meetsWordTarget && <p className={styles.saveMessage}>Try to reach the adaptive word target before moving on.</p>}{saveMessage && <p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage}</p>}</div>
         <div style={{ display: 'grid', gap: 8 }}><button type="button" className={`button secondary ${styles.submitButton}`} onClick={submitResponse} disabled={!hasWriting || saveStatus === 'saving'} style={{ opacity: hasWriting ? 1 : 0.5 }}>{saveStatus === 'saving' ? 'Saving...' : submitted ? 'Update response' : 'Submit response'}</button><button type="button" className={`button ${styles.submitButton}`} onClick={moveToNext} disabled={!hasWriting || isMovingNext || saveStatus === 'saving'} style={{ opacity: hasWriting ? 1 : 0.5 }}>{isMovingNext || saveStatus === 'saving' ? 'Saving...' : 'Next'}</button></div>
       </section>
     </div>
