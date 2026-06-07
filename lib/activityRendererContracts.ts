@@ -10,8 +10,13 @@ export type BaseActivityRendererProps = {
   adaptiveSupport?: AdaptiveRendererSupport;
 };
 
+export type Flashcard = {
+  front: string;
+  back: string;
+};
+
 export type FlashcardContent = {
-  cards: Array<Record<string, unknown>>;
+  cards: Flashcard[];
 };
 
 export type QuizContent = {
@@ -70,6 +75,19 @@ function stringArrayOrFallback(primary: unknown, fallback: unknown) {
   return value.filter((item): item is string => typeof item === 'string');
 }
 
+function flashcardArrayOrFallback(primary: unknown, fallback: unknown): Flashcard[] {
+  const value = arrayOrFallback(primary, fallback);
+
+  return value.filter((item): item is Flashcard => {
+    return typeof item === 'object'
+      && item !== null
+      && 'front' in item
+      && 'back' in item
+      && typeof (item as Flashcard).front === 'string'
+      && typeof (item as Flashcard).back === 'string';
+  });
+}
+
 function textOrFallback(primary: unknown, fallback: unknown) {
   if (typeof primary === 'string' && primary.trim()) return primary;
   if (typeof fallback === 'string') return fallback;
@@ -77,7 +95,7 @@ function textOrFallback(primary: unknown, fallback: unknown) {
 }
 
 export function normaliseRendererContent(activityType: string, content: any = {}, fallbackContent: any = {}): NormalisedActivityContent {
-  if (activityType === 'flashcards') return { cards: arrayOrFallback(content.cards, fallbackContent.cards) };
+  if (activityType === 'flashcards') return { cards: flashcardArrayOrFallback(content.cards, fallbackContent.cards) };
   if (activityType === 'quiz') return { questions: arrayOrFallback(content.questions, fallbackContent.questions) };
   if (activityType === 'timeline') return { events: arrayOrFallback(content.events, fallbackContent.events) };
   if (activityType === 'card_sort') return { cards: arrayOrFallback(content.cards, fallbackContent.cards), categories: arrayOrFallback(content.categories, fallbackContent.categories) };
