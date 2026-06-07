@@ -40,7 +40,7 @@ export type AO3InterpretationContent = {
 export type PeelResponseContent = {
   question: string;
   stretchQuestion?: string;
-  scaffold?: Array<Record<string, unknown>>;
+  scaffold?: string[];
 };
 
 export type ConfidenceExitTicketContent = {
@@ -65,6 +65,11 @@ function arrayOrFallback(primary: unknown, fallback: unknown) {
   return [];
 }
 
+function stringArrayOrFallback(primary: unknown, fallback: unknown) {
+  const value = arrayOrFallback(primary, fallback);
+  return value.filter((item): item is string => typeof item === 'string');
+}
+
 function textOrFallback(primary: unknown, fallback: unknown) {
   if (typeof primary === 'string' && primary.trim()) return primary;
   if (typeof fallback === 'string') return fallback;
@@ -78,7 +83,7 @@ export function normaliseRendererContent(activityType: string, content: any = {}
   if (activityType === 'card_sort') return { cards: arrayOrFallback(content.cards, fallbackContent.cards), categories: arrayOrFallback(content.categories, fallbackContent.categories) };
   if (activityType === 'judgement_ranking') return { question: textOrFallback(content.question, fallbackContent.question), factors: arrayOrFallback(content.factors, fallbackContent.factors) };
   if (activityType === 'ao3_interpretation') return { question: textOrFallback(content.question, fallbackContent.question), interpretations: arrayOrFallback(content.interpretations, fallbackContent.interpretations) };
-  if (activityType === 'peel_response') return { question: textOrFallback(content.question, fallbackContent.question), stretchQuestion: textOrFallback(content.stretchQuestion, fallbackContent.stretchQuestion), scaffold: arrayOrFallback(content.scaffold, fallbackContent.scaffold) };
-  if (activityType === 'confidence_exit_ticket') return { prompt: textOrFallback(content.prompt, fallbackContent.prompt), scale: arrayOrFallback(content.scale, fallbackContent.scale), leastSecureOptions: arrayOrFallback(content.leastSecureOptions, fallbackContent.leastSecureOptions) as string[] };
+  if (activityType === 'peel_response') return { question: textOrFallback(content.question, fallbackContent.question), stretchQuestion: textOrFallback(content.stretchQuestion, fallbackContent.stretchQuestion), scaffold: stringArrayOrFallback(content.scaffold, fallbackContent.scaffold) };
+  if (activityType === 'confidence_exit_ticket') return { prompt: textOrFallback(content.prompt, fallbackContent.prompt), scale: arrayOrFallback(content.scale, fallbackContent.scale), leastSecureOptions: stringArrayOrFallback(content.leastSecureOptions, fallbackContent.leastSecureOptions) };
   return {} as NormalisedActivityContent;
 }
