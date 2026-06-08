@@ -1,4 +1,5 @@
 import { getActivityLabel } from './activityTypeRegistry';
+import { completionStatusFromUnifiedState, resolveUnifiedActivityState } from './activityState';
 
 export type RawActivityResponse = {
   activity_id?: string;
@@ -34,12 +35,6 @@ function truncate(value: unknown, fallback: string) {
   return text.length > 120 ? `${text.slice(0, 117)}...` : text;
 }
 
-function completionFromResponse(response?: RawActivityResponse | null): ActivityEvidence['completionStatus'] {
-  if (!response) return 'missing';
-  if (response.status === 'complete' || response.status === 'submitted') return 'complete';
-  return 'in_progress';
-}
-
 function statusFromScore(score: number | null): ActivityEvidence['masteryStatus'] {
   if (score === null) return 'missing';
   if (score < 50) return 'intervention';
@@ -60,14 +55,15 @@ function buildAction(flag: string) {
 }
 
 export function normaliseActivityEvidence(activityType: string, response?: RawActivityResponse | null): ActivityEvidence {
+  const state = resolveUnifiedActivityState(activityType, response ?? null);
+  const completionStatus = completionStatusFromUnifiedState(state);
   const json = response?.response_json ?? {};
-  const completionStatus = completionFromResponse(response);
 
   if (!response) {
     return {
       activityType,
       label: getActivityLabel(activityType),
-      completionStatus: 'missing',
+      completionStatus,
       masteryStatus: 'missing',
       masteryScore: null,
       confidenceScore: null,
@@ -80,14 +76,13 @@ export function normaliseActivityEvidence(activityType: string, response?: RawAc
     };
   }
 
-  let masteryScore: number | null = null;
-  let confidenceScore: number | null = null;
+  const masteryScore = state.masteryScore;
+  const confidenceScore = state.confidenceScore;
   let evidenceValue = response.status ?? 'Saved';
   let evidenceSummary = 'Evidence saved.';
   let interventionFlag = 'Submitted';
 
   if (activityType === 'quiz') {
-    masteryScore = asNumber(json.percentage) ?? response.score ?? null;
     evidenceValue = response.score === null || response.score === undefined ? 'Submitted' : `${response.score}/${json.maxScore ?? '?'}`;
     evidenceSummary = typeof json.percentage === 'number' ? `${json.percentage}% retrieval accuracy.` : 'Retrieval quiz submitted.';
     if ((masteryScore ?? 100) < 60) interventionFlag = 'Retrieval intervention';
@@ -97,34 +92,27 @@ export function normaliseActivityEvidence(activityType: string, response?: RawAc
     const secure = asNumber(json.secureCount) ?? 0;
     const nearly = asNumber(json.nearlyCount) ?? 0;
     const revisit = asNumber(json.revisitCount) ?? 0;
-    masteryScore = total > 0 ? Math.round((secure / total) * 100) : null;
     evidenceValue = total > 0 ? `${rated}/${total}` : 'Submitted';
     evidenceSummary = `${secure} secure · ${nearly} nearly · ${revisit} revisit.`;
     if (revisit > 0) interventionFlag = 'Flashcards revisit needed';
   } else if (activityType === 'peel_response') {
     const words = asNumber(json.wordCount) ?? 0;
-    masteryScore = words >= 100 ? 80 : words >= 60 ? 65 : 40;
     evidenceValue = `${words} words`;
     evidenceSummary = truncate(json.fullResponse, 'Written response submitted.');
     if (words < 60) interventionFlag = 'Written response needs development';
   } else if (activityType === 'confidence_exit_ticket') {
-    confidenceScore = asNumber(json.confidence) ?? response.score ?? null;
-    masteryScore = confidenceScore === null ? null : confidenceScore * 20;
     evidenceValue = confidenceScore === null ? 'Submitted' : `${confidenceScore}/5`;
     evidenceSummary = truncate(json.leastSecureArea ?? json.needHelpWith ?? json.reflection, 'Confidence check submitted.');
     if ((confidenceScore ?? 5) <= 2) interventionFlag = 'Low confidence';
   } else if (activityType === 'timeline') {
-    masteryScore = completionStatus === 'complete' ? 70 : 50;
     evidenceValue = 'Saved';
     evidenceSummary = truncate(json.significanceExplanation ?? json.chosenEventTitle ?? json.reflection, 'Timeline judgement submitted.');
     if (!json.significanceExplanation && !json.reflection) interventionFlag = 'Chronology check';
   } else if (activityType === 'judgement_ranking') {
-    masteryScore = completionStatus === 'complete' ? 70 : 50;
     evidenceValue = 'Saved';
     evidenceSummary = truncate(json.justification ?? json.topFactor ?? json.reflection, 'Judgement ranking submitted.');
     if (!json.justification && !json.reflection) interventionFlag = 'Judgement development';
   } else if (activityType === 'ao3_interpretation') {
-    masteryScore = completionStatus === 'complete' ? 70 : 50;
     evidenceValue = 'Saved';
     evidenceSummary = truncate(json.evaluation ?? json.judgement ?? json.reflection, 'AO3 interpretation submitted.');
     if (!json.evaluation && !json.judgement && !json.reflection) interventionFlag = 'AO3 development';
@@ -143,7 +131,7 @@ export function normaliseActivityEvidence(activityType: string, response?: RawAc
     evidenceSummary,
     interventionFlag,
     recommendedAction: buildAction(interventionFlag),
-    savedAt: response.last_saved_at ?? null,
+    savedAt: state.savedAt,
     rawResponse: response,
   };
 }
