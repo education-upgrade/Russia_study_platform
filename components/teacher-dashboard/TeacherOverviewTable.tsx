@@ -2,50 +2,51 @@ import AssignRecommendedRouteButton from '@/components/AssignRecommendedRouteBut
 import CopyTextButton from '@/components/CopyTextButton';
 import styles from '@/app/teacher/progress/page.module.css';
 
-type TeacherOverviewTableProps = {
+export type TeacherOverviewRoute = {
+  pathwaySlug: string;
+  lessonTitle: string;
+  routeMode: string;
+  requiredActivityTypes: string[];
+  instructions: string;
+};
+
+export type TeacherOverviewRow = {
+  studentId: string;
   studentName: string;
   progress: string;
   mastery: number | null;
   confidence: number | null;
   status: string;
   nextAssignmentTitle: string;
-  route: {
-    pathwaySlug: string;
-    lessonTitle: string;
-    routeMode: string;
-    requiredActivityTypes: string[];
-    instructions: string;
-  };
+  route: TeacherOverviewRoute;
   instructionCopy: string;
   feedbackCopy: string;
 };
 
-export default function TeacherOverviewTable({
-  studentName,
-  progress,
-  mastery,
-  confidence,
-  status,
-  nextAssignmentTitle,
-  route,
-  instructionCopy,
-  feedbackCopy,
-}: TeacherOverviewTableProps) {
+type TeacherOverviewTableProps = {
+  rows: TeacherOverviewRow[];
+};
+
+export default function TeacherOverviewTable({ rows }: TeacherOverviewTableProps) {
+  const firstRoute = rows[0]?.route;
+
   return (
     <section className={styles.priority}>
       <div className={styles.sectionHeader}>
         <h2>Student overview</h2>
         <div className={styles.tableActions}>
-          <span className={styles.badge}>action centre</span>
-          <AssignRecommendedRouteButton
-            pathwaySlug={route.pathwaySlug}
-            lessonTitle={route.lessonTitle}
-            routeMode={route.routeMode}
-            requiredActivityTypes={route.requiredActivityTypes}
-            instructions={route.instructions}
-            label="Set next assignment for all"
-            showMessage={false}
-          />
+          <span className={styles.badge}>{rows.length} student{rows.length === 1 ? '' : 's'}</span>
+          {firstRoute && (
+            <AssignRecommendedRouteButton
+              pathwaySlug={firstRoute.pathwaySlug}
+              lessonTitle={firstRoute.lessonTitle}
+              routeMode={firstRoute.routeMode}
+              requiredActivityTypes={firstRoute.requiredActivityTypes}
+              instructions={firstRoute.instructions}
+              label="Set next assignment for all"
+              showMessage={false}
+            />
+          )}
         </div>
       </div>
 
@@ -65,27 +66,29 @@ export default function TeacherOverviewTable({
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td>{studentName}</td>
-              <td>{progress}</td>
-              <td>{mastery ?? '–'}</td>
-              <td>{confidence ?? '–'}</td>
-              <td><span className={`${styles.statusPill} ${styles.intervention}`}>{status}</span></td>
-              <td>{nextAssignmentTitle}</td>
-              <td>
-                <AssignRecommendedRouteButton
-                  pathwaySlug={route.pathwaySlug}
-                  lessonTitle={route.lessonTitle}
-                  routeMode={route.routeMode}
-                  requiredActivityTypes={route.requiredActivityTypes}
-                  instructions={route.instructions}
-                  label="Set next"
-                  showMessage={false}
-                />
-              </td>
-              <td><CopyTextButton label="Copy instructions" text={instructionCopy} /></td>
-              <td><CopyTextButton label="Copy feedback" text={feedbackCopy} /></td>
-            </tr>
+            {rows.map((row) => (
+              <tr key={row.studentId}>
+                <td>{row.studentName}</td>
+                <td>{row.progress}</td>
+                <td>{row.mastery ?? '–'}</td>
+                <td>{row.confidence ?? '–'}</td>
+                <td><span className={`${styles.statusPill} ${styles.intervention}`}>{row.status}</span></td>
+                <td>{row.nextAssignmentTitle}</td>
+                <td>
+                  <AssignRecommendedRouteButton
+                    pathwaySlug={row.route.pathwaySlug}
+                    lessonTitle={row.route.lessonTitle}
+                    routeMode={row.route.routeMode}
+                    requiredActivityTypes={row.route.requiredActivityTypes}
+                    instructions={row.route.instructions}
+                    label="Set next"
+                    showMessage={false}
+                  />
+                </td>
+                <td><CopyTextButton label="Copy instructions" text={row.instructionCopy} /></td>
+                <td><CopyTextButton label="Copy feedback" text={row.feedbackCopy} /></td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
