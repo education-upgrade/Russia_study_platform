@@ -3,15 +3,15 @@ import { supabase } from '@/lib/supabase';
 import { getPathwayConfig } from '@/lib/pathwayRegistry';
 import { getActivityLabel, isTrackableActivity } from '@/lib/activityTypeRegistry';
 import { resolvePathwayActivities } from '@/lib/pathwayResolver';
+import { resolveUnifiedActivityState } from '@/lib/activityState';
 import styles from '@/app/student/lesson/1905/page.module.css';
 
 const STUDENT_ID = '22222222-2222-2222-2222-222222222222';
 type Assignment = { mode: string; required_activity_types: string[]; deadline_at: string | null; instructions: string | null };
-type ResponseRow = { activity_id: string | null; status: string; response_json: any };
+type ResponseRow = { activity_id: string | null; status: string; score?: number | null; response_json: any; last_saved_at?: string | null };
 type Props = { pathwaySlug: string; fallbackInstructions?: string; fallbackContentByActivityType?: Record<string, any> };
 
 function dateLabel(value: string | null) { return value ? new Date(value).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'No deadline'; }
-function complete(type: string, row?: ResponseRow) { return !!row && isTrackableActivity(type) && (row.status === 'complete' || row.status === 'submitted'); }
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -29,10 +29,15 @@ export default async function ResolvedModularPathwayPage({ pathwaySlug, fallback
 
   const resolved = resolvePathwayActivities({ pathwaySlug, seededActivities: seeded ?? [], requiredActivityTypes: assignment?.required_activity_types ?? [], fallbackContentByActivityType });
   const realIds = resolved.filter((a) => !a.isVirtual).map((a) => a.id);
-  const { data: rows } = realIds.length ? await supabase.from('student_responses').select('activity_id, status, response_json').eq('student_id', STUDENT_ID).in('activity_id', realIds) : { data: [] };
+  const { data: rows } = realIds.length ? await supabase.from('student_responses').select('activity_id, status, score, response_json, last_saved_at').eq('student_id', STUDENT_ID).in('activity_id', realIds) : { data: [] };
   const responses = (rows ?? []) as ResponseRow[];
 
-  const items = resolved.map((a) => ({ ...a, href: `${config.routeBase}/${a.routeSlug}`, complete: complete(a.activity_type, a.isVirtual ? undefined : responses.find((r) => r.activity_id === a.id)), trackable: isTrackableActivity(a.activity_type) }));
+  const items = resolved.map((a) => {
+    const response = a.isVirtual ? null : responses.find((r) => r.activity_id === a.id) ?? null;
+    const state = resolveUnifiedActivityState(a.activity_type, response);
+    return { ...a, state, href: `${config.routeBase}/${a.routeSlug}`, complete: state.isComplete && isTrackableActivity(a.activity_type), trackable: isTrackableActivity(a.activity_type) };
+  });
+
   const trackable = items.filter((i) => i.trackable);
   const done = trackable.filter((i) => i.complete).length;
   const pct = trackable.length ? Math.round((done / trackable.length) * 100) : 0;
