@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import styles from '@/app/teacher/progress/page.module.css';
 
 type AssignRecommendedRouteButtonProps = {
   pathwaySlug: string;
@@ -8,6 +9,8 @@ type AssignRecommendedRouteButtonProps = {
   routeMode: string;
   requiredActivityTypes: string[];
   instructions: string;
+  label?: string;
+  showMessage?: boolean;
 };
 
 export default function AssignRecommendedRouteButton({
@@ -16,32 +19,28 @@ export default function AssignRecommendedRouteButton({
   routeMode,
   requiredActivityTypes,
   instructions,
+  label = 'Assign recommended route',
+  showMessage = true,
 }: AssignRecommendedRouteButtonProps) {
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [message, setMessage] = useState('');
 
   async function assignRoute() {
     setStatus('saving');
-    setMessage('Creating recommended assignment...');
+    setMessage('Creating assignment...');
 
     try {
       const response = await fetch('/api/guided-study', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pathwaySlug,
-          lessonTitle,
-          mode: routeMode,
-          requiredActivityTypes,
-          instructions,
-        }),
+        body: JSON.stringify({ pathwaySlug, lessonTitle, mode: routeMode, requiredActivityTypes, instructions }),
       });
 
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? 'Assignment could not be created.');
 
       setStatus('saved');
-      setMessage(`Assigned: ${result.route ?? requiredActivityTypes.join(' → ')}`);
+      setMessage(`Assigned: ${result.route ?? requiredActivityTypes.join(' to ')}`);
     } catch (error) {
       setStatus('error');
       setMessage(error instanceof Error ? error.message : 'Assignment could not be created.');
@@ -49,29 +48,11 @@ export default function AssignRecommendedRouteButton({
   }
 
   return (
-    <div style={{ display: 'grid', gap: 8 }}>
-      <button
-        type="button"
-        onClick={assignRoute}
-        disabled={status === 'saving'}
-        style={{
-          border: '1px solid rgba(213, 226, 235, 0.95)',
-          borderRadius: 999,
-          background: '#15223f',
-          color: '#fff',
-          padding: '10px 14px',
-          font: 'inherit',
-          fontWeight: 950,
-          cursor: status === 'saving' ? 'wait' : 'pointer',
-        }}
-      >
-        {status === 'saving' ? 'Assigning...' : 'Assign recommended route'}
+    <div className={styles.actionButtonGroup}>
+      <button type="button" onClick={assignRoute} disabled={status === 'saving'} className={styles.copyButton}>
+        {status === 'saving' ? 'Assigning...' : status === 'saved' ? 'Assigned' : label}
       </button>
-      {message && (
-        <small style={{ color: status === 'error' ? '#9f1239' : '#536275', fontWeight: 800, lineHeight: 1.35 }}>
-          {message}
-        </small>
-      )}
+      {message && showMessage && <small className={status === 'error' ? styles.errorText : styles.mutedText}>{message}</small>}
     </div>
   );
 }
