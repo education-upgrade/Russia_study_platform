@@ -6,9 +6,11 @@ import { recommendIntervention } from '@/lib/interventionEngine';
 import { buildAdaptivePathwayBlueprint } from '@/lib/pathwayBlueprintBuilder';
 import { buildTeacherAnalyticsDecision } from '@/lib/teacherAnalytics';
 import AssignRecommendedRouteButton from '@/components/AssignRecommendedRouteButton';
+import CopyTextButton from '@/components/CopyTextButton';
 import styles from '@/app/teacher/progress/page.module.css';
 
 const STUDENT_ID = '22222222-2222-2222-2222-222222222222';
+const STUDENT_NAME = 'Demo Student';
 
 type Assignment = {
   id: string;
@@ -35,7 +37,7 @@ function formatMode(mode: string) {
 
 function statusClass(flag: string) {
   if (flag === 'Submitted') return styles.submitted;
-  if (flag === 'Missing evidence' || flag.includes('intervention') || flag.includes('development') || flag.includes('needed') || flag.includes('Low confidence') || flag.includes('check')) return styles.intervention;
+  if (flag.includes('intervention') || flag.includes('needed') || flag.includes('confidence') || flag.includes('Missing')) return styles.intervention;
   return styles.neutral;
 }
 
@@ -54,15 +56,20 @@ export default async function TeacherEvidenceDashboard() {
     .maybeSingle<Assignment>();
 
   if (!assignment) {
-    return <main className={styles.shell}><section className={styles.mainCard}><header className={styles.header}><div><p className={styles.eyebrow}>Teacher evidence</p><h1>No active assignment</h1><p>Create an assignment first.</p></div><Link className={styles.navButton} href="/teacher/set-study">Set study</Link></header></section></main>;
+    return <main className={styles.shell}><section className={styles.mainCard}><header className={styles.header}><div><p className={styles.eyebrow}>Teacher evidence</p><h1>No active assignment</h1></div></header></section></main>;
   }
 
   const { data: lesson } = await supabase.from('lessons').select('id').eq('title', assignment.lesson_title).limit(1).maybeSingle<{ id: string }>();
   const { data: activities } = lesson?.id ? await supabase.from('activities').select('id, activity_type, title').eq('lesson_id', lesson.id) : { data: [] };
+
   const activityRows = (activities ?? []) as Activity[];
   const requiredTypes = orderSupportedActivityTypes(assignment.required_activity_types ?? []);
   const realIds = activityRows.map((activity) => activity.id);
-  const { data: responses } = realIds.length ? await supabase.from('student_responses').select('activity_id, status, score, response_type, response_json, last_saved_at').eq('student_id', STUDENT_ID).in('activity_id', realIds) : { data: [] };
+
+  const { data: responses } = realIds.length
+    ? await supabase.from('student_responses').select('activity_id, status, score, response_type, response_json, last_saved_at').eq('student_id', STUDENT_ID).in('activity_id', realIds)
+    : { data: [] };
+
   const responseRows = (responses ?? []) as Response[];
 
   const evidenceRows = requiredTypes.filter(isTrackableActivity).map((activityType) => {
@@ -75,6 +82,7 @@ export default async function TeacherEvidenceDashboard() {
   const evidence = evidenceRows.map((row) => row.evidence);
   const aggregate = aggregateActivityEvidence(evidence);
   const flags = evidenceRows.filter((row) => row.evidence.interventionFlag !== 'Submitted');
+
   const recommendation = recommendIntervention(evidence);
   const analyticsDecision = buildTeacherAnalyticsDecision(evidence, recommendation);
 
@@ -85,46 +93,86 @@ export default async function TeacherEvidenceDashboard() {
     recommendation,
   });
 
+  const instructionCopy = `${blueprint.teacherInstructions}\n\nSuccess criteria: ${blueprint.successCriteria.join(' ')}`;
+  const feedbackCopy = `${analyticsDecision.headline}. ${analyticsDecision.explanation} Next step: ${analyticsDecision.nextTeachingMove}`;
+
   return (
     <main className={styles.shell}>
-      <div className={styles.topbar}><span>Teacher / Evidence</span><Link className={styles.navButton} href="/teacher/set-study">Set study</Link><Link className={styles.navButton} href="/student">Student view</Link></div>
+      <div className={styles.topbar}>
+        <span>Teacher / Progress dashboard</span>
+        <Link className={styles.navButton} href="/teacher/set-study">Set study</Link>
+        <Link className={styles.navButton} href="/student">Student view</Link>
+      </div>
+
       <section className={styles.mainCard}>
         <header className={styles.header}>
-          <div><p className={styles.eyebrow}>Live evidence dashboard</p><h1>{assignment.lesson_title ?? 'Guided study'}</h1><p>{assignment.assigned_class} · {formatMode(assignment.mode)} · Deadline: {formatDate(assignment.deadline_at)}</p></div>
-          <aside className={styles.decisionCard}><strong>{aggregate.complete}/{aggregate.trackable}</strong><span>{aggregate.completionPercentage}% complete · mastery {aggregate.averageMastery ?? 'n/a'}</span></aside>
+          <div>
+            <p className={styles.eyebrow}>Class overview</p>
+            <h1>{assignment.assigned_class}</h1>
+            <p>{assignment.lesson_title} · {formatMode(assignment.mode)}</p>
+          </div>
+
+          <aside className={styles.decisionCard}>
+            <strong>{aggregate.completionPercentage}% complete</strong>
+            <span>{aggregate.complete}/{aggregate.trackable} activities complete</span>
+          </aside>
         </header>
 
-        <section className={styles.snapshot}><article className={styles.metric}><span>Complete</span><strong>{aggregate.complete}</strong><small>saved evidence rows</small></article><article className={styles.metric}><span>Missing</span><strong>{aggregate.missing}</strong><small>tasks still to complete</small></article><article className={styles.metric}><span>Flags</span><strong>{flags.length}</strong><small>teacher checks needed</small></article><article className={styles.metric}><span>Mastery</span><strong>{aggregate.averageMastery ?? '–'}</strong><small>average evidence score</small></article><article className={styles.metric}><span>Confidence</span><strong>{aggregate.averageConfidence ?? '–'}</strong><small>average confidence score</small></article></section>
+        <section className={styles.snapshot}>
+          <article className={styles.metric}><span>Students on track</span><strong>{flags.length === 0 ? 1 : 0}</strong></article>
+          <article className={styles.metric}><span>Need intervention</span><strong>{flags.length > 0 ? 1 : 0}</strong></article>
+          <article className={styles.metric}><span>Low confidence</span><strong>{aggregate.averageConfidence && aggregate.averageConfidence < 60 ? 1 : 0}</strong></article>
+          <article className={styles.metric}><span>Average mastery</span><strong>{aggregate.averageMastery ?? '–'}</strong></article>
+        </section>
 
         <section className={styles.priority}>
-          <div className={styles.sectionHeader}><h2>Teacher decision layer</h2><span className={styles.badge}>{analyticsDecision.status.replaceAll('_', ' ')}</span></div>
-          <div className={styles.priorityList}>
-            <article className={styles.priorityItem}>
-              <div><strong>{analyticsDecision.headline}</strong><small>{analyticsDecision.priorityFocus}</small></div>
-              <p>{analyticsDecision.explanation}</p>
-              <p><strong>Next move:</strong> {analyticsDecision.nextTeachingMove}</p>
-              <p><strong>Suggested Do Now:</strong> {analyticsDecision.suggestedDoNow}</p>
-              <div className={styles.diagnosticGrid}>
-                {analyticsDecision.reviewQuestions.map((question) => (
-                  <div key={question} className={styles.diagnosticBox}>
-                    <span>Review question</span>
-                    <strong>{question}</strong>
-                  </div>
-                ))}
-              </div>
-            </article>
+          <div className={styles.sectionHeader}><h2>Student overview</h2><span className={styles.badge}>action centre</span></div>
+
+          <div className={styles.tableWrap}>
+            <table className={styles.studentTable}>
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Progress</th>
+                  <th>Mastery</th>
+                  <th>Confidence</th>
+                  <th>Status</th>
+                  <th>Next assignment</th>
+                  <th>Copy instructions</th>
+                  <th>Copy feedback</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{STUDENT_NAME}</td>
+                  <td>{aggregate.complete}/{aggregate.trackable}</td>
+                  <td>{aggregate.averageMastery ?? '–'}</td>
+                  <td>{aggregate.averageConfidence ?? '–'}</td>
+                  <td><span className={`${styles.statusPill} ${styles.intervention}`}>{analyticsDecision.status.replaceAll('_', ' ')}</span></td>
+                  <td>{blueprint.title}</td>
+                  <td><CopyTextButton label="Copy instructions" text={instructionCopy} /></td>
+                  <td><CopyTextButton label="Copy feedback" text={feedbackCopy} /></td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </section>
 
         <section className={styles.priority}>
-          <div className={styles.sectionHeader}><h2>Adaptive route blueprint</h2><span className={styles.badge}>{blueprint.scaffoldLevel}</span></div>
+          <div className={styles.sectionHeader}><h2>{STUDENT_NAME}</h2><span className={styles.badge}>{analyticsDecision.priorityFocus}</span></div>
+
           <div className={styles.priorityList}>
             <article className={styles.priorityItem}>
-              <div><strong>{blueprint.title}</strong><small>{blueprint.requiredActivityTypes.join(' → ')}</small></div>
-              <p>{blueprint.rationale}</p>
-              <p>{blueprint.teacherInstructions}</p>
-              <p>{blueprint.successCriteria.join(' ')}</p>
-              <span className={`${styles.statusPill} ${styles.intervention}`}>{blueprint.routeMode.replaceAll('_', ' ')}</span>
+              <div>
+                <strong>{analyticsDecision.headline}</strong>
+                <small>{analyticsDecision.priorityFocus}</small>
+              </div>
+
+              <div>
+                <p>{analyticsDecision.explanation}</p>
+                <p><strong>Next move:</strong> {analyticsDecision.nextTeachingMove}</p>
+              </div>
+
               <AssignRecommendedRouteButton
                 pathwaySlug={blueprint.pathwaySlug}
                 lessonTitle={blueprint.lessonTitle}
@@ -136,9 +184,62 @@ export default async function TeacherEvidenceDashboard() {
           </div>
         </section>
 
-        <section className={styles.priority}><div className={styles.sectionHeader}><h2>Priority checks</h2><span className={styles.badge}>{flags.length} flagged</span></div><div className={styles.priorityList}>{flags.length ? flags.map((row) => <article className={styles.priorityItem} key={row.activityType}><div><strong>{row.evidence.label}</strong><small>{row.activity?.title ?? 'Content-driven activity'}</small></div><p>{row.evidence.recommendedAction}</p><span className={`${styles.statusPill} ${statusClass(row.evidence.interventionFlag)}`}>{row.evidence.interventionFlag}</span></article>) : <article className={styles.priorityItem}><strong>No urgent checks</strong><p>All available evidence is on track.</p><span className={`${styles.statusPill} ${styles.secure}`}>Secure</span></article>}</div></section>
+        <section className={styles.priority}>
+          <div className={styles.sectionHeader}><h2>Priority checks</h2><span className={styles.badge}>{Math.min(flags.length, 3)} shown</span></div>
 
-        <section className={styles.studentEvidence}><div className={styles.sectionHeader}><h2>Evidence by activity</h2><span className={styles.badge}>normalised evidence</span></div><div className={styles.studentList}>{evidenceRows.map((row) => <article className={styles.studentCard} key={row.activityType}><div className={styles.studentTop}><div><h3>{row.evidence.label}</h3><p>{row.activity?.title ?? 'Content-driven activity'}</p></div><span className={`${styles.statusPill} ${statusClass(row.evidence.interventionFlag)}`}>{row.evidence.interventionFlag}</span></div><div className={styles.diagnosticGrid}><div className={styles.diagnosticBox}><span>Evidence</span><strong>{row.evidence.evidenceValue}</strong><small>{row.evidence.evidenceSummary}</small></div><div className={styles.diagnosticBox}><span>Mastery</span><strong>{row.evidence.masteryScore ?? '–'}</strong><small>{row.evidence.masteryStatus}</small></div><div className={styles.diagnosticBox}><span>Saved</span><strong>{row.evidence.savedAt ? formatDate(row.evidence.savedAt) : 'Not yet'}</strong><small>{row.response?.response_type ?? 'No response'}</small></div></div></article>)}</div></section>
+          <div className={styles.priorityList}>
+            {flags.slice(0, 3).map((row) => (
+              <article className={styles.priorityItem} key={row.activityType}>
+                <div>
+                  <strong>{row.evidence.label}</strong>
+                  <small>{row.activity?.title ?? 'Content-driven activity'}</small>
+                </div>
+
+                <p>{row.evidence.recommendedAction}</p>
+
+                <span className={`${styles.statusPill} ${statusClass(row.evidence.interventionFlag)}`}>{row.evidence.interventionFlag}</span>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className={styles.studentEvidence}>
+          <details className={styles.details}>
+            <summary>Detailed evidence log</summary>
+
+            <div className={styles.studentList}>
+              {evidenceRows.map((row) => (
+                <article className={styles.studentCard} key={row.activityType}>
+                  <div className={styles.studentTop}>
+                    <div>
+                      <h3>{row.evidence.label}</h3>
+                      <p>{row.activity?.title ?? 'Content-driven activity'}</p>
+                    </div>
+
+                    <span className={`${styles.statusPill} ${statusClass(row.evidence.interventionFlag)}`}>{row.evidence.interventionFlag}</span>
+                  </div>
+
+                  <div className={styles.diagnosticGrid}>
+                    <div className={styles.diagnosticBox}>
+                      <span>Evidence</span>
+                      <strong>{row.evidence.evidenceValue}</strong>
+                    </div>
+
+                    <div className={styles.diagnosticBox}>
+                      <span>Mastery</span>
+                      <strong>{row.evidence.masteryScore ?? '–'}</strong>
+                    </div>
+
+                    <div className={styles.diagnosticBox}>
+                      <span>Saved</span>
+                      <strong>{row.evidence.savedAt ? formatDate(row.evidence.savedAt) : 'Not yet'}</strong>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </details>
+        </section>
       </section>
     </main>
   );
