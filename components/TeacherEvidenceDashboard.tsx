@@ -4,6 +4,7 @@ import { isTrackableActivity, orderSupportedActivityTypes } from '@/lib/activity
 import { aggregateActivityEvidence, normaliseActivityEvidence, type RawActivityResponse } from '@/lib/activityEvidence';
 import { recommendIntervention } from '@/lib/interventionEngine';
 import { buildAdaptivePathwayBlueprint } from '@/lib/pathwayBlueprintBuilder';
+import { buildTeacherAnalyticsDecision } from '@/lib/teacherAnalytics';
 import AssignRecommendedRouteButton from '@/components/AssignRecommendedRouteButton';
 import styles from '@/app/teacher/progress/page.module.css';
 
@@ -75,6 +76,8 @@ export default async function TeacherEvidenceDashboard() {
   const aggregate = aggregateActivityEvidence(evidence);
   const flags = evidenceRows.filter((row) => row.evidence.interventionFlag !== 'Submitted');
   const recommendation = recommendIntervention(evidence);
+  const analyticsDecision = buildTeacherAnalyticsDecision(evidence, recommendation);
+
   const blueprint = buildAdaptivePathwayBlueprint({
     pathwaySlug: assignment.pathway_slug ?? 'russia-1855',
     lessonTitle: assignment.lesson_title ?? 'Russia in 1855',
@@ -92,6 +95,26 @@ export default async function TeacherEvidenceDashboard() {
         </header>
 
         <section className={styles.snapshot}><article className={styles.metric}><span>Complete</span><strong>{aggregate.complete}</strong><small>saved evidence rows</small></article><article className={styles.metric}><span>Missing</span><strong>{aggregate.missing}</strong><small>tasks still to complete</small></article><article className={styles.metric}><span>Flags</span><strong>{flags.length}</strong><small>teacher checks needed</small></article><article className={styles.metric}><span>Mastery</span><strong>{aggregate.averageMastery ?? '–'}</strong><small>average evidence score</small></article><article className={styles.metric}><span>Confidence</span><strong>{aggregate.averageConfidence ?? '–'}</strong><small>average confidence score</small></article></section>
+
+        <section className={styles.priority}>
+          <div className={styles.sectionHeader}><h2>Teacher decision layer</h2><span className={styles.badge}>{analyticsDecision.status.replaceAll('_', ' ')}</span></div>
+          <div className={styles.priorityList}>
+            <article className={styles.priorityItem}>
+              <div><strong>{analyticsDecision.headline}</strong><small>{analyticsDecision.priorityFocus}</small></div>
+              <p>{analyticsDecision.explanation}</p>
+              <p><strong>Next move:</strong> {analyticsDecision.nextTeachingMove}</p>
+              <p><strong>Suggested Do Now:</strong> {analyticsDecision.suggestedDoNow}</p>
+              <div className={styles.diagnosticGrid}>
+                {analyticsDecision.reviewQuestions.map((question) => (
+                  <div key={question} className={styles.diagnosticBox}>
+                    <span>Review question</span>
+                    <strong>{question}</strong>
+                  </div>
+                ))}
+              </div>
+            </article>
+          </div>
+        </section>
 
         <section className={styles.priority}>
           <div className={styles.sectionHeader}><h2>Adaptive route blueprint</h2><span className={styles.badge}>{blueprint.scaffoldLevel}</span></div>
