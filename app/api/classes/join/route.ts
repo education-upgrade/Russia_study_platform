@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-
-const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
+import { DEMO_STUDENT_ID } from '@/lib/demoIdentity';
 
 type JoinClassRequest = {
   classCode?: string;
