@@ -1,0 +1,2 @@
+export const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
+export const DEMO_STUDENT_NAME = 'Demo Student';
