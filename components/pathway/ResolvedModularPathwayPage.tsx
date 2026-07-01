@@ -1,12 +1,12 @@
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { DEMO_STUDENT_ID } from '@/lib/demoIdentity';
 import { getPathwayConfig } from '@/lib/pathwayRegistry';
 import { getActivityLabel, isTrackableActivity } from '@/lib/activityTypeRegistry';
 import { resolvePathwayActivities } from '@/lib/pathwayResolver';
 import { resolveUnifiedActivityState } from '@/lib/activityState';
 import styles from '@/app/student/lesson/1905/page.module.css';
 
-const STUDENT_ID = '22222222-2222-2222-2222-222222222222';
 type Assignment = { mode: string; required_activity_types: string[]; deadline_at: string | null; instructions: string | null };
 type ResponseRow = { activity_id: string | null; status: string; score?: number | null; response_json: any; last_saved_at?: string | null };
 type Props = { pathwaySlug: string; fallbackInstructions?: string; fallbackContentByActivityType?: Record<string, any> };
@@ -24,12 +24,12 @@ export default async function ResolvedModularPathwayPage({ pathwaySlug, fallback
   const lesson = Array.isArray(lessonRows) && lessonRows[0] ? lessonRows[0] : null;
   if (!lesson) return <main className={styles.shell}><section className={styles.mainCard}><div className={styles.summary}><h1>{config.title} not found</h1><p>Run the seed for this pathway.</p></div></section></main>;
 
-  const { data: assignment } = await supabase.from('guided_study_assignments').select('mode, required_activity_types, deadline_at, instructions').eq('assigned_student_id', STUDENT_ID).eq('status', 'active').eq('pathway_slug', pathwaySlug).order('created_at', { ascending: false }).limit(1).maybeSingle<Assignment>();
+  const { data: assignment } = await supabase.from('guided_study_assignments').select('mode, required_activity_types, deadline_at, instructions').eq('assigned_student_id', DEMO_STUDENT_ID).eq('status', 'active').eq('pathway_slug', pathwaySlug).order('created_at', { ascending: false }).limit(1).maybeSingle<Assignment>();
   const { data: seeded } = await supabase.from('activities').select('id, activity_type, title').eq('lesson_id', lesson.id);
 
   const resolved = resolvePathwayActivities({ pathwaySlug, seededActivities: seeded ?? [], requiredActivityTypes: assignment?.required_activity_types ?? [], fallbackContentByActivityType });
   const realIds = resolved.filter((a) => !a.isVirtual).map((a) => a.id);
-  const { data: rows } = realIds.length ? await supabase.from('student_responses').select('activity_id, status, score, response_json, last_saved_at').eq('student_id', STUDENT_ID).in('activity_id', realIds) : { data: [] };
+  const { data: rows } = realIds.length ? await supabase.from('student_responses').select('activity_id, status, score, response_json, last_saved_at').eq('student_id', DEMO_STUDENT_ID).in('activity_id', realIds) : { data: [] };
   const responses = (rows ?? []) as ResponseRow[];
 
   const items = resolved.map((a) => {
