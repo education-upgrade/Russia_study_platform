@@ -30,6 +30,15 @@ export const pathwayCrimeanWarJudgementTask = {
   ]
 };
 
+export const pathwayCrimeanWarAO3Task = {
+  question: 'Which view is most convincing about why the Crimean War mattered?',
+  interpretations: [
+    { historian: 'View A', argument: 'The war mattered most because it exposed military weakness, especially supply, organisation and transport problems.' },
+    { historian: 'View B', argument: 'The war mattered most because it damaged Russia’s great-power status and made autocracy look less secure.' },
+    { historian: 'View C', argument: 'The war mattered most because it exposed deeper economic, social and administrative problems that pushed Alexander II towards reform.' }
+  ]
+};
+
 export const pathwayCrimeanWarFallbacks: Record<string, any> = {
   lesson_content: {
     sections: pathwayCrimeanWarLessonSections,
@@ -42,6 +51,7 @@ export const pathwayCrimeanWarFallbacks: Record<string, any> = {
     questions: pathwayCrimeanWarQuizQuestions,
   },
   judgement_ranking: pathwayCrimeanWarJudgementTask,
+  ao3_interpretation: pathwayCrimeanWarAO3Task,
   peel_response: pathwayCrimeanWarPeelContent,
   confidence_exit_ticket: pathwayCrimeanWarConfidenceContent,
 };
