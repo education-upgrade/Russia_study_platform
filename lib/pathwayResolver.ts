@@ -25,6 +25,18 @@ function getFallbackTitle(activityType: string) {
   return getActivityLabel(activityType);
 }
 
+function isEmptyContent(content: any) {
+  if (!content) return true;
+  if (Array.isArray(content)) return content.length === 0;
+  if (typeof content !== 'object') return false;
+  return Object.keys(content).length === 0;
+}
+
+function getContentOrFallback(activityType: string, seededContent: any, fallbackContentByActivityType: Record<string, any>) {
+  const fallbackContent = fallbackContentByActivityType[activityType];
+  return isEmptyContent(seededContent) && fallbackContent ? fallbackContent : seededContent;
+}
+
 function makeVirtualActivity(
   pathwaySlug: string,
   activityType: string,
@@ -59,6 +71,7 @@ export function resolvePathwayActivities({
     if (seededActivity) {
       return {
         ...seededActivity,
+        content_json: getContentOrFallback(activityType, seededActivity.content_json, fallbackContentByActivityType),
         routeSlug: getActivityRouteSlug(activityType),
         label: getActivityLabel(activityType),
         isVirtual: false,
