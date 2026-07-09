@@ -63,16 +63,16 @@ export const pathwayCrimeanWarFlashcards = [
 ];
 
 export const pathwayCrimeanWarQuizQuestions = [
-  { id: 'dates', question: 'When was the Crimean War?', options: ['1853–56', '1861–64', '1881–84', '1904–05'], correct: '1853–56' },
-  { id: 'opponents', question: 'Which powers helped defeat Russia?', options: ['Britain, France and the Ottoman Empire', 'Germany and Japan', 'Austria and Prussia only', 'The Bolsheviks'], correct: 'Britain, France and the Ottoman Empire' },
-  { id: 'main-impact', question: 'What did the Crimean War expose?', options: ['Russia’s military, economic and administrative weaknesses', 'Russia’s democratic strength', 'The success of collectivisation', 'The strength of the Duma'], correct: 'Russia’s military, economic and administrative weaknesses' },
-  { id: 'transport', question: 'Why did poor transport matter?', options: ['It slowed movement of troops and supplies', 'It made Russia more democratic', 'It ended serfdom immediately', 'It gave peasants land'], correct: 'It slowed movement of troops and supplies' },
-  { id: 'army', question: 'Why was Russia’s army weaker than it appeared?', options: ['It was badly supplied and organised', 'It had no soldiers', 'It was controlled by Britain', 'It refused to fight for religious reasons'], correct: 'It was badly supplied and organised' },
-  { id: 'economy', question: 'How did economic backwardness affect the war?', options: ['Russia struggled to produce and move modern supplies', 'Russia became fully industrialised', 'Russia developed universal education', 'Russia abolished taxation'], correct: 'Russia struggled to produce and move modern supplies' },
-  { id: 'bureaucracy', question: 'What did the war reveal about administration?', options: ['The bureaucracy was slow and inefficient', 'The Duma controlled the army', 'Local democracy was highly effective', 'The Tsar had no power'], correct: 'The bureaucracy was slow and inefficient' },
-  { id: 'reform', question: 'Why did defeat encourage reform?', options: ['It showed Russia needed to modernise', 'It proved Russia needed no change', 'It ended autocracy immediately', 'It created the Soviet Union'], correct: 'It showed Russia needed to modernise' },
-  { id: 'alexander', question: 'Which Tsar inherited Russia during the Crimean War?', options: ['Alexander II', 'Alexander III', 'Nicholas II', 'Lenin'], correct: 'Alexander II' },
-  { id: 'judgement', question: 'Which judgement is strongest?', options: ['The war triggered reform by exposing deeper weaknesses', 'The war solved Russia’s problems', 'The war made Russia democratic', 'The war had no importance'], correct: 'The war triggered reform by exposing deeper weaknesses' }
+  { id: 'dates', question: 'When was the Crimean War?', options: ['1853–56', '1856–61', '1877–78', '1904–05'], correct: '1853–56' },
+  { id: 'opponents', question: 'Which powers defeated Russia?', options: ['Prussia, Austria and Italy', 'Britain, France and the Ottomans', 'Germany, Japan and Austria', 'Austria, Prussia and Britain'], correct: 'Britain, France and the Ottomans' },
+  { id: 'main-impact', question: 'What weakness did the war expose?', options: ['Autocracy had become fully secure', 'Russia had modernised too quickly', 'Russia lagged behind major powers', 'Peasants had gained political power'], correct: 'Russia lagged behind major powers' },
+  { id: 'transport', question: 'Why were poor railways a problem?', options: ['They slowed troops and supplies', 'They weakened Orthodox authority', 'They reduced peasant taxation', 'They strengthened local zemstva'], correct: 'They slowed troops and supplies' },
+  { id: 'army', question: 'Why was the army less effective than its size suggested?', options: ['It relied on elected officers', 'It lacked organisation and supply', 'It refused to defend Sevastopol', 'It was controlled by the nobles'], correct: 'It lacked organisation and supply' },
+  { id: 'economy', question: 'How did the economy weaken Russia’s war effort?', options: ['Industry and railways were limited', 'Agriculture had modernised fully', 'Foreign trade funded the army', 'Factories supplied equipment quickly'], correct: 'Industry and railways were limited' },
+  { id: 'bureaucracy', question: 'What did the war reveal about administration?', options: ['Bureaucracy was slow and inefficient', 'Ministers controlled elected parliaments', 'Local government was fully democratic', 'Officials answered directly to peasants'], correct: 'Bureaucracy was slow and inefficient' },
+  { id: 'reform', question: 'Why did defeat encourage reform?', options: ['It showed modernisation was urgent', 'It proved autocracy no longer existed', 'It made peasant communes powerful', 'It gave Russia new European allies'], correct: 'It showed modernisation was urgent' },
+  { id: 'alexander', question: 'Which Tsar inherited the war in 1855?', options: ['Nicholas I', 'Alexander II', 'Alexander III', 'Nicholas II'], correct: 'Alexander II' },
+  { id: 'judgement', question: 'Which judgement is strongest?', options: ['Defeat exposed problems but did not create them', 'Defeat made Russia politically democratic', 'Defeat removed the need for reform', 'Defeat mainly strengthened serfdom'], correct: 'Defeat exposed problems but did not create them' }
 ];
 
 export const pathwayCrimeanWarPeelContent = {
