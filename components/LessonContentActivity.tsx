@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 
-type LessonSection = {
+export type LessonSection = {
   heading: string;
   body: string;
   question?: string;
