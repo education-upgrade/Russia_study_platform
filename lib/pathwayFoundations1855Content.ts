@@ -68,14 +68,16 @@ export const pathwayFoundations1855Flashcards = [
 ];
 
 export const pathwayFoundations1855QuizQuestions = [
-  { id: 'autocracy-definition', question: 'What did autocracy mean in Tsarist Russia?', options: ['Rule by the Tsar with supreme authority', 'Rule by an elected parliament', 'Rule by workers councils', 'Rule by regional governors only'], correct: 'Rule by the Tsar with supreme authority' },
-  { id: 'official-ideology', question: 'Which phrase best summarises Nicholas I’s official ideology?', options: ['Orthodoxy, Autocracy and Nationality', 'Peace, Land and Bread', 'Liberty, Equality and Fraternity', 'Collectivisation and industrialisation'], correct: 'Orthodoxy, Autocracy and Nationality' },
-  { id: 'serfdom-weakness', question: 'Why was serfdom a weakness for Russia?', options: ['It limited freedom and economic development', 'It created a large middle class', 'It made peasants politically powerful', 'It ended noble privilege'], correct: 'It limited freedom and economic development' },
-  { id: 'society', question: 'Which group made up most of Russia’s population in 1855?', options: ['Peasants', 'Factory workers', 'Middle-class professionals', 'Army officers'], correct: 'Peasants' },
-  { id: 'empire', question: 'Why did empire make Russia difficult to govern?', options: ['It contained many nationalities, religions and languages', 'It was small and easy to administer', 'It had no borderlands', 'It had no ethnic diversity'], correct: 'It contained many nationalities, religions and languages' },
-  { id: 'economy', question: 'What was Russia’s economy still heavily dependent on?', options: ['Agriculture', 'Car manufacturing', 'Overseas colonies', 'Computer technology'], correct: 'Agriculture' },
-  { id: 'opposition', question: 'Why was organised opposition weak in 1855?', options: ['Censorship and repression restricted criticism', 'All Russians could vote freely', 'Political parties controlled parliament', 'The Tsar encouraged open debate'], correct: 'Censorship and repression restricted criticism' },
-  { id: 'judgement', question: 'Which is the strongest judgement about Russia in 1855?', options: ['Russia appeared stable but contained serious structural weaknesses', 'Russia was fully democratic', 'Russia had no social problems', 'Russia had already industrialised fully'], correct: 'Russia appeared stable but contained serious structural weaknesses' },
+  { id: 'autocracy-definition', question: 'What did autocracy mean in Tsarist Russia?', options: ['The Tsar held supreme political authority', 'Ministers answered to an elected parliament', 'Regional governors controlled national policy', 'The Orthodox Church appointed the ruler'], correct: 'The Tsar held supreme political authority' },
+  { id: 'official-ideology', question: 'Which phrase best summarises Nicholas I’s official ideology?', options: ['Peace, Land and Bread', 'Orthodoxy, Autocracy and Nationality', 'Liberty, Equality and Fraternity', 'Order, Industry and Representation'], correct: 'Orthodoxy, Autocracy and Nationality' },
+  { id: 'serfdom-weakness', question: 'Why did serfdom weaken Russia?', options: ['It expanded the urban middle class', 'It limited mobility and agricultural efficiency', 'It reduced noble dependence on the state', 'It encouraged independent peasant enterprise'], correct: 'It limited mobility and agricultural efficiency' },
+  { id: 'society', question: 'Which group formed the majority of Russia’s population in 1855?', options: ['Urban factory workers', 'Middle-class professionals', 'Rural peasants', 'Provincial officials'], correct: 'Rural peasants' },
+  { id: 'empire', question: 'Why did Russia’s empire create governing difficulties?', options: ['Its regions shared one language and religion', 'Its population was concentrated near Moscow', 'Its borderlands had no distinct identities', 'Its peoples were geographically and culturally diverse'], correct: 'Its peoples were geographically and culturally diverse' },
+  { id: 'economy', question: 'What was Russia’s economy still mainly dependent upon?', options: ['Agriculture and rural labour', 'Heavy industry and exports', 'Banking and overseas trade', 'Urban manufacturing and services'], correct: 'Agriculture and rural labour' },
+  { id: 'communication', question: 'Why did weak transport links matter politically?', options: ['They increased noble representation', 'They slowed administration and troop movement', 'They strengthened elected local government', 'They reduced the need for bureaucracy'], correct: 'They slowed administration and troop movement' },
+  { id: 'opposition', question: 'Why was organised opposition weak in 1855?', options: ['Political parties dominated parliament', 'The state encouraged open public debate', 'Censorship and repression restricted criticism', 'The peasantry controlled national newspapers'], correct: 'Censorship and repression restricted criticism' },
+  { id: 'decembrists', question: 'What did the Decembrist Revolt demonstrate?', options: ['Some educated elites questioned autocracy', 'Peasants had gained control of the army', 'The Church had abandoned the Tsar', 'National minorities had united politically'], correct: 'Some educated elites questioned autocracy' },
+  { id: 'judgement', question: 'Which judgement best describes Russia in 1855?', options: ['The state was stable because reform had removed its weaknesses', 'The empire was powerful but contained deep structural problems', 'The Tsar ruled through broad political participation', 'Economic modernisation had made autocracy flexible'], correct: 'The empire was powerful but contained deep structural problems' },
 ];
 
 export const pathwayFoundations1855Timeline = {
@@ -100,10 +102,11 @@ export const pathwayFoundations1855JudgementTask = {
 };
 
 export const pathwayFoundations1855AO3Task = {
-  question: 'Was Russia fundamentally weak by 1855?',
+  question: 'Which interpretation is most convincing about the condition of Russia in 1855?',
   interpretations: [
-    { historian: 'Interpretation A', argument: 'Russia was fundamentally backward by 1855 because autocracy, serfdom and economic weakness limited modernisation.' },
-    { historian: 'Interpretation B', argument: 'Russia remained a powerful and stable empire in 1855 because autocracy, ideology and repression preserved order.' },
+    { historian: 'Interpretation A', argument: 'Russia was fundamentally backward because autocracy, serfdom and economic weakness prevented effective modernisation.' },
+    { historian: 'Interpretation B', argument: 'Russia remained a powerful and broadly stable empire because autocracy, ideology and repression preserved order.' },
+    { historian: 'Interpretation C', argument: 'Russia’s greatest problem was not simple backwardness but the tension between impressive imperial power and weak administrative capacity.' },
   ],
 };
 
