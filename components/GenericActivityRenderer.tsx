@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import LessonContentActivity from './LessonContentActivity';
+import LessonContentActivity, { type LessonSection } from './LessonContentActivity';
 import FlashcardActivity from './FlashcardActivity';
 import QuizActivity from './QuizActivity';
 import PeelResponseActivity from './PeelResponseActivity';
@@ -36,7 +36,7 @@ type Props = {
 };
 
 type LessonContent = {
-  sections?: unknown[];
+  sections?: LessonSection[];
 };
 
 function ReturnToPathway({ routeBase }: { routeBase: string }) {
