@@ -35,6 +35,10 @@ type Props = {
   adaptiveSupport?: AdaptiveRendererSupport;
 };
 
+type LessonContent = {
+  sections?: unknown[];
+};
+
 function ReturnToPathway({ routeBase }: { routeBase: string }) {
   return (
     <Link
@@ -105,7 +109,8 @@ export default function GenericActivityRenderer({
   const normalisedContent = normaliseRendererContent(activityType, content, fallbackContent);
 
   if (activityType === 'lesson_content') {
-    const sections = Array.isArray(normalisedContent?.sections) ? normalisedContent.sections : [];
+    const typedContent = normalisedContent as unknown as LessonContent;
+    const sections = Array.isArray(typedContent.sections) ? typedContent.sections : [];
     return <ActivityShell routeBase={routeBase} adaptiveSupport={adaptiveSupport}><LessonContentActivity sections={sections} nextHref={nextHref} /></ActivityShell>;
   }
 
