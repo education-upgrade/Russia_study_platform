@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import LessonContentActivity from './LessonContentActivity';
 import FlashcardActivity from './FlashcardActivity';
 import QuizActivity from './QuizActivity';
 import PeelResponseActivity from './PeelResponseActivity';
@@ -102,6 +103,11 @@ export default function GenericActivityRenderer({
   adaptiveSupport,
 }: Props) {
   const normalisedContent = normaliseRendererContent(activityType, content, fallbackContent);
+
+  if (activityType === 'lesson_content') {
+    const sections = Array.isArray(normalisedContent?.sections) ? normalisedContent.sections : [];
+    return <ActivityShell routeBase={routeBase} adaptiveSupport={adaptiveSupport}><LessonContentActivity sections={sections} nextHref={nextHref} /></ActivityShell>;
+  }
 
   if (activityType === 'flashcards') {
     const typedContent = normalisedContent as FlashcardContent;
