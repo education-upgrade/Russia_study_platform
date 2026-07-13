@@ -35,9 +35,22 @@ type Props = {
   adaptiveSupport?: AdaptiveRendererSupport;
 };
 
-type LessonContent = {
-  sections?: LessonSection[];
-};
+function isLessonSection(value: unknown): value is LessonSection {
+  if (!value || typeof value !== 'object') return false;
+  const section = value as Record<string, unknown>;
+  return typeof section.heading === 'string'
+    && typeof section.body === 'string'
+    && (section.question === undefined || typeof section.question === 'string')
+    && (section.taskType === undefined || typeof section.taskType === 'string');
+}
+
+function getLessonSections(content: any, fallbackContent: Record<string, any>) {
+  const primarySections = Array.isArray(content?.sections) ? content.sections.filter(isLessonSection) : [];
+  if (primarySections.length > 0) return primarySections;
+  return Array.isArray(fallbackContent?.sections)
+    ? fallbackContent.sections.filter(isLessonSection)
+    : [];
+}
 
 function ReturnToPathway({ routeBase }: { routeBase: string }) {
   return (
@@ -106,13 +119,12 @@ export default function GenericActivityRenderer({
   fallbackContent = {},
   adaptiveSupport,
 }: Props) {
-  const normalisedContent = normaliseRendererContent(activityType, content, fallbackContent);
-
   if (activityType === 'lesson_content') {
-    const typedContent = normalisedContent as unknown as LessonContent;
-    const sections = Array.isArray(typedContent.sections) ? typedContent.sections : [];
+    const sections = getLessonSections(content, fallbackContent);
     return <ActivityShell routeBase={routeBase} adaptiveSupport={adaptiveSupport}><LessonContentActivity sections={sections} nextHref={nextHref} /></ActivityShell>;
   }
+
+  const normalisedContent = normaliseRendererContent(activityType, content, fallbackContent);
 
   if (activityType === 'flashcards') {
     const typedContent = normalisedContent as FlashcardContent;
