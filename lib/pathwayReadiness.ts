@@ -1,4 +1,4 @@
-export type PathwayReadiness = 'ready' | 'needs-audit' | 'in-development' | 'planned';
+export type PathwayReadiness = 'ready' | 'recap' | 'needs-audit' | 'in-development' | 'planned';
 
 export type PathwayReadinessRecord = {
   status: PathwayReadiness;
@@ -27,8 +27,8 @@ export const pathwayReadiness: Record<string, PathwayReadinessRecord> = {
     note: 'Complete modular pathway audited against the eight-activity standard and tested successfully through PR #13.',
   },
   'alexander-ii-reform': {
-    status: 'needs-audit',
-    note: 'Older overview pathway using legacy custom route structure; treat as recap until standardised.',
+    status: 'recap',
+    note: 'Retained as an optional synoptic recap on why reform became necessary. It overlaps with the Crimean War and serfdom pathways, so it is not part of the core teaching sequence and should not be expanded as a duplicate eight-activity lesson.',
   },
   '1905-revolution': {
     status: 'needs-audit',
@@ -47,6 +47,7 @@ export function getPathwayReadiness(pathwaySlug: string, registryStatus: 'ready'
 
 export function getPathwayReadinessLabel(status: PathwayReadiness) {
   if (status === 'ready') return 'Ready';
+  if (status === 'recap') return 'Ready — recap';
   if (status === 'needs-audit') return 'Needs audit';
   if (status === 'in-development') return 'In development';
   return 'Planned';
