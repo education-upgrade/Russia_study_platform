@@ -23,8 +23,8 @@ export const pathwayReadiness: Record<string, PathwayReadinessRecord> = {
     note: 'Complete modular pathway merged through PR #10 and tested in preview.',
   },
   'alexander-ii-wider-reforms': {
-    status: 'needs-audit',
-    note: 'Modular route exists, but the complete activity set and main pathway fallback flow still need checking.',
+    status: 'ready',
+    note: 'Complete modular pathway audited against the eight-activity standard and tested successfully through PR #13.',
   },
   'alexander-ii-reform': {
     status: 'needs-audit',
