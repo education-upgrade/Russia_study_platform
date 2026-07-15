@@ -13,6 +13,7 @@ This document records the actual development state of pathways. It is more preci
 
 | Course week | Pathway | Evidence |
 |---:|---|---|
+| 1 | Russia in 1855 | Complete modular pathway audited and tested through PR #12. |
 | 2 | Crimean War | Complete modular pathway; lesson, timeline, flashcards, quiz, judgement, AO3, PEEL and confidence tested. |
 | 4 | Why serfdom had to end | Complete modular pathway with all standard activities tested. |
 | 5 | Emancipation of the serfs | Complete modular pathway merged through PR #10. |
@@ -21,7 +22,6 @@ This document records the actual development state of pathways. It is more preci
 
 | Pathway | Reason |
 |---|---|
-| Russia in 1855 | Existing foundation pathway; requires audit against the current eight-activity standard. |
 | Alexander II's wider reforms | Modular route exists, but the main route and complete fallback activity set require checking. |
 | Alexander II reform overview | Older custom implementation; should be treated as a recap/bridging pathway until standardised. |
 | 1905 Revolution | Existing pilot pathway; requires modern modular and content QA audit. |
@@ -49,9 +49,8 @@ The teacher assignment form and modular activity registry already use this seque
 
 ## Next audit order
 
-1. Russia in 1855
-2. Alexander II's wider reforms
-3. Alexander II reform overview
-4. 1905 Revolution
+1. Alexander II's wider reforms
+2. Alexander II reform overview
+3. 1905 Revolution
 
 After each audit, update `lib/pathwayReadiness.ts`. Only move a pathway to `ready` after all routes load, fallback content is complete, assignment flow works and at least one saved response is visible in teacher progress.
