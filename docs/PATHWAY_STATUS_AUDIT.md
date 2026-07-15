@@ -5,6 +5,7 @@ This document records the actual development state of pathways. It is more preci
 ## Status definitions
 
 - **Ready**: complete modular pathway, all standard activities present, preview tested and merged.
+- **Ready — recap**: a working optional consolidation pathway retained for revision or bridging. It is not part of the core teaching sequence and does not need to duplicate every activity from the full-study pathways.
 - **Needs audit**: a route exists or was previously marked ready, but it has not yet passed the current eight-activity modular standard.
 - **In development**: active work exists on a branch or pull request but is not yet merged.
 - **Planned**: curriculum metadata exists, but the pathway has not been built to the current standard.
@@ -19,11 +20,16 @@ This document records the actual development state of pathways. It is more preci
 | 5 | Emancipation of the serfs | Complete modular pathway merged through PR #10. |
 | 6 | Alexander II's wider reforms | Complete modular pathway audited and tested through PR #13. |
 
+## Ready recap pathways
+
+| Pathway | Purpose | Decision |
+|---|---|---|
+| Alexander II reform overview | Synoptic consolidation of Crimean War defeat, serfdom, backwardness, unrest and reform from above. | Retain the route and saved-response compatibility, but do not treat it as another core lesson or expand it into duplicate content. |
+
 ## Needs-audit pathways
 
 | Pathway | Reason |
 |---|---|
-| Alexander II reform overview | Older custom implementation; should be treated as a recap/bridging pathway until standardised. |
 | 1905 Revolution | Existing pilot pathway; requires modern modular and content QA audit. |
 
 ## Planned Unit 1 pathways
@@ -45,11 +51,10 @@ A complete full-study pathway should use this order:
 7. `peel_response`
 8. `confidence_exit_ticket`
 
-The teacher assignment form and modular activity registry already use this sequence. Older custom pathways may still use the earlier five-activity sequence and should be standardised when audited.
+The teacher assignment form and modular activity registry already use this sequence. Recap pathways may use a smaller evidence sequence when that avoids unnecessary duplication.
 
 ## Next audit order
 
-1. Alexander II reform overview
-2. 1905 Revolution
+1. 1905 Revolution
 
-After each audit, update `lib/pathwayReadiness.ts`. Only move a pathway to `ready` after all routes load, fallback content is complete, assignment flow works and at least one saved response is visible in teacher progress.
+After each audit, update `lib/pathwayReadiness.ts`. Only move a full-study pathway to `ready` after all routes load, fallback content is complete, assignment flow works and at least one saved response is visible in teacher progress.
