@@ -7,8 +7,8 @@ export type PathwayReadinessRecord = {
 
 export const pathwayReadiness: Record<string, PathwayReadinessRecord> = {
   'russia-1855': {
-    status: 'needs-audit',
-    note: 'Existing ready pathway; requires a full check against the current eight-activity modular standard.',
+    status: 'ready',
+    note: 'Complete modular pathway audited against the eight-activity standard and tested successfully through PR #12.',
   },
   'crimean-war': {
     status: 'ready',
