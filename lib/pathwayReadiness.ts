@@ -31,8 +31,8 @@ export const pathwayReadiness: Record<string, PathwayReadinessRecord> = {
     note: 'Retained as an optional synoptic recap on why reform became necessary. It overlaps with the Crimean War and serfdom pathways, so it is not part of the core teaching sequence and should not be expanded as a duplicate eight-activity lesson.',
   },
   '1905-revolution': {
-    status: 'needs-audit',
-    note: 'Existing pilot pathway; requires audit against the current modular and content standards.',
+    status: 'ready',
+    note: 'Complete modular pathway audited against the eight-activity standard, preview-tested and merged through PR #17.',
   },
 };
 

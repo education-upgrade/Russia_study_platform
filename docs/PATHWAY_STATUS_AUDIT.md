@@ -19,6 +19,7 @@ This document records the actual development state of pathways. It is more preci
 | 4 | Why serfdom had to end | Complete modular pathway with all standard activities tested. |
 | 5 | Emancipation of the serfs | Complete modular pathway merged through PR #10. |
 | 6 | Alexander II's wider reforms | Complete modular pathway audited and tested through PR #13. |
+| 23 | 1905 Revolution | Complete modular pathway audited and tested through PR #17. |
 
 ## Ready recap pathways
 
@@ -28,9 +29,7 @@ This document records the actual development state of pathways. It is more preci
 
 ## Needs-audit pathways
 
-| Pathway | Reason |
-|---|---|
-| 1905 Revolution | Existing pilot pathway; requires modern modular and content QA audit. |
+There are currently no remaining previously built pathways awaiting audit.
 
 ## Planned Unit 1 pathways
 
@@ -53,8 +52,8 @@ A complete full-study pathway should use this order:
 
 The teacher assignment form and modular activity registry already use this sequence. Recap pathways may use a smaller evidence sequence when that avoids unnecessary duplication.
 
-## Next audit order
+## Next development priority
 
-1. 1905 Revolution
+All previously built pathways have now been reviewed. The next priority is to complete the remaining planned Unit 1 pathways before beginning wider architecture hardening or scaling into later units.
 
-After each audit, update `lib/pathwayReadiness.ts`. Only move a full-study pathway to `ready` after all routes load, fallback content is complete, assignment flow works and at least one saved response is visible in teacher progress.
+Only move a full-study pathway to `ready` after all routes load, fallback content is complete, assignment flow works and at least one saved response is visible in teacher progress.
