@@ -14,6 +14,10 @@ export const pathwayReadiness: Record<string, PathwayReadinessRecord> = {
     status: 'ready',
     note: 'Complete modular pathway tested with lesson, timeline, flashcards, quiz, judgement, AO3, PEEL and confidence.',
   },
+  'power-ideology-control': {
+    status: 'ready',
+    note: 'Complete modular pathway audited against the eight-activity standard with expanded lesson content, chronology, retrieval, judgement, AO3 and written-response scaffolding.',
+  },
   'why-serfdom-had-to-end': {
     status: 'ready',
     note: 'Complete modular pathway tested with all standard activities.',
@@ -25,6 +29,10 @@ export const pathwayReadiness: Record<string, PathwayReadinessRecord> = {
   'alexander-ii-wider-reforms': {
     status: 'ready',
     note: 'Complete modular pathway audited against the eight-activity standard and tested successfully through PR #13.',
+  },
+  'reform-preserve-autocracy': {
+    status: 'ready',
+    note: 'Complete modular pathway audited against the eight-activity standard with expanded lesson content, chronology, retrieval, judgement, AO3 and written-response scaffolding.',
   },
   'alexander-ii-reform': {
     status: 'recap',
