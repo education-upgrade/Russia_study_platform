@@ -1,0 +1,4 @@
+import ModularPathwayPage from '@/components/pathway/ModularPathwayPage';
+import { manifestoFundamentalLawsPathwaySlug, manifestoFundamentalLawsFallbacks } from '@/lib/pathwayManifestoFundamentalLawsContent';
+export const dynamic='force-dynamic'; export const revalidate=0;
+export default function ManifestoFundamentalLawsPathwayPage(){return <ModularPathwayPage pathwaySlug={manifestoFundamentalLawsPathwaySlug} fallbackInstructions="Complete the pathway in order. Distinguish the promises of October 1905 from the powers preserved in the Fundamental Laws." fallbackContentByActivityType={manifestoFundamentalLawsFallbacks}/>;}
