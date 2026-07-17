@@ -21,6 +21,7 @@ This document records the actual development state of pathways. It is more preci
 | 5 | Emancipation of the serfs | Complete modular pathway merged through PR #10. |
 | 6 | Alexander II's wider reforms | Complete modular pathway audited and tested through PR #13. |
 | 7 | Reform to preserve autocracy? | Full eight-activity pathway content audited and expanded, including visual lesson scaffolds, 15-question retrieval, developed judgement, AO3 and PEEL support. |
+| 8 | Essay skills focus: Alexander II | Complete eight-activity consolidation pathway focused on question decoding, evidence selection, sustained argument, direct comparison, counter-argument, AO3 and 25-mark writing. |
 | 23 | 1905 Revolution | Complete modular pathway audited and tested through PR #17. |
 
 ## Ready recap pathways
@@ -31,11 +32,11 @@ This document records the actual development state of pathways. It is more preci
 
 ## Needs-audit pathways
 
-There are currently no remaining previously built Unit 1 pathways awaiting content audit.
+There are currently no remaining Unit 1 pathways awaiting content audit.
 
-## Remaining planned Unit 1 pathway
+## Unit 1 completion decision
 
-- Essay skills focus: Alexander II
+The Alexander II sequence is now complete at content level. The core sequence covers contextual conditions, the Crimean War, power and ideology, the pressures for emancipation, the emancipation settlement, wider reforms, the relationship between reform and autocracy, and a final essay-skills consolidation pathway.
 
 ## Standard activity sequence
 
@@ -62,8 +63,12 @@ The original route contained all eight activity keys but several activities were
 
 The original route contained all eight activity keys but required more precision and breadth. The audit added the 1856 reform-from-above context, temporary obligation, property-weighted zemstva, Milyutin, the University Statute, the 1865 press laws and the political limits of Loris-Melikov; expanded visual support, chronology, retrieval and ranking evidence; and strengthened the AO3 and analytical-writing scaffold.
 
+### Essay skills focus: Alexander II
+
+The pathway consolidates existing Unit 1 knowledge rather than reteaching the reign. It teaches students to decode 25-mark wording, create criteria, form a provisional judgement, select precise AO1, build analytical paragraphs, compare factors directly, develop counter-argument and write purposeful introductions and conclusions. The canonical AO3 task also allows students to test three plausible interpretations of Alexander II's reform programme.
+
 ## Next development priority
 
-The remaining Unit 1 task is the Alexander II essay-skills pathway. After that, development can move to the next curriculum sequence using the same eight-activity lesson scaffold.
+Move to Unit 2, beginning with **Later Alexander II**, using the same established eight-activity scaffold and content-audit process.
 
-Only move a full-study pathway to production-ready after all routes load in preview, fallback content renders correctly, assignment flow works and at least one saved response is visible in teacher progress.
+Only move a full-study pathway to production-ready after all routes load in preview and fallback content renders correctly.
