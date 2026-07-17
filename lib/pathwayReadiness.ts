@@ -34,6 +34,10 @@ export const pathwayReadiness: Record<string, PathwayReadinessRecord> = {
     status: 'ready',
     note: 'Complete modular pathway audited against the eight-activity standard with expanded lesson content, chronology, retrieval, judgement, AO3 and written-response scaffolding.',
   },
+  'essay-skills-alexander-ii': {
+    status: 'ready',
+    note: 'Complete eight-activity skills pathway consolidating Alexander II knowledge through question decoding, evidence selection, comparison, counter-argument, AO3 and 25-mark analytical writing.',
+  },
   'alexander-ii-reform': {
     status: 'recap',
     note: 'Retained as an optional synoptic recap on why reform became necessary. It overlaps with the Crimean War and serfdom pathways, so it is not part of the core teaching sequence and should not be expanded as a duplicate eight-activity lesson.',
