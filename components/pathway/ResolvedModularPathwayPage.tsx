@@ -22,10 +22,11 @@ export default async function ResolvedModularPathwayPage({ pathwaySlug, fallback
 
   const { data: lessonRows } = await supabase.from('lessons').select('id').eq('title', config.lessonTitle).limit(1);
   const lesson = Array.isArray(lessonRows) && lessonRows[0] ? lessonRows[0] : null;
-  if (!lesson) return <main className={styles.shell}><section className={styles.mainCard}><div className={styles.summary}><h1>{config.title} not found</h1><p>Run the seed for this pathway.</p></div></section></main>;
 
   const { data: assignment } = await supabase.from('guided_study_assignments').select('mode, required_activity_types, deadline_at, instructions').eq('assigned_student_id', DEMO_STUDENT_ID).eq('status', 'active').eq('pathway_slug', pathwaySlug).order('created_at', { ascending: false }).limit(1).maybeSingle<Assignment>();
-  const { data: seeded } = await supabase.from('activities').select('id, activity_type, title').eq('lesson_id', lesson.id);
+  const { data: seeded } = lesson
+    ? await supabase.from('activities').select('id, activity_type, title').eq('lesson_id', lesson.id)
+    : { data: [] };
 
   const resolved = resolvePathwayActivities({ pathwaySlug, seededActivities: seeded ?? [], requiredActivityTypes: assignment?.required_activity_types ?? [], fallbackContentByActivityType });
   const realIds = resolved.filter((a) => !a.isVirtual).map((a) => a.id);
