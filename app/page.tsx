@@ -14,9 +14,6 @@ export default function HomePage() {
           <Link className="button" href="/student">
             Start student pathway
           </Link>
-          <Link className="button secondary" href="/student/course">
-            Course units
-          </Link>
           <Link className="button secondary" href="/teacher/dashboard">
             Teacher dashboard
           </Link>
@@ -43,10 +40,11 @@ export default function HomePage() {
         </article>
 
         <article className="card warm">
-          <p className="eyebrow">Course organisation</p>
-          <h2>Lessons grouped into units</h2>
+          <p className="eyebrow">Teacher experience</p>
+          <h2>Progress and intervention</h2>
           <p>
-            Completed pathways are organised into clear course units, while the current assignment remains one click away.
+            Teachers assign study, monitor completion, review written work and identify students needing
+            recap, reassurance or intervention.
           </p>
         </article>
       </section>
