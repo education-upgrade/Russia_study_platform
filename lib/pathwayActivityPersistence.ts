@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import type { ResolvedPathwayActivity } from '@/lib/pathwayResolver';
 
 function stableUuid(value: string) {
@@ -19,8 +19,6 @@ export async function materialisePathwayActivities(
   pathwaySlug: string,
   activities: ResolvedPathwayActivity[]
 ) {
-  if (!supabase) return activities;
-
   const materialised = activities.map((activity) => ({
     ...activity,
     id: activity.isVirtual
@@ -37,9 +35,16 @@ export async function materialisePathwayActivities(
       content_json: activity.content_json ?? activity.fallbackContent ?? {},
     }));
 
-  if (virtualRows.length > 0) {
-    const { error } = await supabase.from('activities').upsert(virtualRows, { onConflict: 'id' });
-    if (error) throw new Error(`Could not prepare pathway progress records: ${error.message}`);
+  // Activity preparation must never prevent the page from rendering. The
+  // service-role client bypasses RLS for these controlled server-side rows.
+  if (virtualRows.length > 0 && supabaseAdmin) {
+    const { error } = await supabaseAdmin.from('activities').upsert(virtualRows, { onConflict: 'id' });
+    if (error) {
+      console.error('Could not prepare pathway progress records', {
+        pathwaySlug,
+        message: error.message,
+      });
+    }
   }
 
   return materialised.map((activity) => ({ ...activity, isVirtual: false }));
