@@ -1,0 +1,4 @@
+import ModularActivityPage from '@/components/pathway/ModularActivityPage';
+import { industrialisationNicholasIIPathwaySlug, industrialisationNicholasIIFallbacks } from '@/lib/pathwayIndustrialisationNicholasIIContent';
+export const dynamic='force-dynamic'; export const revalidate=0;
+export default async function IndustrialisationNicholasIIActivityPage({params}:{params:Promise<{activity:string}>}){const{activity}=await params;return <ModularActivityPage pathwaySlug={industrialisationNicholasIIPathwaySlug} activitySlug={activity} fallbackContentByActivityType={industrialisationNicholasIIFallbacks}/>;}
