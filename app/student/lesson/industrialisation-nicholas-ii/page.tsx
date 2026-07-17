@@ -1,0 +1,4 @@
+import ModularPathwayPage from '@/components/pathway/ModularPathwayPage';
+import { industrialisationNicholasIIPathwaySlug, industrialisationNicholasIIFallbacks } from '@/lib/pathwayIndustrialisationNicholasIIContent';
+export const dynamic='force-dynamic'; export const revalidate=0;
+export default function IndustrialisationNicholasIIPathwayPage(){return <ModularPathwayPage pathwaySlug={industrialisationNicholasIIPathwaySlug} fallbackInstructions="Complete the pathway in order. Balance the economic and military gains of industrialisation against its social and political costs." fallbackContentByActivityType={industrialisationNicholasIIFallbacks}/>;}
