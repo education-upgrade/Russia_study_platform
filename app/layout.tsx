@@ -1,5 +1,6 @@
 import './globals.css';
 import type { ReactNode } from 'react';
+import '@/lib/unit3RegistryActivation';
 
 export const metadata = {
   title: 'Russia Study Platform',
