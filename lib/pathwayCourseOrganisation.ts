@@ -9,14 +9,24 @@ const displayTitleOverrides: Record<string, string> = {
   'reform-preserve-autocracy': 'Reform to Preserve Autocracy?',
   'power-ideology-control': 'Power, Ideology and Control',
   'essay-skills-alexander-ii': 'Essay Skills: Alexander II',
+  'nicholas-ii-ruler': 'Nicholas II as Ruler',
+  'industrialisation-nicholas-ii': 'Industrialisation under Nicholas II',
+  'opposition-before-1905': 'Opposition before 1905',
+  'manifesto-fundamental-laws': 'From Manifesto to Fundamental Laws',
+  'stolypin-reform': 'Stolypin and Reform',
 };
 
-const builtUnit3PathwaySlugs = new Set([
+const builtPathwaySlugs = new Set([
   'industry-before-1894',
   'agriculture-land-hunger',
   'social-divisions',
   'orthodoxy-culture-authority',
   'tsarism-secure-1894',
+  'nicholas-ii-ruler',
+  'industrialisation-nicholas-ii',
+  'opposition-before-1905',
+  'manifesto-fundamental-laws',
+  'stolypin-reform',
 ]);
 
 export type OrganisedPathway = PathwayConfig & {
@@ -36,7 +46,7 @@ export function getPathwayDisplayTitle(pathway: PathwayConfig) {
 }
 
 function isAvailablePathway(pathway: PathwayConfig) {
-  return pathway.status === 'ready' || builtUnit3PathwaySlugs.has(pathway.pathwaySlug);
+  return pathway.status === 'ready' || builtPathwaySlugs.has(pathway.pathwaySlug);
 }
 
 export function getOrganisedReadyUnits(): OrganisedUnit[] {
