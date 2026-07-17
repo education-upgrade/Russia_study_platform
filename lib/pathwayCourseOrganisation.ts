@@ -11,6 +11,14 @@ const displayTitleOverrides: Record<string, string> = {
   'essay-skills-alexander-ii': 'Essay Skills: Alexander II',
 };
 
+const builtUnit3PathwaySlugs = new Set([
+  'industry-before-1894',
+  'agriculture-land-hunger',
+  'social-divisions',
+  'orthodoxy-culture-authority',
+  'tsarism-secure-1894',
+]);
+
 export type OrganisedPathway = PathwayConfig & {
   displayTitle: string;
   lessonNumber: number;
@@ -27,11 +35,15 @@ export function getPathwayDisplayTitle(pathway: PathwayConfig) {
   return displayTitleOverrides[pathway.pathwaySlug] ?? pathway.title;
 }
 
+function isAvailablePathway(pathway: PathwayConfig) {
+  return pathway.status === 'ready' || builtUnit3PathwaySlugs.has(pathway.pathwaySlug);
+}
+
 export function getOrganisedReadyUnits(): OrganisedUnit[] {
   const grouped = new Map<string, PathwayConfig[]>();
 
   pathwayOptions
-    .filter((pathway) => pathway.status === 'ready')
+    .filter(isAvailablePathway)
     .forEach((pathway) => {
       const key = `${pathway.yearGroup}-${pathway.unitNumber}`;
       const current = grouped.get(key) ?? [];
