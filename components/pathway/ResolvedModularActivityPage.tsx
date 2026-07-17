@@ -3,6 +3,7 @@ import GenericActivityRenderer from '@/components/GenericActivityRenderer';
 import { supabase } from '@/lib/supabase';
 import { DEMO_STUDENT_ID } from '@/lib/demoIdentity';
 import { getPathwayConfig } from '@/lib/pathwayRegistry';
+import { materialisePathwayActivities } from '@/lib/pathwayActivityPersistence';
 import { findActivityByRouteSlug, getNextActivityHref, resolvePathwayActivities } from '@/lib/pathwayResolver';
 import styles from '@/app/student/lesson/1905/flashcards/page.module.css';
 
@@ -24,7 +25,8 @@ export default async function ResolvedModularActivityPage({ pathwaySlug, activit
     ? await supabase.from('activities').select('id, title, activity_type, content_json').eq('lesson_id', lesson.id)
     : { data: [] };
 
-  const activities = resolvePathwayActivities({ pathwaySlug, seededActivities: seeded ?? [], requiredActivityTypes: assignment?.required_activity_types ?? [], fallbackContentByActivityType });
+  const resolved = resolvePathwayActivities({ pathwaySlug, seededActivities: seeded ?? [], requiredActivityTypes: assignment?.required_activity_types ?? [], fallbackContentByActivityType });
+  const activities = await materialisePathwayActivities(pathwaySlug, resolved);
   const activity = findActivityByRouteSlug(activities, activitySlug);
 
   if (!activity) return <main className={styles.shell}><section className="card warm"><h1>Activity not found</h1><Link href={config.routeBase}>Return to pathway</Link></section></main>;
