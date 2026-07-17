@@ -14,6 +14,10 @@ const displayTitleOverrides: Record<string, string> = {
   'opposition-before-1905': 'Opposition before 1905',
   'manifesto-fundamental-laws': 'From Manifesto to Fundamental Laws',
   'stolypin-reform': 'Stolypin and Reform',
+  'russia-before-1914': 'Russia before 1914',
+  'russia-first-world-war': 'Russia and the First World War',
+  'february-revolution': 'The February Revolution',
+  'feb-oct-1917': 'From February to October 1917',
 };
 
 const builtPathwaySlugs = new Set([
@@ -27,6 +31,10 @@ const builtPathwaySlugs = new Set([
   'opposition-before-1905',
   'manifesto-fundamental-laws',
   'stolypin-reform',
+  'russia-before-1914',
+  'russia-first-world-war',
+  'february-revolution',
+  'feb-oct-1917',
 ]);
 
 export type OrganisedPathway = PathwayConfig & {
