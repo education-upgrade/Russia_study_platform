@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { getActivityLabel, orderSupportedActivityTypes } from '@/lib/activityTypeRegistry';
 import { pathwayOptions } from '@/lib/pathwayRegistry';
-import { courseUnits } from '@/lib/courseUnits';
+import { getOrganisedReadyUnits, getPathwayDisplayTitle } from '@/lib/pathwayCourseOrganisation';
 import styles from './GuidedStudyAssignmentForm.module.css';
 import unitStyles from './GuidedStudyUnitPicker.module.css';
 
@@ -54,12 +54,7 @@ const modeOptions: { value: StudyMode; title: string; description: string; bestF
   { value: 'confidence_repair', title: 'Confidence repair', description: 'Full pathway with reflection emphasis.', bestFor: 'Best after assessment or low-confidence exit tickets.' },
 ];
 
-const unitOne = courseUnits.find((unit) => unit.unitNumber === 1);
-const unitOneSlugs = new Set(unitOne?.pathwaySlugs ?? []);
-const unitOneTopics = (unitOne?.pathwaySlugs ?? [])
-  .map((slug) => pathwayOptions.find((topic) => topic.pathwaySlug === slug))
-  .filter((topic): topic is (typeof pathwayOptions)[number] => Boolean(topic));
-const otherTopics = pathwayOptions.filter((topic) => !unitOneSlugs.has(topic.pathwaySlug));
+const organisedUnits = getOrganisedReadyUnits();
 
 function orderSelectedActivities(activityTypes: string[]) {
   return orderSupportedActivityTypes(activityTypes);
@@ -82,13 +77,15 @@ function getDisplayActivityLabel(activityType: string) {
 
 export default function GuidedStudyAssignmentForm({ classOptions = fallbackClasses }: GuidedStudyAssignmentFormProps) {
   const usableClassOptions = classOptions.length ? classOptions : fallbackClasses;
+  const firstTopic = organisedUnits[0]?.lessons[0] ?? pathwayOptions[0];
   const [classId, setClassId] = useState(usableClassOptions[0]?.id ?? fallbackClasses[0].id);
-  const [topicSlug, setTopicSlug] = useState(pathwayOptions[0].pathwaySlug);
-  const selectedTopic = pathwayOptions.find((topic) => topic.pathwaySlug === topicSlug) ?? pathwayOptions[0];
+  const [topicSlug, setTopicSlug] = useState(firstTopic.pathwaySlug);
+  const selectedTopic = pathwayOptions.find((topic) => topic.pathwaySlug === topicSlug) ?? firstTopic;
+  const selectedTopicTitle = getPathwayDisplayTitle(selectedTopic);
   const [mode, setMode] = useState<StudyMode>('full_guided_study');
   const [selectedActivities, setSelectedActivities] = useState<string[]>(orderSelectedActivities(fullGuidedStudyActivities));
   const [deadlineAt, setDeadlineAt] = useState('');
-  const [instructions, setInstructions] = useState(getDefaultInstructions('full_guided_study', selectedTopic.title));
+  const [instructions, setInstructions] = useState(getDefaultInstructions('full_guided_study', selectedTopicTitle));
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveMessage, setSaveMessage] = useState('');
   const selectedClass = usableClassOptions.find((option) => option.id === classId) ?? usableClassOptions[0];
@@ -104,15 +101,15 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
   }
 
   function updateTopic(nextSlug: string) {
-    const nextTopic = pathwayOptions.find((topic) => topic.pathwaySlug === nextSlug) ?? pathwayOptions[0];
+    const nextTopic = pathwayOptions.find((topic) => topic.pathwaySlug === nextSlug) ?? firstTopic;
     setTopicSlug(nextSlug);
-    setInstructions(getDefaultInstructions(mode, nextTopic.title));
+    setInstructions(getDefaultInstructions(mode, getPathwayDisplayTitle(nextTopic)));
     resetSaveState();
   }
 
   function updateMode(nextMode: StudyMode) {
     setMode(nextMode);
-    setInstructions(getDefaultInstructions(nextMode, selectedTopic.title));
+    setInstructions(getDefaultInstructions(nextMode, selectedTopicTitle));
     if (nextMode === 'exam_practice') setSelectedActivities(orderSelectedActivities(['quiz', 'ao3_interpretation', 'peel_response', 'confidence_exit_ticket']));
     else if (nextMode === 'recap') setSelectedActivities(orderSelectedActivities(['lesson_content', 'flashcards', 'quiz', 'confidence_exit_ticket']));
     else setSelectedActivities(orderSelectedActivities(fullGuidedStudyActivities));
@@ -153,27 +150,13 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
     }
   }
 
-  function renderTopicButtons(topics: typeof pathwayOptions) {
-    return topics.map((topic) => (
-      <button
-        type="button"
-        className={`${unitStyles.lessonButton} ${topicSlug === topic.pathwaySlug ? unitStyles.selectedLesson : ''}`}
-        key={topic.pathwaySlug}
-        onClick={() => updateTopic(topic.pathwaySlug)}
-      >
-        <strong>{topic.title}</strong>
-        <small>{topic.subtitle}</small>
-      </button>
-    ));
-  }
-
   return (
     <div className={styles.builder}>
       <section className={styles.card}>
         <header className={styles.header}>
           <div>
             <p className={styles.eyebrow}>Set guided study</p>
-            <h2>{selectedTopic.title}</h2>
+            <h2>{selectedTopicTitle}</h2>
             <p>Choose the topic, class, route type and the activities students will complete.</p>
           </div>
           <aside className={styles.headerSummary}>
@@ -185,22 +168,27 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
         <section className={styles.stepPanel}>
           <div className={styles.stepHeader}><span className={styles.stepNumber}>1</span><div><p className={styles.eyebrow}>Choose topic</p><h3>What should students study?</h3></div></div>
           <div className={unitStyles.unitList}>
-            <details className={unitStyles.unitGroup} open>
-              <summary className={unitStyles.unitSummary}>
-                <span className={unitStyles.unitSummaryText}><span>Unit 1</span><strong>{unitOne?.title ?? 'Alexander II'}</strong></span>
-                <span className={unitStyles.chevron}>⌄</span>
-              </summary>
-              <div className={unitStyles.lessonGrid}>{renderTopicButtons(unitOneTopics)}</div>
-            </details>
-            {otherTopics.length > 0 && (
-              <details className={unitStyles.unitGroup}>
+            {organisedUnits.map((unit) => (
+              <details className={unitStyles.unitGroup} key={`${unit.yearGroup}-${unit.unitNumber}`} open={unit.unitNumber === 1 && unit.yearGroup === 'Y12'}>
                 <summary className={unitStyles.unitSummary}>
-                  <span className={unitStyles.unitSummaryText}><span>Course library</span><strong>Other lessons</strong></span>
+                  <span className={unitStyles.unitSummaryText}><span>{unit.yearGroup} · Unit {unit.unitNumber}</span><strong>{unit.unitTitle}</strong></span>
                   <span className={unitStyles.chevron}>⌄</span>
                 </summary>
-                <div className={unitStyles.lessonGrid}>{renderTopicButtons(otherTopics)}</div>
+                <div className={unitStyles.lessonGrid}>
+                  {unit.lessons.map((topic) => (
+                    <button
+                      type="button"
+                      className={`${unitStyles.lessonButton} ${topicSlug === topic.pathwaySlug ? unitStyles.selectedLesson : ''}`}
+                      key={topic.pathwaySlug}
+                      onClick={() => updateTopic(topic.pathwaySlug)}
+                    >
+                      <strong>{topic.lessonNumber}. {topic.displayTitle}</strong>
+                      <small>{topic.subtitle}</small>
+                    </button>
+                  ))}
+                </div>
               </details>
-            )}
+            ))}
           </div>
         </section>
 
@@ -251,7 +239,7 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
             </div>
             <aside className={styles.summaryBox}>
               <p className={styles.eyebrow}>Teacher check</p><h3>Ready to set</h3>
-              <div className={styles.summaryLine}><span>Topic</span><strong>{selectedTopic.title}</strong></div>
+              <div className={styles.summaryLine}><span>Topic</span><strong>{selectedTopicTitle}</strong></div>
               <div className={styles.summaryLine}><span>Class</span><strong>{selectedClass.className}</strong></div>
               <div className={styles.summaryLine}><span>Students</span><strong>{selectedClass.studentCount}</strong></div>
               <div className={styles.summaryLine}><span>Route</span><strong>{getSelectedModeTitle(mode)}</strong></div>
