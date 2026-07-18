@@ -100,6 +100,16 @@ Longer-term ambitions include:
 
 # Current Development Status
 
+## Completed curriculum coverage
+
+The teacher guided-study picker now includes the completed pathway builds for:
+
+- **Unit 3:** The condition of Russia before 1894
+- **Unit 4:** Nicholas II and the road to 1905
+- **Unit 5:** War, collapse and revolution in 1917
+
+Unit 5 includes Russia before 1914, Russia and the First World War, the February Revolution, and the period from February to October 1917.
+
 ## Existing Features
 
 ### Activity System
