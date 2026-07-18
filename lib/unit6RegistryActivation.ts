@@ -1,4 +1,5 @@
 import { pathwayRegistry } from './pathwayRegistry';
+import './unit7RegistryActivation';
 
 const unitTitle='Lenin and the emergence of Communist dictatorship';
 const configs=[
