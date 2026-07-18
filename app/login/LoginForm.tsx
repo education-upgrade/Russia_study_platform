@@ -15,7 +15,7 @@ export default function LoginForm() {
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const configured = isSupabaseAuthConfigured();
-  const nextPath = useMemo(() => searchParams.get('next') || '/account', [searchParams]);
+  const nextPath = useMemo(() => searchParams.get('next') || '/portal', [searchParams]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
