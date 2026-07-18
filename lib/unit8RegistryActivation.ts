@@ -1,4 +1,5 @@
 import { pathwayRegistry, type PathwayConfig } from './pathwayRegistry';
+import './unit9RegistryActivation';
 
 const unitTitle='The Soviet Union at war and High Stalinism, 1941–53';
 export const unit8Pathways:PathwayConfig[]=[
