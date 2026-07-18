@@ -2,22 +2,28 @@ import Link from 'next/link';
 
 const teacherActions = [
   {
+    title: 'Manage classes',
+    body: 'Create teaching groups, generate secure join codes and connect students to the correct class.',
+    href: '/teacher/classes',
+    tone: 'teal',
+  },
+  {
     title: 'Set guided study',
     body: 'Choose the 1905 pathway mode, required activities, deadline and teacher instructions.',
     href: '/teacher/set-study',
-    tone: 'teal',
+    tone: 'lavender',
   },
   {
     title: 'Open live progress',
     body: 'See saved quiz scores, flashcard ratings, PEEL responses and confidence exit tickets from the 1905 pathway.',
     href: '/teacher/progress',
-    tone: 'lavender',
+    tone: 'warm',
   },
   {
     title: 'Preview student pathway',
     body: 'Check exactly what students see before setting or refining guided study.',
     href: '/student/lesson/1905',
-    tone: 'warm',
+    tone: 'teal',
   },
 ];
 
@@ -29,18 +35,18 @@ export default function TeacherDashboardPage() {
           <p className="eyebrow">Teacher command centre</p>
           <h1>Year 12 Russia guided study</h1>
           <p>
-            Start with the 1905 Revolution pilot pathway. The aim is simple: set meaningful study,
-            capture useful student evidence, and make the next teaching decision faster.
+            Create a real teaching group, set meaningful study, capture useful student evidence,
+            and make the next teaching decision faster.
           </p>
           <div className="button-row">
-            <Link className="button" href="/teacher/set-study">Set guided study</Link>
-            <Link className="button secondary" href="/teacher/progress">View live progress</Link>
+            <Link className="button" href="/teacher/classes">Manage classes</Link>
+            <Link className="button secondary" href="/teacher/set-study">Set guided study</Link>
           </div>
         </div>
         <aside className="teacher-hero-actions">
-          <p className="eyebrow">Current pilot</p>
-          <h2>1905 Revolution</h2>
-          <p>Lesson content, retrieval quiz, flashcards, PEEL paragraph and confidence exit ticket.</p>
+          <p className="eyebrow">Platform foundation</p>
+          <h2>Classes and memberships</h2>
+          <p>Teaching groups now provide the structure for assignments, students and future progress reporting.</p>
         </aside>
       </section>
 
@@ -56,20 +62,20 @@ export default function TeacherDashboardPage() {
       </section>
 
       <section className="card" style={{ marginTop: 24 }}>
-        <p className="eyebrow">Build logic</p>
-        <h2>What this dashboard is becoming</h2>
+        <p className="eyebrow">Classroom workflow</p>
+        <h2>From class creation to intervention</h2>
         <div className="lesson-section-grid improved">
           <article className="panel teal">
-            <h3>1. Set guided study</h3>
-            <p>Teachers choose a pathway, select activities, set deadlines and decide whether it is recap, exam practice or full guided study.</p>
+            <h3>1. Build the class</h3>
+            <p>Create the teaching group and share its six-character code with students.</p>
           </article>
           <article className="panel lavender">
-            <h3>2. Monitor evidence</h3>
-            <p>The dashboard turns activity completion into useful evidence: quiz accuracy, written response quality and confidence.</p>
+            <h3>2. Set guided study</h3>
+            <p>Assignments will next be attached to a real class rather than a demonstration identity.</p>
           </article>
           <article className="panel warm">
-            <h3>3. Intervene quickly</h3>
-            <p>The priority queue highlights who needs reteaching, feedback, reassurance or additional retrieval practice.</p>
+            <h3>3. Monitor evidence</h3>
+            <p>Completion, scores and written work will be connected to authenticated student memberships.</p>
           </article>
         </div>
       </section>
