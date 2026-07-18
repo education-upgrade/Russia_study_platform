@@ -11,7 +11,7 @@ export default async function TeacherClassesPage({ searchParams }: { searchParam
   const { data: teacherLinks } = supabase && auth
     ? await supabase
         .from('class_teachers')
-        .select('class_id, classes(id, name, academic_year, join_code, is_active, schools(name)), class_memberships(count)')
+        .select('class_id, classes(id, name, academic_year, join_code, is_active, schools(name))')
         .eq('teacher_id', auth.userId)
         .order('created_at', { ascending: false })
     : { data: [] };
@@ -67,7 +67,6 @@ export default async function TeacherClassesPage({ searchParams }: { searchParam
           ) : classes.map((link: any) => {
             const item = link.classes;
             const school = Array.isArray(item?.schools) ? item.schools[0] : item?.schools;
-            const membership = Array.isArray(link.class_memberships) ? link.class_memberships[0] : null;
             return (
               <article className="card" key={link.class_id}>
                 <p className="eyebrow">{school?.name || 'School'}</p>
@@ -75,7 +74,7 @@ export default async function TeacherClassesPage({ searchParams }: { searchParam
                 <p>{item?.academic_year || 'Academic year not set'}</p>
                 <div className="button-row compact">
                   <span className="status-pill secure">Code: {item?.join_code}</span>
-                  <span className="status-pill submitted">{membership?.count ?? 0} students</span>
+                  <span className="status-pill submitted">{item?.is_active ? 'Active' : 'Archived'}</span>
                 </div>
               </article>
             );
