@@ -1,4 +1,5 @@
 import { pathwayOptions, pathwayRegistry, type PathwayConfig } from './pathwayRegistry';
+import './unit8RegistryActivation';
 
 const unitTitle='Stalinist transformation and dictatorship, 1928–41';
 export const unit7Pathways:PathwayConfig[]=[
