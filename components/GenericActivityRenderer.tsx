@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import AssignmentActivityProgressBridge from './AssignmentActivityProgressBridge';
 import LessonContentActivity, { type LessonSection } from './LessonContentActivity';
 import FlashcardActivity from './FlashcardActivity';
 import QuizActivity from './QuizActivity';
@@ -50,6 +52,12 @@ function getLessonSections(content: any, fallbackContent: Record<string, any>) {
   return Array.isArray(fallbackContent?.sections)
     ? fallbackContent.sections.filter(isLessonSection)
     : [];
+}
+
+function withAssignment(href: string | undefined, assignmentId: string | null) {
+  if (!href || !assignmentId) return href;
+  const separator = href.includes('?') ? '&' : '?';
+  return `${href}${separator}assignment=${encodeURIComponent(assignmentId)}`;
 }
 
 function ReturnToPathway({ routeBase }: { routeBase: string }) {
@@ -119,52 +127,65 @@ export default function GenericActivityRenderer({
   fallbackContent = {},
   adaptiveSupport,
 }: Props) {
-  if (activityType === 'lesson_content') {
-    const sections = getLessonSections(content, fallbackContent);
-    return <ActivityShell routeBase={routeBase} adaptiveSupport={adaptiveSupport}><LessonContentActivity sections={sections} nextHref={nextHref} /></ActivityShell>;
+  const searchParams = useSearchParams();
+  const assignmentId = searchParams.get('assignment');
+  const assignmentRouteBase = withAssignment(routeBase, assignmentId) ?? routeBase;
+  const assignmentNextHref = withAssignment(nextHref, assignmentId);
+
+  function renderActivity() {
+    if (activityType === 'lesson_content') {
+      const sections = getLessonSections(content, fallbackContent);
+      return <ActivityShell routeBase={assignmentRouteBase} adaptiveSupport={adaptiveSupport}><LessonContentActivity sections={sections} nextHref={assignmentNextHref} /></ActivityShell>;
+    }
+
+    const normalisedContent = normaliseRendererContent(activityType, content, fallbackContent);
+
+    if (activityType === 'flashcards') {
+      const typedContent = normalisedContent as FlashcardContent;
+      return <ActivityShell routeBase={assignmentRouteBase} adaptiveSupport={adaptiveSupport}><FlashcardActivity activityId={activityId} cards={typedContent.cards} nextHref={assignmentNextHref} /></ActivityShell>;
+    }
+
+    if (activityType === 'quiz') {
+      const typedContent = normalisedContent as QuizContent;
+      return <ActivityShell routeBase={assignmentRouteBase} adaptiveSupport={adaptiveSupport}><QuizActivity activityId={activityId} questions={typedContent.questions} nextHref={assignmentNextHref} /></ActivityShell>;
+    }
+
+    if (activityType === 'timeline') {
+      const typedContent = normalisedContent as TimelineContent;
+      return <ActivityShell routeBase={assignmentRouteBase} adaptiveSupport={adaptiveSupport}><TimelineActivity activityId={activityId} events={typedContent.events} nextHref={assignmentNextHref} /></ActivityShell>;
+    }
+
+    if (activityType === 'card_sort') {
+      const typedContent = normalisedContent as CardSortContent;
+      return <ActivityShell routeBase={assignmentRouteBase} adaptiveSupport={adaptiveSupport}><CardSortActivity activityId={activityId} cards={typedContent.cards} categories={typedContent.categories} nextHref={assignmentNextHref} /></ActivityShell>;
+    }
+
+    if (activityType === 'judgement_ranking') {
+      const typedContent = normalisedContent as JudgementRankingContent;
+      return <ActivityShell routeBase={assignmentRouteBase} adaptiveSupport={adaptiveSupport}><JudgementRankingActivity activityId={activityId} factors={typedContent.factors} question={typedContent.question} nextHref={assignmentNextHref} /></ActivityShell>;
+    }
+
+    if (activityType === 'ao3_interpretation') {
+      const typedContent = normalisedContent as AO3InterpretationContent;
+      return <ActivityShell routeBase={assignmentRouteBase} adaptiveSupport={adaptiveSupport}><AO3InterpretationActivity activityId={activityId} question={typedContent.question} interpretations={typedContent.interpretations} nextHref={assignmentNextHref} /></ActivityShell>;
+    }
+
+    if (activityType === 'peel_response') {
+      const typedContent = normalisedContent as PeelResponseContent;
+      return <ActivityShell routeBase={assignmentRouteBase} adaptiveSupport={adaptiveSupport}><PeelResponseActivity activityId={activityId} question={typedContent.question} stretchQuestion={typedContent.stretchQuestion} scaffold={typedContent.scaffold} nextHref={assignmentNextHref} /></ActivityShell>;
+    }
+
+    if (activityType === 'confidence_exit_ticket') {
+      const typedContent = normalisedContent as ConfidenceExitTicketContent;
+      return <ActivityShell routeBase={assignmentRouteBase} adaptiveSupport={adaptiveSupport}><ConfidenceExitTicketActivity activityId={activityId} prompt={typedContent.prompt} scale={typedContent.scale} leastSecureOptions={typedContent.leastSecureOptions} /></ActivityShell>;
+    }
+
+    return <ActivityShell routeBase={assignmentRouteBase} adaptiveSupport={adaptiveSupport}><ComingSoonActivityRenderer title={pathwayTitle} activityLabel={activityType} pathwayHref={assignmentRouteBase} nextHref={assignmentNextHref} /></ActivityShell>;
   }
 
-  const normalisedContent = normaliseRendererContent(activityType, content, fallbackContent);
-
-  if (activityType === 'flashcards') {
-    const typedContent = normalisedContent as FlashcardContent;
-    return <ActivityShell routeBase={routeBase} adaptiveSupport={adaptiveSupport}><FlashcardActivity activityId={activityId} cards={typedContent.cards} nextHref={nextHref} /></ActivityShell>;
-  }
-
-  if (activityType === 'quiz') {
-    const typedContent = normalisedContent as QuizContent;
-    return <ActivityShell routeBase={routeBase} adaptiveSupport={adaptiveSupport}><QuizActivity activityId={activityId} questions={typedContent.questions} nextHref={nextHref} /></ActivityShell>;
-  }
-
-  if (activityType === 'timeline') {
-    const typedContent = normalisedContent as TimelineContent;
-    return <ActivityShell routeBase={routeBase} adaptiveSupport={adaptiveSupport}><TimelineActivity activityId={activityId} events={typedContent.events} nextHref={nextHref} /></ActivityShell>;
-  }
-
-  if (activityType === 'card_sort') {
-    const typedContent = normalisedContent as CardSortContent;
-    return <ActivityShell routeBase={routeBase} adaptiveSupport={adaptiveSupport}><CardSortActivity activityId={activityId} cards={typedContent.cards} categories={typedContent.categories} nextHref={nextHref} /></ActivityShell>;
-  }
-
-  if (activityType === 'judgement_ranking') {
-    const typedContent = normalisedContent as JudgementRankingContent;
-    return <ActivityShell routeBase={routeBase} adaptiveSupport={adaptiveSupport}><JudgementRankingActivity activityId={activityId} factors={typedContent.factors} question={typedContent.question} nextHref={nextHref} /></ActivityShell>;
-  }
-
-  if (activityType === 'ao3_interpretation') {
-    const typedContent = normalisedContent as AO3InterpretationContent;
-    return <ActivityShell routeBase={routeBase} adaptiveSupport={adaptiveSupport}><AO3InterpretationActivity activityId={activityId} question={typedContent.question} interpretations={typedContent.interpretations} nextHref={nextHref} /></ActivityShell>;
-  }
-
-  if (activityType === 'peel_response') {
-    const typedContent = normalisedContent as PeelResponseContent;
-    return <ActivityShell routeBase={routeBase} adaptiveSupport={adaptiveSupport}><PeelResponseActivity activityId={activityId} question={typedContent.question} stretchQuestion={typedContent.stretchQuestion} scaffold={typedContent.scaffold} nextHref={nextHref} /></ActivityShell>;
-  }
-
-  if (activityType === 'confidence_exit_ticket') {
-    const typedContent = normalisedContent as ConfidenceExitTicketContent;
-    return <ActivityShell routeBase={routeBase} adaptiveSupport={adaptiveSupport}><ConfidenceExitTicketActivity activityId={activityId} prompt={typedContent.prompt} scale={typedContent.scale} leastSecureOptions={typedContent.leastSecureOptions} /></ActivityShell>;
-  }
-
-  return <ActivityShell routeBase={routeBase} adaptiveSupport={adaptiveSupport}><ComingSoonActivityRenderer title={pathwayTitle} activityLabel={activityType} pathwayHref={routeBase} nextHref={nextHref} /></ActivityShell>;
+  return (
+    <AssignmentActivityProgressBridge activityType={activityType}>
+      {renderActivity()}
+    </AssignmentActivityProgressBridge>
+  );
 }
