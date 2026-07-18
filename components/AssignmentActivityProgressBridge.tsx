@@ -16,13 +16,12 @@ const completionLabels = [
   'completed',
   'submit',
   'continue',
-  'return to pathway',
 ];
 
 function isCompletionControl(target: EventTarget | null) {
   if (!(target instanceof Element)) return false;
-  const control = target.closest('button, a, [role="button"]');
-  if (!control) return false;
+  const control = target.closest('button, [role="button"]');
+  if (!control || control.hasAttribute('disabled')) return false;
   const label = (control.textContent ?? '').trim().toLowerCase();
   return completionLabels.some((candidate) => label === candidate || label.startsWith(`${candidate} `));
 }
