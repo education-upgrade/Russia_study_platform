@@ -1,21 +1,8 @@
 import Link from 'next/link';
 import GuidedStudyAssignmentForm from '@/components/GuidedStudyAssignmentForm';
-import { supabase } from '@/lib/supabase';
+import { requireRoles } from '@/lib/auth/access';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 import styles from './page.module.css';
-
-type GuidedStudyAssignment = {
-  id: string;
-  mode: string;
-  required_activity_types: string[];
-  deadline_at: string | null;
-  instructions: string | null;
-  assigned_class: string;
-  status: string;
-  created_at: string;
-  recipient_count?: number | null;
-  pathway_slug?: string | null;
-  lesson_title?: string | null;
-};
 
 type ClassOption = {
   id: string;
@@ -24,31 +11,19 @@ type ClassOption = {
   studentCount: number;
 };
 
-type TeacherClassRow = {
+type AssignmentRow = {
   id: string;
-  class_name: string;
-  year_group: string;
+  mode: string;
+  required_activity_types: string[];
+  due_at: string | null;
+  instructions: string | null;
+  status: string;
+  created_at: string;
+  pathway_slug: string;
+  lesson_title: string;
+  teaching_classes: { name: string } | { name: string }[] | null;
+  assignment_recipients: { count: number }[] | null;
 };
-
-type ClassMembershipRow = {
-  class_id: string;
-  student_id: string;
-};
-
-const fallbackClasses: ClassOption[] = [
-  {
-    id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-    className: 'Year 12 Russia demo class',
-    yearGroup: 'Y12',
-    studentCount: 1,
-  },
-  {
-    id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-    className: 'Year 13 Russia demo class',
-    yearGroup: 'Y13',
-    studentCount: 0,
-  },
-];
 
 function formatMode(mode: string) {
   return mode.replaceAll('_', ' ');
@@ -64,125 +39,107 @@ function formatDate(value: string | null) {
   });
 }
 
-function buildClassOptions(classes: TeacherClassRow[], memberships: ClassMembershipRow[]) {
-  const classMap = new Map<string, ClassOption>();
-
-  fallbackClasses.forEach((classOption) => classMap.set(classOption.id, classOption));
-
-  classes.forEach((classRow) => {
-    classMap.set(classRow.id, {
-      id: classRow.id,
-      className: classRow.class_name,
-      yearGroup: classRow.year_group,
-      studentCount: memberships.filter((membership) => membership.class_id === classRow.id).length,
-    });
-  });
-
-  return Array.from(classMap.values()).sort((first, second) => {
-    if (first.yearGroup !== second.yearGroup) return first.yearGroup.localeCompare(second.yearGroup);
-    return first.className.localeCompare(second.className);
-  });
-}
-
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function SetStudyPage() {
-  let assignments: GuidedStudyAssignment[] = [];
-  let assignmentError = '';
-  let classOptions: ClassOption[] = fallbackClasses;
-  let classSetupWarning = '';
+  const auth = await requireRoles(['teacher', 'admin']);
+  const supabase = await createServerSupabaseClient();
 
-  if (supabase) {
-    const { data, error } = await supabase
-      .from('guided_study_assignments')
-      .select('id, mode, required_activity_types, deadline_at, instructions, assigned_class, status, created_at, recipient_count, pathway_slug, lesson_title')
-      .order('created_at', { ascending: false })
-      .limit(5);
+  let classOptions: ClassOption[] = [];
+  let assignments: AssignmentRow[] = [];
+  let setupWarning = '';
 
-    assignments = (data ?? []) as GuidedStudyAssignment[];
-    assignmentError = error?.message ?? '';
+  if (supabase && auth) {
+    const { data: teacherLinks, error: classError } = await supabase
+      .from('class_teachers')
+      .select('class_id, teaching_classes(id, name, academic_year, is_active)')
+      .eq('teacher_id', auth.userId)
+      .order('created_at', { ascending: false });
 
-    const { data: classData, error: classError } = await supabase
-      .from('teacher_classes')
-      .select('id, class_name, year_group')
-      .eq('status', 'active')
-      .order('year_group', { ascending: true })
-      .order('class_name', { ascending: true });
-
-    const { data: membershipData, error: membershipError } = await supabase
-      .from('class_memberships')
-      .select('class_id, student_id')
-      .eq('status', 'active');
-
-    if (classError || membershipError) {
-      classSetupWarning = classError?.message ?? membershipError?.message ?? '';
+    if (classError) {
+      setupWarning = classError.message;
     } else {
-      classOptions = buildClassOptions((classData ?? []) as TeacherClassRow[], (membershipData ?? []) as ClassMembershipRow[]);
+      const activeClasses = (teacherLinks ?? []).flatMap((link: any) => {
+        const teachingClass = Array.isArray(link.teaching_classes) ? link.teaching_classes[0] : link.teaching_classes;
+        return teachingClass?.is_active ? [teachingClass] : [];
+      });
+      const classIds = activeClasses.map((item: any) => item.id);
+      const membershipCounts = new Map<string, number>();
+
+      if (classIds.length) {
+        const { data: membershipRows, error: membershipError } = await supabase
+          .from('class_memberships')
+          .select('class_id')
+          .in('class_id', classIds)
+          .eq('status', 'active');
+
+        if (membershipError) setupWarning = setupWarning || membershipError.message;
+        (membershipRows ?? []).forEach((row: any) => {
+          membershipCounts.set(row.class_id, (membershipCounts.get(row.class_id) ?? 0) + 1);
+        });
+      }
+
+      classOptions = activeClasses.map((teachingClass: any) => ({
+        id: teachingClass.id,
+        className: teachingClass.name,
+        yearGroup: teachingClass.academic_year || 'Class',
+        studentCount: membershipCounts.get(teachingClass.id) ?? 0,
+      }));
     }
+
+    const { data: assignmentData, error: assignmentError } = await supabase
+      .from('classroom_assignments')
+      .select('id, mode, required_activity_types, due_at, instructions, status, created_at, pathway_slug, lesson_title, teaching_classes(name), assignment_recipients(count)')
+      .order('created_at', { ascending: false })
+      .limit(8);
+
+    if (assignmentError) setupWarning = setupWarning || assignmentError.message;
+    assignments = (assignmentData ?? []) as AssignmentRow[];
   }
 
   return (
     <main className={styles.shell}>
       <div className={styles.topbar}>
         <span>Teacher / Set guided study</span>
+        <Link className={styles.navButton} href="/teacher/classes">My classes</Link>
         <Link className={styles.navButton} href="/teacher/progress">Progress</Link>
         <Link className={styles.navButton} href="/student/dashboard">Student view</Link>
       </div>
 
-      {!supabase && (
-        <section className={styles.notice}>
-          Supabase is not configured. Add the environment variables in Vercel and redeploy before creating assignments.
-        </section>
-      )}
+      {setupWarning && <section className={styles.notice}>Assignment setup warning: {setupWarning}</section>}
 
-      {assignmentError && (
+      {classOptions.length === 0 ? (
         <section className={styles.notice}>
-          Assignment setup warning: {assignmentError}. Run supabase/guided-study-assignments.sql in Supabase SQL Editor if needed.
+          No active classes are connected to your account yet. Create a class on the My Classes page before setting guided study.{' '}
+          <Link href="/teacher/classes">Open My Classes</Link>
         </section>
+      ) : (
+        <GuidedStudyAssignmentForm classOptions={classOptions} />
       )}
-
-      {classSetupWarning && (
-        <section className={styles.notice}>
-          Class setup warning: {classSetupWarning}. Run supabase/multi-class-platform.sql in Supabase SQL Editor to enable class targeting.
-        </section>
-      )}
-
-      <GuidedStudyAssignmentForm classOptions={classOptions} />
 
       <section className={styles.history}>
         <div className={styles.historyHeader}>
-          <div>
-            <p className={styles.eyebrow}>Recently set</p>
-            <h2>Assignment history</h2>
-          </div>
+          <div><p className={styles.eyebrow}>Recently set</p><h2>Assignment history</h2></div>
           <span className={styles.badge}>Newest first</span>
         </div>
 
         {assignments.length === 0 ? (
-          <div className={styles.empty}>
-            <h3>No assignments yet</h3>
-            <p>Create the first assignment above. It will appear on the student dashboard.</p>
-          </div>
+          <div className={styles.empty}><h3>No real assignments yet</h3><p>Create and publish the first assignment above. It will be linked to your selected class.</p></div>
         ) : (
           <div className={styles.assignmentList}>
-            {assignments.map((assignment) => (
-              <article className={styles.assignmentRow} key={assignment.id}>
-                <div>
-                  <strong>{assignment.assigned_class}</strong>
-                  <small>{assignment.recipient_count ?? 1} student{(assignment.recipient_count ?? 1) === 1 ? '' : 's'} · {assignment.status}</small>
-                </div>
-                <div>
-                  <strong>{assignment.lesson_title ?? assignment.pathway_slug ?? 'Guided study'}</strong>
-                  <small>{formatMode(assignment.mode)} · {assignment.required_activity_types.length} activities</small>
-                </div>
-                <div>
-                  <strong>{formatDate(assignment.deadline_at)}</strong>
-                  <small>Deadline</small>
-                </div>
-                <span className={styles.status}>Set</span>
-              </article>
-            ))}
+            {assignments.map((assignment) => {
+              const teachingClass = Array.isArray(assignment.teaching_classes) ? assignment.teaching_classes[0] : assignment.teaching_classes;
+              const recipientCount = assignment.assignment_recipients?.[0]?.count ?? 0;
+              return (
+                <article className={styles.assignmentRow} key={assignment.id}>
+                  <div><strong>{teachingClass?.name ?? 'Class'}</strong><small>{recipientCount} student{recipientCount === 1 ? '' : 's'} · {assignment.status}</small></div>
+                  <div><strong>{assignment.lesson_title}</strong><small>{formatMode(assignment.mode)} · {assignment.required_activity_types.length} activities</small></div>
+                  <div><strong>{formatDate(assignment.due_at)}</strong><small>Deadline</small></div>
+                  <span className={styles.status}>{assignment.status === 'published' ? 'Published' : assignment.status}</span>
+                </article>
+              );
+            })}
           </div>
         )}
       </section>

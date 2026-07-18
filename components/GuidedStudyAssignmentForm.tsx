@@ -17,13 +17,8 @@ type ClassOption = {
 };
 
 type GuidedStudyAssignmentFormProps = {
-  classOptions?: ClassOption[];
+  classOptions: ClassOption[];
 };
-
-const fallbackClasses: ClassOption[] = [
-  { id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', className: 'Year 12 Russia demo class', yearGroup: 'Y12', studentCount: 1 },
-  { id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', className: 'Year 13 Russia demo class', yearGroup: 'Y13', studentCount: 0 },
-];
 
 const fullGuidedStudyActivities = [
   'lesson_content',
@@ -75,10 +70,10 @@ function getDisplayActivityLabel(activityType: string) {
   return activityOptions.find((activity) => activity.value === activityType)?.label ?? getActivityLabel(activityType);
 }
 
-export default function GuidedStudyAssignmentForm({ classOptions = fallbackClasses }: GuidedStudyAssignmentFormProps) {
-  const usableClassOptions = classOptions.length ? classOptions : fallbackClasses;
+export default function GuidedStudyAssignmentForm({ classOptions }: GuidedStudyAssignmentFormProps) {
+  const firstClass = classOptions[0];
   const firstTopic = organisedUnits[0]?.lessons[0] ?? pathwayOptions[0];
-  const [classId, setClassId] = useState(usableClassOptions[0]?.id ?? fallbackClasses[0].id);
+  const [classId, setClassId] = useState(firstClass.id);
   const [topicSlug, setTopicSlug] = useState(firstTopic.pathwaySlug);
   const selectedTopic = pathwayOptions.find((topic) => topic.pathwaySlug === topicSlug) ?? firstTopic;
   const selectedTopicTitle = getPathwayDisplayTitle(selectedTopic);
@@ -88,7 +83,7 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
   const [instructions, setInstructions] = useState(getDefaultInstructions('full_guided_study', selectedTopicTitle));
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [saveMessage, setSaveMessage] = useState('');
-  const selectedClass = usableClassOptions.find((option) => option.id === classId) ?? usableClassOptions[0];
+  const selectedClass = classOptions.find((option) => option.id === classId) ?? firstClass;
 
   const deadlineLabel = useMemo(() => {
     if (!deadlineAt) return 'No deadline set';
@@ -125,7 +120,7 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
 
   async function createAssignment() {
     setSaveStatus('saving');
-    setSaveMessage('Creating guided study assignment...');
+    setSaveMessage('Publishing guided study assignment...');
     try {
       const response = await fetch('/api/guided-study', {
         method: 'POST',
@@ -141,9 +136,9 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
         }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.setupHint ? `${result.error} ${result.setupHint}` : result.error ?? 'Assignment could not be created.');
+      if (!response.ok) throw new Error(result.error ?? 'Assignment could not be created.');
       setSaveStatus('saved');
-      setSaveMessage(`Assignment created for ${result.recipientCount ?? selectedClass.studentCount} student${(result.recipientCount ?? selectedClass.studentCount) === 1 ? '' : 's'}. Route: ${result.route ?? selectedActivities.map(getDisplayActivityLabel).join(' → ')}`);
+      setSaveMessage(`Published for ${result.recipientCount ?? 0} student${(result.recipientCount ?? 0) === 1 ? '' : 's'}. Route: ${result.route ?? selectedActivities.map(getDisplayActivityLabel).join(' → ')}`);
     } catch (error) {
       setSaveStatus('error');
       setSaveMessage(error instanceof Error ? error.message : 'Assignment could not be created.');
@@ -154,15 +149,8 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
     <div className={styles.builder}>
       <section className={styles.card}>
         <header className={styles.header}>
-          <div>
-            <p className={styles.eyebrow}>Set guided study</p>
-            <h2>{selectedTopicTitle}</h2>
-            <p>Choose the topic, class, route type and the activities students will complete.</p>
-          </div>
-          <aside className={styles.headerSummary}>
-            <span>Selected lesson</span>
-            <strong>{selectedTopic.yearGroup} · {selectedActivities.length} activities</strong>
-          </aside>
+          <div><p className={styles.eyebrow}>Set guided study</p><h2>{selectedTopicTitle}</h2><p>Choose the topic, class, route type and the activities students will complete.</p></div>
+          <aside className={styles.headerSummary}><span>Selected lesson</span><strong>{selectedTopic.yearGroup} · {selectedActivities.length} activities</strong></aside>
         </header>
 
         <section className={styles.stepPanel}>
@@ -170,20 +158,11 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
           <div className={unitStyles.unitList}>
             {organisedUnits.map((unit) => (
               <details className={unitStyles.unitGroup} key={`${unit.yearGroup}-${unit.unitNumber}`} open={unit.unitNumber === 1 && unit.yearGroup === 'Y12'}>
-                <summary className={unitStyles.unitSummary}>
-                  <span className={unitStyles.unitSummaryText}><span>{unit.yearGroup} · Unit {unit.unitNumber}</span><strong>{unit.unitTitle}</strong></span>
-                  <span className={unitStyles.chevron}>⌄</span>
-                </summary>
+                <summary className={unitStyles.unitSummary}><span className={unitStyles.unitSummaryText}><span>{unit.yearGroup} · Unit {unit.unitNumber}</span><strong>{unit.unitTitle}</strong></span><span className={unitStyles.chevron}>⌄</span></summary>
                 <div className={unitStyles.lessonGrid}>
                   {unit.lessons.map((topic) => (
-                    <button
-                      type="button"
-                      className={`${unitStyles.lessonButton} ${topicSlug === topic.pathwaySlug ? unitStyles.selectedLesson : ''}`}
-                      key={topic.pathwaySlug}
-                      onClick={() => updateTopic(topic.pathwaySlug)}
-                    >
-                      <strong>{topic.lessonNumber}. {topic.displayTitle}</strong>
-                      <small>{topic.subtitle}</small>
+                    <button type="button" className={`${unitStyles.lessonButton} ${topicSlug === topic.pathwaySlug ? unitStyles.selectedLesson : ''}`} key={topic.pathwaySlug} onClick={() => updateTopic(topic.pathwaySlug)}>
+                      <strong>{topic.lessonNumber}. {topic.displayTitle}</strong><small>{topic.subtitle}</small>
                     </button>
                   ))}
                 </div>
@@ -195,7 +174,7 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
         <section className={styles.stepPanel}>
           <div className={styles.stepHeader}><span className={styles.stepNumber}>2</span><div><p className={styles.eyebrow}>Choose class</p><h3>Who is this for?</h3></div></div>
           <div className={styles.classGrid}>
-            {usableClassOptions.map((option) => (
+            {classOptions.map((option) => (
               <button type="button" className={`${styles.classButton} ${classId === option.id ? styles.selectedClass : ''}`} key={option.id} onClick={() => { setClassId(option.id); resetSaveState(); }}>
                 <strong>{option.className}</strong><span>{option.yearGroup} · {option.studentCount} student{option.studentCount === 1 ? '' : 's'}</span>
               </button>
@@ -205,48 +184,27 @@ export default function GuidedStudyAssignmentForm({ classOptions = fallbackClass
 
         <section className={styles.stepPanel}>
           <div className={styles.stepHeader}><span className={styles.stepNumber}>3</span><div><p className={styles.eyebrow}>Choose route</p><h3>What kind of study?</h3></div></div>
-          <div className={styles.modeStrip}>
-            {modeOptions.map((option) => (
-              <button type="button" className={`${styles.modeButton} ${mode === option.value ? styles.selected : ''}`} key={option.value} onClick={() => updateMode(option.value)}>
-                <strong>{option.title}</strong><span>{option.description}</span><small>{option.bestFor}</small>
-              </button>
-            ))}
-          </div>
+          <div className={styles.modeStrip}>{modeOptions.map((option) => <button type="button" className={`${styles.modeButton} ${mode === option.value ? styles.selected : ''}`} key={option.value} onClick={() => updateMode(option.value)}><strong>{option.title}</strong><span>{option.description}</span><small>{option.bestFor}</small></button>)}</div>
         </section>
 
         <section className={styles.stepPanel}>
           <div className={styles.stepHeader}><span className={styles.stepNumber}>4</span><div><p className={styles.eyebrow}>Review activities</p><h3>What will students complete?</h3></div></div>
-          <div className={styles.activityList}>
-            {activityOptions.map((activity) => {
-              const selectedIndex = selectedActivities.indexOf(activity.value);
-              return (
-                <label className={`${styles.activityChoice} ${selectedIndex !== -1 ? styles.selected : ''}`} key={activity.value}>
-                  <input type="checkbox" checked={selectedIndex !== -1} onChange={() => toggleActivity(activity.value)} />
-                  <span><strong>{activity.label}</strong><small>{activity.description}</small></span>
-                  <span className={styles.orderBadge}>{selectedIndex === -1 ? '–' : selectedIndex + 1}</span>
-                </label>
-              );
-            })}
-          </div>
+          <div className={styles.activityList}>{activityOptions.map((activity) => { const selectedIndex = selectedActivities.indexOf(activity.value); return <label className={`${styles.activityChoice} ${selectedIndex !== -1 ? styles.selected : ''}`} key={activity.value}><input type="checkbox" checked={selectedIndex !== -1} onChange={() => toggleActivity(activity.value)} /><span><strong>{activity.label}</strong><small>{activity.description}</small></span><span className={styles.orderBadge}>{selectedIndex === -1 ? '–' : selectedIndex + 1}</span></label>; })}</div>
         </section>
 
         <section className={styles.stepPanel}>
-          <div className={styles.stepHeader}><span className={styles.stepNumber}>5</span><div><p className={styles.eyebrow}>Set and save</p><h3>Confirm the assignment</h3></div></div>
+          <div className={styles.stepHeader}><span className={styles.stepNumber}>5</span><div><p className={styles.eyebrow}>Set and publish</p><h3>Confirm the assignment</h3></div></div>
           <div className={styles.confirmGrid}>
-            <div className={styles.finalControls}>
-              <label className={styles.field}><span>Deadline</span><input type="datetime-local" value={deadlineAt} onChange={(event) => { setDeadlineAt(event.target.value); resetSaveState(); }} /></label>
-              <label className={styles.field}><span>Student instruction</span><textarea value={instructions} onChange={(event) => { setInstructions(event.target.value); resetSaveState(); }} rows={4} /></label>
-            </div>
+            <div className={styles.finalControls}><label className={styles.field}><span>Deadline</span><input type="datetime-local" value={deadlineAt} onChange={(event) => { setDeadlineAt(event.target.value); resetSaveState(); }} /></label><label className={styles.field}><span>Student instruction</span><textarea value={instructions} onChange={(event) => { setInstructions(event.target.value); resetSaveState(); }} rows={4} /></label></div>
             <aside className={styles.summaryBox}>
-              <p className={styles.eyebrow}>Teacher check</p><h3>Ready to set</h3>
+              <p className={styles.eyebrow}>Teacher check</p><h3>Ready to publish</h3>
               <div className={styles.summaryLine}><span>Topic</span><strong>{selectedTopicTitle}</strong></div>
               <div className={styles.summaryLine}><span>Class</span><strong>{selectedClass.className}</strong></div>
               <div className={styles.summaryLine}><span>Students</span><strong>{selectedClass.studentCount}</strong></div>
               <div className={styles.summaryLine}><span>Route</span><strong>{getSelectedModeTitle(mode)}</strong></div>
               <div className={styles.summaryLine}><span>Activities</span><strong>{selectedActivities.map(getDisplayActivityLabel).join(' → ')}</strong></div>
               <div className={styles.summaryLine}><span>Deadline</span><strong>{deadlineLabel}</strong></div>
-              <div className={styles.summaryLine}><span>Last activity</span><strong>{selectedActivities.at(-1) === 'confidence_exit_ticket' ? 'Confidence check' : getDisplayActivityLabel(selectedActivities.at(-1) ?? '')}</strong></div>
-              <button type="button" className={styles.submitButton} onClick={createAssignment} disabled={saveStatus === 'saving' || selectedActivities.length === 0}>{saveStatus === 'saving' ? 'Creating...' : `Set for ${selectedClass.yearGroup}`}</button>
+              <button type="button" className={styles.submitButton} onClick={createAssignment} disabled={saveStatus === 'saving' || selectedActivities.length === 0}>{saveStatus === 'saving' ? 'Publishing...' : `Publish for ${selectedClass.className}`}</button>
               {saveMessage && <p className={`${styles.saveMessage} ${styles[saveStatus]}`}><strong>Status:</strong> {saveMessage}</p>}
             </aside>
           </div>
