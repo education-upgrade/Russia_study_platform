@@ -1,3 +1,4 @@
+import '@/lib/unit6RegistryActivation';
 import ModularPathwayPage from '@/components/pathway/ModularPathwayPage';
 import {warCommunismPathwaySlug as slug,warCommunismFallbacks as fallbacks} from '@/lib/pathwayWarCommunismContent';
 export const dynamic='force-dynamic'; export const revalidate=0;
