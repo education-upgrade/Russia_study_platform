@@ -1,4 +1,4 @@
-import { pathwayRegistry, type PathwayConfig } from './pathwayRegistry';
+import { pathwayOptions, pathwayRegistry, type PathwayConfig } from './pathwayRegistry';
 
 const unitTitle='Stalinist transformation and dictatorship, 1928–41';
 export const unit7Pathways:PathwayConfig[]=[
@@ -9,4 +9,8 @@ export const unit7Pathways:PathwayConfig[]=[
 {pathwaySlug:'great-terror',title:'The Great Terror',lessonTitle:'Why did the Great Terror develop and what did it achieve?',subtitle:'Kirov, show trials, mass operations, the NKVD, the army purge and consequences',yearGroup:'Y13',courseWeek:5,unitNumber:7,unitTitle,mainFocus:'Causes, mechanisms, scale and consequences of repression',writtenFocus:'Causation and responsibility essay',writtenFocusType:'AO3_INTERPRETATIONS',breadthLenses:['governance','opposition','individuals','society'],status:'ready',routeBase:'/student/lesson/great-terror'},
 {pathwaySlug:'stalin-dictatorship-control',title:'Stalin’s dictatorship and control',lessonTitle:'How did Stalin establish and maintain dictatorship by 1941?',subtitle:'Party machinery, patronage, terror, propaganda, the cult and participation',yearGroup:'Y13',courseWeek:6,unitNumber:7,unitTitle,mainFocus:'The foundations, reach and limits of Stalin’s personal dictatorship',writtenFocus:'Relative importance of methods of control',writtenFocusType:'ESSAY_PLAN',breadthLenses:['governance','ideology','opposition','individuals'],status:'ready',routeBase:'/student/lesson/stalin-dictatorship-control'}
 ];
-for(const config of unit7Pathways){pathwayRegistry[config.pathwaySlug]=config;}
+for(const config of unit7Pathways){
+ pathwayRegistry[config.pathwaySlug]=config;
+ if(!pathwayOptions.some(existing=>existing.pathwaySlug===config.pathwaySlug)) pathwayOptions.push(config);
+}
+pathwayOptions.sort((a,b)=>a.yearGroup!==b.yearGroup?a.yearGroup.localeCompare(b.yearGroup):a.unitNumber!==b.unitNumber?a.unitNumber-b.unitNumber:a.courseWeek-b.courseWeek);
