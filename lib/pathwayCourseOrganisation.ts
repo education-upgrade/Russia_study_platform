@@ -1,5 +1,6 @@
 import { pathwayOptions, type PathwayConfig } from './pathwayRegistry';
 import { unit7Pathways } from './unit7RegistryActivation';
+import { unit8Pathways } from './unit8RegistryActivation';
 
 const displayTitleOverrides: Record<string, string> = {
   'russia-1855': 'Russia in 1855',
@@ -31,6 +32,12 @@ const displayTitleOverrides: Record<string, string> = {
   'stalinist-society-culture': 'Stalinist Society and Culture',
   'great-terror': 'The Great Terror',
   'stalin-dictatorship-control': 'Stalin’s Dictatorship and Control',
+  'barbarossa-stalin-leadership': 'Barbarossa and Stalin’s Wartime Leadership',
+  'wartime-politics-opposition-nationalities': 'Wartime Politics, Opposition and Nationalities',
+  'wartime-economy-mobilisation': 'The Wartime Economy and Mobilisation',
+  'soviet-society-at-war': 'Soviet Society at War',
+  'victory-impact-1945': 'Victory and Its Impact',
+  'high-stalinism-1945-53': 'High Stalinism, 1945–53',
 };
 
 const builtPathwaySlugs = new Set([
@@ -42,6 +49,7 @@ const builtPathwaySlugs = new Set([
   'lenin-ideology-change', 'bolshevik-consolidation', 'civil-war',
   'war-communism', 'nep', 'struggle-after-lenin',
   ...unit7Pathways.map((pathway) => pathway.pathwaySlug),
+  ...unit8Pathways.map((pathway) => pathway.pathwaySlug),
 ]);
 
 const unit6Title = 'Lenin and the emergence of Communist dictatorship';
@@ -53,7 +61,7 @@ const unit6AdditionalPathways: PathwayConfig[] = [
   { pathwaySlug: 'struggle-after-lenin', title: 'The struggle for power after Lenin', lessonTitle: 'Why did Stalin win the power struggle after Lenin?', subtitle: 'Contenders, General Secretaryship, alliances, ideology and rivals’ mistakes', yearGroup: 'Y13', courseWeek: 6, unitNumber: 6, unitTitle: unit6Title, mainFocus: 'Party machinery, ideological positioning, alliances and opposition weakness', writtenFocus: '25-mark causal judgement', writtenFocusType: 'ESSAY_PLAN', breadthLenses: ['governance', 'opposition', 'ideology', 'individuals'], status: 'ready', routeBase: '/student/lesson/struggle-after-lenin' },
 ];
 
-for (const pathway of [...unit6AdditionalPathways, ...unit7Pathways]) {
+for (const pathway of [...unit6AdditionalPathways, ...unit7Pathways, ...unit8Pathways]) {
   if (!pathwayOptions.some((existing) => existing.pathwaySlug === pathway.pathwaySlug)) {
     pathwayOptions.push(pathway);
   }
