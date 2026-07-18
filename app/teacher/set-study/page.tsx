@@ -53,24 +53,39 @@ export default async function SetStudyPage() {
   if (supabase && auth) {
     const { data: teacherLinks, error: classError } = await supabase
       .from('class_teachers')
-      .select('class_id, teaching_classes(id, name, academic_year, is_active), class_memberships(count)')
+      .select('class_id, teaching_classes(id, name, academic_year, is_active)')
       .eq('teacher_id', auth.userId)
       .order('created_at', { ascending: false });
 
     if (classError) {
       setupWarning = classError.message;
     } else {
-      classOptions = (teacherLinks ?? []).flatMap((link: any) => {
+      const activeClasses = (teacherLinks ?? []).flatMap((link: any) => {
         const teachingClass = Array.isArray(link.teaching_classes) ? link.teaching_classes[0] : link.teaching_classes;
-        const membership = Array.isArray(link.class_memberships) ? link.class_memberships[0] : null;
-        if (!teachingClass?.is_active) return [];
-        return [{
-          id: teachingClass.id,
-          className: teachingClass.name,
-          yearGroup: teachingClass.academic_year || 'Class',
-          studentCount: membership?.count ?? 0,
-        }];
+        return teachingClass?.is_active ? [teachingClass] : [];
       });
+      const classIds = activeClasses.map((item: any) => item.id);
+      const membershipCounts = new Map<string, number>();
+
+      if (classIds.length) {
+        const { data: membershipRows, error: membershipError } = await supabase
+          .from('class_memberships')
+          .select('class_id')
+          .in('class_id', classIds)
+          .eq('status', 'active');
+
+        if (membershipError) setupWarning = setupWarning || membershipError.message;
+        (membershipRows ?? []).forEach((row: any) => {
+          membershipCounts.set(row.class_id, (membershipCounts.get(row.class_id) ?? 0) + 1);
+        });
+      }
+
+      classOptions = activeClasses.map((teachingClass: any) => ({
+        id: teachingClass.id,
+        className: teachingClass.name,
+        yearGroup: teachingClass.academic_year || 'Class',
+        studentCount: membershipCounts.get(teachingClass.id) ?? 0,
+      }));
     }
 
     const { data: assignmentData, error: assignmentError } = await supabase
@@ -92,16 +107,12 @@ export default async function SetStudyPage() {
         <Link className={styles.navButton} href="/student/dashboard">Student view</Link>
       </div>
 
-      {setupWarning && (
-        <section className={styles.notice}>
-          Assignment setup warning: {setupWarning}
-        </section>
-      )}
+      {setupWarning && <section className={styles.notice}>Assignment setup warning: {setupWarning}</section>}
 
       {classOptions.length === 0 ? (
         <section className={styles.notice}>
-          No active classes are connected to your account yet. Create a class on the My Classes page before setting guided study.
-          {' '}<Link href="/teacher/classes">Open My Classes</Link>
+          No active classes are connected to your account yet. Create a class on the My Classes page before setting guided study.{' '}
+          <Link href="/teacher/classes">Open My Classes</Link>
         </section>
       ) : (
         <GuidedStudyAssignmentForm classOptions={classOptions} />
@@ -109,39 +120,22 @@ export default async function SetStudyPage() {
 
       <section className={styles.history}>
         <div className={styles.historyHeader}>
-          <div>
-            <p className={styles.eyebrow}>Recently set</p>
-            <h2>Assignment history</h2>
-          </div>
+          <div><p className={styles.eyebrow}>Recently set</p><h2>Assignment history</h2></div>
           <span className={styles.badge}>Newest first</span>
         </div>
 
         {assignments.length === 0 ? (
-          <div className={styles.empty}>
-            <h3>No real assignments yet</h3>
-            <p>Create and publish the first assignment above. It will be linked to your selected class.</p>
-          </div>
+          <div className={styles.empty}><h3>No real assignments yet</h3><p>Create and publish the first assignment above. It will be linked to your selected class.</p></div>
         ) : (
           <div className={styles.assignmentList}>
             {assignments.map((assignment) => {
-              const teachingClass = Array.isArray(assignment.teaching_classes)
-                ? assignment.teaching_classes[0]
-                : assignment.teaching_classes;
+              const teachingClass = Array.isArray(assignment.teaching_classes) ? assignment.teaching_classes[0] : assignment.teaching_classes;
               const recipientCount = assignment.assignment_recipients?.[0]?.count ?? 0;
               return (
                 <article className={styles.assignmentRow} key={assignment.id}>
-                  <div>
-                    <strong>{teachingClass?.name ?? 'Class'}</strong>
-                    <small>{recipientCount} student{recipientCount === 1 ? '' : 's'} · {assignment.status}</small>
-                  </div>
-                  <div>
-                    <strong>{assignment.lesson_title}</strong>
-                    <small>{formatMode(assignment.mode)} · {assignment.required_activity_types.length} activities</small>
-                  </div>
-                  <div>
-                    <strong>{formatDate(assignment.due_at)}</strong>
-                    <small>Deadline</small>
-                  </div>
+                  <div><strong>{teachingClass?.name ?? 'Class'}</strong><small>{recipientCount} student{recipientCount === 1 ? '' : 's'} · {assignment.status}</small></div>
+                  <div><strong>{assignment.lesson_title}</strong><small>{formatMode(assignment.mode)} · {assignment.required_activity_types.length} activities</small></div>
+                  <div><strong>{formatDate(assignment.due_at)}</strong><small>Deadline</small></div>
                   <span className={styles.status}>{assignment.status === 'published' ? 'Published' : assignment.status}</span>
                 </article>
               );
