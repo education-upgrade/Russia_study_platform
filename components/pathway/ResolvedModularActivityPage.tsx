@@ -1,3 +1,4 @@
+import '@/lib/unit6RegistryActivation';
 import Link from 'next/link';
 import GenericActivityRenderer from '@/components/GenericActivityRenderer';
 import { supabase } from '@/lib/supabase';
