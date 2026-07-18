@@ -1,3 +1,4 @@
+import '@/lib/unit6RegistryActivation';
 import ModularPathwayPage from '@/components/pathway/ModularPathwayPage';
 import {civilWarPathwaySlug as slug,civilWarFallbacks as fallbacks} from '@/lib/pathwayCivilWarContent';
 export const dynamic='force-dynamic'; export const revalidate=0;
