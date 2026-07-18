@@ -17,16 +17,8 @@ type AssignmentRow = {
   assignment_recipients: { count: number }[] | null;
 };
 
-type RecipientRow = {
-  student_id: string;
-  status: string;
-};
-
-type ProfileRow = {
-  id: string;
-  full_name: string;
-  email: string | null;
-};
+type RecipientRow = { student_id: string; status: string };
+type ProfileRow = { id: string; full_name: string | null };
 
 type ProgressRow = {
   student_id: string;
@@ -44,9 +36,7 @@ type ActivityProgressRow = {
   last_saved_at: string;
 };
 
-type Props = {
-  selectedAssignmentId?: string;
-};
+type Props = { selectedAssignmentId?: string };
 
 function firstRelation<T>(value: T | T[] | null) {
   return Array.isArray(value) ? value[0] ?? null : value;
@@ -114,7 +104,7 @@ export default async function TeacherEvidenceDashboard({ selectedAssignmentId }:
 
   const [{ data: profileData, error: profileError }, { data: progressData, error: progressError }, { data: activityProgressData, error: activityProgressError }] = await Promise.all([
     studentIds.length
-      ? supabase.from('profiles').select('id, full_name, email').in('id', studentIds)
+      ? supabase.from('profiles').select('id, full_name').in('id', studentIds)
       : Promise.resolve({ data: [], error: null }),
     supabase.from('assignment_progress').select('student_id, status, completed_activity_count, total_activity_count, progress_percent, current_activity_type, last_activity_at').eq('assignment_id', selectedAssignment.id),
     supabase.from('student_activity_progress').select('student_id, confidence, last_saved_at').eq('assignment_id', selectedAssignment.id).not('confidence', 'is', null),
@@ -125,16 +115,17 @@ export default async function TeacherEvidenceDashboard({ selectedAssignmentId }:
   const confidenceByStudent = new Map<string, number>();
 
   ((activityProgressData ?? []) as ActivityProgressRow[]).forEach((row) => {
-    const existing = confidenceByStudent.get(row.student_id);
-    if (existing === undefined) confidenceByStudent.set(row.student_id, row.confidence ?? 0);
+    if (!confidenceByStudent.has(row.student_id) && row.confidence !== null) {
+      confidenceByStudent.set(row.student_id, row.confidence);
+    }
   });
 
-  const studentRows = recipients.map((recipient) => {
+  const studentRows = recipients.map((recipient, index) => {
     const profile = profiles.get(recipient.student_id);
     const progress = progressByStudent.get(recipient.student_id);
     return {
       id: recipient.student_id,
-      name: profile?.full_name || profile?.email || 'Student',
+      name: profile?.full_name?.trim() || `Student ${index + 1}`,
       progress,
       confidence: confidenceByStudent.get(recipient.student_id),
     };
