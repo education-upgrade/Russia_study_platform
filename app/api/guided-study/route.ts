@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { getActivityLabel, isSupportedActivityType, orderSupportedActivityTypes } from '@/lib/activityTypeRegistry';
+import '@/lib/unit6RegistryActivation';
 import { pathwayRegistry } from '@/lib/pathwayRegistry';
 
 const DEMO_TEACHER_ID = '11111111-1111-1111-1111-111111111111';
