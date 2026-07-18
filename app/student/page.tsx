@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import '@/lib/unit6RegistryActivation';
 import { getPathwayConfig } from '@/lib/pathwayRegistry';
 
 const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
