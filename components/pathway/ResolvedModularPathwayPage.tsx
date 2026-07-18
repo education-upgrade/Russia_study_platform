@@ -1,3 +1,4 @@
+import '@/lib/unit6RegistryActivation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { DEMO_STUDENT_ID } from '@/lib/demoIdentity';
