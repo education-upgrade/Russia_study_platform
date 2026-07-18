@@ -3,6 +3,10 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 const protectedPrefixes = ['/student', '/teacher', '/account'];
 
+function safeLocalPath(value: string | null, fallback = '/account') {
+  return value && value.startsWith('/') && !value.startsWith('//') ? value : fallback;
+}
+
 export async function updateSupabaseSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -36,8 +40,7 @@ export async function updateSupabaseSession(request: NextRequest) {
   }
 
   if (user && request.nextUrl.pathname === '/login') {
-    const destination = request.nextUrl.searchParams.get('next') || '/account';
-    return NextResponse.redirect(new URL(destination, request.url));
+    return NextResponse.redirect(new URL(safeLocalPath(request.nextUrl.searchParams.get('next')), request.url));
   }
 
   return response;
