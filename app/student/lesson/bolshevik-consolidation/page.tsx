@@ -1,3 +1,4 @@
+import '@/lib/unit6RegistryActivation';
 import ModularPathwayPage from '@/components/pathway/ModularPathwayPage';
 import {bolshevikConsolidationPathwaySlug as slug,bolshevikConsolidationFallbacks as fallbacks} from '@/lib/pathwayBolshevikConsolidationContent';
 export const dynamic='force-dynamic'; export const revalidate=0;
