@@ -11,7 +11,7 @@ export default async function TeacherClassesPage({ searchParams }: { searchParam
   const { data: teacherLinks } = supabase && auth
     ? await supabase
         .from('class_teachers')
-        .select('class_id, classes(id, name, academic_year, join_code, is_active, schools(name))')
+        .select('class_id, teaching_classes(id, name, academic_year, join_code, is_active, schools(name))')
         .eq('teacher_id', auth.userId)
         .order('created_at', { ascending: false })
     : { data: [] };
@@ -65,7 +65,7 @@ export default async function TeacherClassesPage({ searchParams }: { searchParam
           {classes.length === 0 ? (
             <article className="card"><h2>No classes yet</h2><p>Create your first class using the form above.</p></article>
           ) : classes.map((link: any) => {
-            const item = link.classes;
+            const item = link.teaching_classes;
             const school = Array.isArray(item?.schools) ? item.schools[0] : item?.schools;
             return (
               <article className="card" key={link.class_id}>

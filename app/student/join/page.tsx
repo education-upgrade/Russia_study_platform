@@ -21,7 +21,7 @@ export default async function JoinClassPage({ searchParams }: { searchParams: Pr
   const error = typeof params.error === 'string';
   const supabase = await createServerSupabaseClient();
   const { data: memberships } = supabase
-    ? await supabase.from('class_memberships').select('class_id, classes(name, academic_year, schools(name))').eq('status', 'active')
+    ? await supabase.from('class_memberships').select('class_id, teaching_classes(name, academic_year, schools(name))').eq('status', 'active')
     : { data: [] };
 
   return (
@@ -42,7 +42,7 @@ export default async function JoinClassPage({ searchParams }: { searchParams: Pr
         {(memberships ?? []).length === 0 ? (
           <article className="card"><h2>No classes joined</h2><p>Your classes will appear here after you enter a valid code.</p></article>
         ) : (memberships ?? []).map((membership: any) => {
-          const item = membership.classes;
+          const item = membership.teaching_classes;
           const school = Array.isArray(item?.schools) ? item.schools[0] : item?.schools;
           return <article className="card" key={membership.class_id}><p className="eyebrow">{school?.name || 'School'}</p><h2>{item?.name}</h2><p>{item?.academic_year || 'Academic year not set'}</p></article>;
         })}
