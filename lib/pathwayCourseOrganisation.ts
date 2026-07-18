@@ -1,4 +1,5 @@
 import { pathwayOptions, type PathwayConfig } from './pathwayRegistry';
+import { unit7Pathways } from './unit7RegistryActivation';
 
 const displayTitleOverrides: Record<string, string> = {
   'russia-1855': 'Russia in 1855',
@@ -24,6 +25,12 @@ const displayTitleOverrides: Record<string, string> = {
   'war-communism': 'War Communism',
   'nep': 'The New Economic Policy',
   'struggle-after-lenin': 'The Struggle for Power after Lenin',
+  'great-turn-end-nep': 'The Great Turn and the End of NEP',
+  'collectivisation': 'Collectivisation',
+  'five-year-plans': 'The Five-Year Plans',
+  'stalinist-society-culture': 'Stalinist Society and Culture',
+  'great-terror': 'The Great Terror',
+  'stalin-dictatorship-control': 'Stalin’s Dictatorship and Control',
 };
 
 const builtPathwaySlugs = new Set([
@@ -34,6 +41,7 @@ const builtPathwaySlugs = new Set([
   'russia-first-world-war', 'february-revolution', 'feb-oct-1917',
   'lenin-ideology-change', 'bolshevik-consolidation', 'civil-war',
   'war-communism', 'nep', 'struggle-after-lenin',
+  ...unit7Pathways.map((pathway) => pathway.pathwaySlug),
 ]);
 
 const unit6Title = 'Lenin and the emergence of Communist dictatorship';
@@ -45,16 +53,14 @@ const unit6AdditionalPathways: PathwayConfig[] = [
   { pathwaySlug: 'struggle-after-lenin', title: 'The struggle for power after Lenin', lessonTitle: 'Why did Stalin win the power struggle after Lenin?', subtitle: 'Contenders, General Secretaryship, alliances, ideology and rivals’ mistakes', yearGroup: 'Y13', courseWeek: 6, unitNumber: 6, unitTitle: unit6Title, mainFocus: 'Party machinery, ideological positioning, alliances and opposition weakness', writtenFocus: '25-mark causal judgement', writtenFocusType: 'ESSAY_PLAN', breadthLenses: ['governance', 'opposition', 'ideology', 'individuals'], status: 'ready', routeBase: '/student/lesson/struggle-after-lenin' },
 ];
 
-// The teacher picker and assignment form both import pathwayOptions. Add the Unit 6
-// configurations to that same array so a displayed topic can never resolve to a
-// different fallback topic when the assignment is saved.
-for (const pathway of unit6AdditionalPathways) {
+for (const pathway of [...unit6AdditionalPathways, ...unit7Pathways]) {
   if (!pathwayOptions.some((existing) => existing.pathwaySlug === pathway.pathwaySlug)) {
     pathwayOptions.push(pathway);
   }
 }
 pathwayOptions.sort((first, second) => {
   if (first.yearGroup !== second.yearGroup) return first.yearGroup.localeCompare(second.yearGroup);
+  if (first.unitNumber !== second.unitNumber) return first.unitNumber - second.unitNumber;
   return first.courseWeek - second.courseWeek;
 });
 
