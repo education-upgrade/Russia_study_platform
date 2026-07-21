@@ -22,21 +22,14 @@ export default async function TeacherClassesPage({ searchParams }: { searchParam
 
   return (
     <main className="page-shell teacher-shell">
-      <section className="teacher-hero">
-        <div>
-          <p className="eyebrow">Class management</p>
-          <h1>My classes</h1>
-          <p>Create a teaching group, share its six-character code, and build the student list that assignments and progress will use.</p>
-        </div>
-        <aside className="teacher-hero-actions">
-          <p className="eyebrow">Current total</p>
-          <h2>{classes.length} {classes.length === 1 ? 'class' : 'classes'}</h2>
-          <p>Only classes connected to your authenticated teacher account appear here.</p>
-        </aside>
-      </section>
-
       {created && <div className="callout" role="status"><div><strong>Class created</strong><p>Your class is ready. Share the join code shown below with students.</p></div></div>}
       {error && <div className="callout" role="alert"><div><strong>Class not created</strong><p>Check that both names are entered and that the Supabase migration has been applied.</p></div></div>}
+
+      <section className="card" aria-label="Class total">
+        <p className="eyebrow">Teaching groups</p>
+        <h2>{classes.length} {classes.length === 1 ? 'class' : 'classes'}</h2>
+        <p>Only classes connected to your teacher account appear here.</p>
+      </section>
 
       <section className="grid two" style={{ marginTop: 24 }}>
         <article className="card teal">
@@ -60,7 +53,6 @@ export default async function TeacherClassesPage({ searchParams }: { searchParam
       </section>
 
       <section style={{ marginTop: 24 }}>
-        <p className="eyebrow">Teaching groups</p>
         <div className="grid three-fixed">
           {classes.length === 0 ? (
             <article className="card"><h2>No classes yet</h2><p>Create your first class using the form above.</p></article>
