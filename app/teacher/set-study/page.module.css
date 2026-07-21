@@ -94,15 +94,18 @@
   display: grid;
   gap: 8px;
 }
+.assignmentItem {
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  background: rgba(255, 255, 255, 0.78);
+}
 .assignmentRow {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr auto;
   gap: 10px;
   align-items: center;
   min-height: 56px;
-  border-radius: 18px;
-  border: 1px solid rgba(213, 226, 235, 0.95);
-  background: rgba(255, 255, 255, 0.78);
   padding: 10px 12px;
 }
 .assignmentRow strong {
@@ -126,6 +129,93 @@
   color: var(--navy);
   font-size: 0.78rem;
   font-weight: 950;
+  text-transform: capitalize;
+}
+.managePanel {
+  border-top: 1px solid rgba(213, 226, 235, 0.8);
+}
+.managePanel summary {
+  width: fit-content;
+  margin-left: auto;
+  padding: 9px 12px;
+  color: var(--navy);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 900;
+  list-style-position: inside;
+}
+.managePanel[open] summary {
+  color: var(--muted);
+}
+.manageBody {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(280px, 1.3fr);
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+.manageField {
+  display: grid;
+  gap: 5px;
+}
+.manageField span {
+  color: var(--navy);
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+.manageField input,
+.manageField textarea {
+  width: 100%;
+  border: 1px solid rgba(187, 205, 218, 0.95);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--navy);
+  font: inherit;
+  padding: 9px 10px;
+}
+.manageField textarea {
+  resize: vertical;
+}
+.manageActions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.manageActions button {
+  min-height: 36px;
+  border: 1px solid rgba(187, 205, 218, 0.95);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--navy);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 900;
+  padding: 7px 12px;
+}
+.manageActions button:first-child {
+  border-color: var(--navy);
+  background: var(--navy);
+  color: #fff;
+}
+.manageActions button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+.manageActions .archiveButton {
+  margin-left: auto;
+  border-color: #d9a3a3;
+  background: #fff7f7;
+}
+.manageMessage {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #176b55;
+  font-size: 0.8rem;
+  font-weight: 850;
+}
+.manageError {
+  color: #a03434;
 }
 .empty {
   padding: 16px;
@@ -154,6 +244,12 @@
   }
   .status {
     width: fit-content;
+  }
+  .manageBody {
+    grid-template-columns: 1fr;
+  }
+  .manageActions .archiveButton {
+    margin-left: 0;
   }
 }
 @media (max-width: 700px) {
