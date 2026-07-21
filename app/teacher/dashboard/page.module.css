@@ -1,0 +1,305 @@
+.dashboard {
+  display: grid;
+  gap: 22px;
+}
+
+.welcome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 24px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(225,242,240,.72));
+  box-shadow: var(--shadow-soft);
+}
+
+.welcome h2,
+.sectionHeader h2,
+.assignmentCard h3,
+.classCard h3,
+.attentionItem h3 {
+  margin: 0;
+}
+
+.welcome p,
+.sectionHeader p,
+.assignmentCard p,
+.classCard p,
+.attentionItem p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.summaryLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.summaryPill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255,255,255,.78);
+  color: var(--navy);
+  font-size: .82rem;
+  font-weight: 800;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.metric {
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255,255,255,.78);
+}
+
+.metric span {
+  display: block;
+  color: var(--muted);
+  font-size: .82rem;
+  font-weight: 750;
+}
+
+.metric strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--navy);
+  font-size: 1.65rem;
+  line-height: 1;
+}
+
+.metricAttention {
+  background: linear-gradient(180deg, #fffaf0, var(--warm));
+}
+
+.mainGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(260px, .75fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.section {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: rgba(255,255,255,.72);
+  box-shadow: var(--shadow-soft);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.sectionLink,
+.inlineLink {
+  color: var(--navy);
+  font-weight: 850;
+  text-decoration: underline;
+  text-decoration-color: rgba(22,33,63,.25);
+  text-underline-offset: 3px;
+}
+
+.attentionList,
+.assignmentList,
+.classList,
+.quickActions {
+  display: grid;
+  gap: 10px;
+}
+
+.attentionItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid rgba(236,216,163,.95);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(248,239,216,.72));
+}
+
+.attentionReason {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 8px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--warm);
+  color: var(--navy);
+  font-size: .76rem;
+  font-weight: 850;
+}
+
+.actionLink {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--navy);
+  font-size: .84rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.assignmentCard,
+.classCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255,255,255,.82);
+}
+
+.assignmentMeta,
+.classMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: .79rem;
+  font-weight: 750;
+}
+
+.progressTrack {
+  width: 100%;
+  height: 8px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--blue-grey-2);
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--navy), #4f7194);
+}
+
+.quickAction {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: #fff;
+  color: var(--navy);
+  font-weight: 850;
+}
+
+.quickAction span:last-child {
+  color: var(--muted);
+}
+
+.empty {
+  padding: 18px;
+  border: 1px dashed var(--border);
+  border-radius: 16px;
+  background: rgba(237,244,248,.5);
+}
+
+.empty h3 {
+  margin: 0 0 5px;
+}
+
+.empty p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.lowerGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, .65fr);
+  gap: 18px;
+}
+
+@media (max-width: 900px) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mainGrid,
+  .lowerGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard {
+    gap: 16px;
+  }
+
+  .welcome {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 18px;
+  }
+
+  .summaryLine {
+    justify-content: flex-start;
+  }
+
+  .metrics {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .metric {
+    padding: 13px;
+  }
+
+  .metric strong {
+    font-size: 1.4rem;
+  }
+
+  .section {
+    padding: 15px;
+    border-radius: 18px;
+  }
+
+  .sectionHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .attentionItem,
+  .assignmentCard,
+  .classCard {
+    grid-template-columns: 1fr;
+  }
+
+  .actionLink {
+    width: 100%;
+  }
+}
