@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import AssignmentManager from '@/components/AssignmentManager';
 import GuidedStudyAssignmentForm from '@/components/GuidedStudyAssignmentForm';
 import { requireRoles } from '@/lib/auth/access';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
@@ -132,11 +133,19 @@ export default async function SetStudyPage() {
               const teachingClass = Array.isArray(assignment.teaching_classes) ? assignment.teaching_classes[0] : assignment.teaching_classes;
               const recipientCount = assignment.assignment_recipients?.[0]?.count ?? 0;
               return (
-                <article className={styles.assignmentRow} key={assignment.id}>
-                  <div><strong>{teachingClass?.name ?? 'Class'}</strong><small>{recipientCount} student{recipientCount === 1 ? '' : 's'} · {assignment.status}</small></div>
-                  <div><strong>{assignment.lesson_title}</strong><small>{formatMode(assignment.mode)} · {assignment.required_activity_types.length} activities</small></div>
-                  <div><strong>{formatDate(assignment.due_at)}</strong><small>Deadline</small></div>
-                  <span className={styles.status}>{assignment.status === 'published' ? 'Published' : assignment.status}</span>
+                <article className={styles.assignmentItem} key={assignment.id}>
+                  <div className={styles.assignmentRow}>
+                    <div><strong>{teachingClass?.name ?? 'Class'}</strong><small>{recipientCount} student{recipientCount === 1 ? '' : 's'} · {assignment.status}</small></div>
+                    <div><strong>{assignment.lesson_title}</strong><small>{formatMode(assignment.mode)} · {assignment.required_activity_types.length} activities</small></div>
+                    <div><strong>{formatDate(assignment.due_at)}</strong><small>Deadline</small></div>
+                    <span className={styles.status}>{assignment.status === 'published' ? 'Published' : assignment.status}</span>
+                  </div>
+                  <AssignmentManager
+                    assignmentId={assignment.id}
+                    instructions={assignment.instructions}
+                    dueAt={assignment.due_at}
+                    status={assignment.status}
+                  />
                 </article>
               );
             })}
