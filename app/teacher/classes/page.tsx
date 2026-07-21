@@ -28,7 +28,7 @@ export default async function TeacherClassesPage({ searchParams }: { searchParam
       <section className="card" aria-label="Class total">
         <p className="eyebrow">Teaching groups</p>
         <h2>{classes.length} {classes.length === 1 ? 'class' : 'classes'}</h2>
-        <p>Only classes connected to your teacher account appear here.</p>
+        <p>Open a class to manage its students, assignments and progress without losing context.</p>
       </section>
 
       <section className="grid two" style={{ marginTop: 24 }}>
@@ -67,6 +67,9 @@ export default async function TeacherClassesPage({ searchParams }: { searchParam
                 <div className="button-row compact">
                   <span className="status-pill secure">Code: {item?.join_code}</span>
                   <span className="status-pill submitted">{item?.is_active ? 'Active' : 'Archived'}</span>
+                </div>
+                <div className="button-row">
+                  <Link className="button" href={`/teacher/classes/${link.class_id}`}>Open class</Link>
                 </div>
               </article>
             );
