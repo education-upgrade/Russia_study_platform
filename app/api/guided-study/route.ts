@@ -13,6 +13,7 @@ type GuidedStudyRequest = {
   classId?: string;
   pathwaySlug?: string;
   lessonTitle?: string;
+  publishNow?: boolean;
 };
 
 export async function POST(request: Request) {
@@ -37,13 +38,12 @@ export async function POST(request: Request) {
 
   const requestedTypes = body.requiredActivityTypes ?? [];
   const invalidActivities = requestedTypes.filter((activityType) => !isSupportedActivityType(activityType));
-  if (invalidActivities.length) {
-    return NextResponse.json({ error: `Unknown activity type: ${invalidActivities.join(', ')}` }, { status: 400 });
-  }
+  if (invalidActivities.length) return NextResponse.json({ error: `Unknown activity type: ${invalidActivities.join(', ')}` }, { status: 400 });
 
   const requiredActivityTypes = orderSupportedActivityTypes(requestedTypes);
   if (!requiredActivityTypes.length) return NextResponse.json({ error: 'Choose at least one activity.' }, { status: 400 });
 
+  const publishNow = body.publishNow !== false;
   const assignmentTitle = body.lessonTitle?.trim() || pathway.lessonTitle;
   const { data: assignmentId, error } = await supabase.rpc('create_class_assignment', {
     class_id_input: body.classId,
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     required_activity_types_input: requiredActivityTypes,
     instructions_input: body.instructions?.trim() || null,
     due_at_input: body.deadlineAt || null,
-    publish_now_input: true,
+    publish_now_input: publishNow,
   });
 
   if (error || !assignmentId) {
@@ -62,14 +62,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error?.message ?? 'Assignment could not be created.' }, { status: 500 });
   }
 
-  const { count: recipientCount } = await supabase
-    .from('assignment_recipients')
-    .select('*', { count: 'exact', head: true })
-    .eq('assignment_id', assignmentId)
-    .eq('status', 'assigned');
+  const { count: recipientCount } = publishNow
+    ? await supabase.from('assignment_recipients').select('*', { count: 'exact', head: true }).eq('assignment_id', assignmentId).eq('status', 'assigned')
+    : { count: 0 };
 
   return NextResponse.json({
-    status: 'published',
+    status: publishNow ? 'published' : 'draft',
     assignmentId,
     recipientCount: recipientCount ?? 0,
     pathwaySlug: pathway.pathwaySlug,
