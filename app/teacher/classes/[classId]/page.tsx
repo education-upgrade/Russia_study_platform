@@ -231,7 +231,7 @@ export default async function ClassWorkspacePage({
             </section>
             <section className={styles.panel}>
               <header><div><h3>Recent assignments</h3><p>{completedToday} student assignment completions today.</p></div><Link href={`/teacher/classes/${classId}?tab=assignments`}>View all</Link></header>
-              {assignmentCards.length === 0 ? <div className={styles.empty}><strong>No active assignments</strong><p>Set work to begin collecting progress.</p></div> : assignmentCards.slice(0, 4).map(({ assignment, completed, recipients, average }) => <article className={styles.row} key={assignment.id}><div><strong>{assignment.title}</strong><p>{completed}/{recipients} complete · {average}% average</p></div><Link href={`/teacher/progress?assignment=${assignment.id}`}>Open</Link></article>)}
+              {assignmentCards.length === 0 ? <div className={styles.empty}><strong>No active assignments</strong><p>Set work to begin collecting progress.</p></div> : assignmentCards.slice(0, 4).map(({ assignment, completed, recipients, average }) => <article className={styles.row} key={assignment.id}><div><strong>{assignment.title}</strong><p>{completed}/{recipients} complete · {average}% average</p></div><Link href={`/teacher/assignments/${assignment.id}`}>Open</Link></article>)}
             </section>
           </section>
         </>
@@ -254,16 +254,21 @@ export default async function ClassWorkspacePage({
       {activeTab === 'assignments' && (
         <section className={styles.panel}>
           <header><div><h3>Assignments</h3><p>Published work for this class, followed by archived items.</p></div><Link href="/teacher/set-study">New assignment</Link></header>
-          {assignmentCards.length === 0 ? <div className={styles.empty}><strong>No published assignments</strong><p>Create the first assignment for this class.</p></div> : assignmentCards.map(({ assignment, recipients, completed, average }) => <article className={styles.assignmentRow} key={assignment.id}><div><strong>{assignment.title}</strong><p>{assignment.lesson_title} · {dueState(assignment.due_at)}</p><div className={styles.progressTrack}><span style={{ width: `${average}%` }} /></div></div><div className={styles.assignmentStats}><span>{completed}/{recipients} complete</span><span>{average}% average</span><Link href={`/teacher/progress?assignment=${assignment.id}`}>Progress</Link></div></article>)}
-          {archivedAssignments.length > 0 && <details className={styles.archived}><summary>Archived assignments ({archivedAssignments.length})</summary>{archivedAssignments.map((assignment) => <div key={assignment.id}><strong>{assignment.title}</strong><span>{assignment.lesson_title}</span></div>)}</details>}
+          {assignmentCards.length === 0 ? <div className={styles.empty}><strong>No published assignments</strong><p>Create the first assignment for this class.</p></div> : assignmentCards.map(({ assignment, recipients, completed, average }) => <article className={styles.assignmentRow} key={assignment.id}><div><strong>{assignment.title}</strong><p>{assignment.lesson_title} · {dueState(assignment.due_at)}</p><div className={styles.progressTrack}><span style={{ width: `${average}%` }} /></div></div><div className={styles.assignmentStats}><span>{completed}/{recipients} complete</span><span>{average}% average</span><Link href={`/teacher/assignments/${assignment.id}`}>Open assignment</Link></div></article>)}
+          {archivedAssignments.length > 0 && <details className={styles.archived}><summary>Archived assignments ({archivedAssignments.length})</summary>{archivedAssignments.map((assignment) => <div key={assignment.id}><strong>{assignment.title}</strong><span>{assignment.lesson_title}</span><Link href={`/teacher/assignments/${assignment.id}`}>Open</Link></div>)}</details>}
         </section>
       )}
 
       {activeTab === 'progress' && (
         <section className={styles.panel}>
-          <header><div><h3>Class progress</h3><p>Students are ordered with intervention priorities first.</p></div><Link href="/teacher/progress">Full progress dashboard</Link></header>
-          <div className={styles.progressFilters}><Link href={`/teacher/classes/${classId}?tab=progress&filter=all`}>All</Link><Link href={`/teacher/classes/${classId}?tab=progress&filter=attention`}>Needs attention</Link><Link href={`/teacher/classes/${classId}?tab=progress&filter=not_started`}>Not started</Link><Link href={`/teacher/classes/${classId}?tab=progress&filter=in_progress`}>In progress</Link><Link href={`/teacher/classes/${classId}?tab=progress&filter=complete`}>Complete</Link></div>
-          {visibleStudents.sort((a, b) => Number(b.needsAttention) - Number(a.needsAttention) || a.average - b.average).map((student) => <article className={styles.progressRow} key={student.studentId}><div><strong>{student.name}</strong><p>{student.completed}/{student.assignments} assignments complete</p></div><div><span>{student.average}%</span><div className={styles.progressTrack}><span style={{ width: `${student.average}%` }} /></div></div><span className={student.needsAttention ? styles.warning : styles.status}>{student.needsAttention ? 'Needs attention' : student.status.replace('_', ' ')}</span></article>)}
+          <header><div><h3>Class progress</h3><p>Students ordered for intervention, not alphabetically.</p></div></header>
+          <form className={styles.filters} method="get">
+            <input type="hidden" name="tab" value="progress" />
+            <input name="search" defaultValue={typeof query.search === 'string' ? query.search : ''} placeholder="Search students" aria-label="Search students" />
+            <select name="filter" defaultValue={filter} aria-label="Filter progress"><option value="all">All students</option><option value="attention">Needs attention</option><option value="not_started">Not started</option><option value="in_progress">In progress</option><option value="complete">Complete</option></select>
+            <button type="submit">Apply</button>
+          </form>
+          <div className={styles.progressList}>{visibleStudents.sort((a, b) => Number(b.needsAttention) - Number(a.needsAttention) || a.average - b.average).map((student) => <article className={styles.progressRow} key={student.studentId}><div><strong>{student.name}</strong><p>{student.completed}/{student.assignments} assignments complete · {student.latest ? `Last active ${formatDate(student.latest)}` : 'No activity'}</p><div className={styles.progressTrack}><span style={{ width: `${student.average}%` }} /></div></div><div><strong>{student.average}%</strong><span className={student.needsAttention ? styles.warning : styles.status}>{student.needsAttention ? 'Needs attention' : student.status.replace('_', ' ')}</span></div></article>)}</div>
         </section>
       )}
     </main>
