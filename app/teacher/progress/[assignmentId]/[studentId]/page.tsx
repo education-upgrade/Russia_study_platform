@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 type Props = { params: Promise<{ assignmentId: string; studentId: string }> };
-type Assignment = { id: string; title: string; lesson_title: string; mode: string; required_activity_types: string[]; due_at: string | null; teaching_classes: { name: string } | { name: string }[] | null };
+type Assignment = { id: string; title: string; lesson_title: string; mode: string; required_activity_types: string[]; due_at: string | null; created_at: string; teaching_classes: { name: string } | { name: string }[] | null };
 type Summary = { status: 'not_started' | 'in_progress' | 'complete'; completed_activity_count: number; total_activity_count: number; progress_percent: number; current_activity_type: string | null; started_at: string | null; completed_at: string | null; last_activity_at: string | null };
 type ActivityProgress = { activity_type: string; status: 'not_started' | 'in_progress' | 'complete'; attempt_count: number; score: number | null; max_score: number | null; confidence: number | null; position: Record<string, unknown> | null; started_at: string | null; completed_at: string | null; last_saved_at: string | null };
 
@@ -33,7 +33,7 @@ export default async function StudentEvidencePage({ params }: Props) {
   if (!supabase) notFound();
 
   const [{ data: assignmentData }, { data: recipient }, { data: profile }, { data: summaryData }, { data: activityData }] = await Promise.all([
-    supabase.from('classroom_assignments').select('id, title, lesson_title, mode, required_activity_types, due_at, teaching_classes(name)').eq('id', assignmentId).eq('status', 'published').maybeSingle<Assignment>(),
+    supabase.from('classroom_assignments').select('id, title, lesson_title, mode, required_activity_types, due_at, created_at, teaching_classes(name)').eq('id', assignmentId).eq('status', 'published').maybeSingle<Assignment>(),
     supabase.from('assignment_recipients').select('student_id').eq('assignment_id', assignmentId).eq('student_id', studentId).maybeSingle(),
     supabase.from('profiles').select('id, full_name').eq('id', studentId).maybeSingle<{ id: string; full_name: string | null }>(),
     supabase.from('assignment_progress').select('status, completed_activity_count, total_activity_count, progress_percent, current_activity_type, started_at, completed_at, last_activity_at').eq('assignment_id', assignmentId).eq('student_id', studentId).maybeSingle<Summary>(),
@@ -43,16 +43,28 @@ export default async function StudentEvidencePage({ params }: Props) {
   if (!assignmentData || !recipient) notFound();
   const assignment = assignmentData;
   const summary = summaryData ?? null;
-  const activityMap = new Map(((activityData ?? []) as ActivityProgress[]).map((row) => [row.activity_type, row]));
+  const activityRows = (activityData ?? []) as ActivityProgress[];
+  const activityMap = new Map(activityRows.map((row) => [row.activity_type, row]));
   const name = profile?.full_name?.trim() || 'Student';
   const teachingClass = firstRelation(assignment.teaching_classes);
+
+  const timeline = [
+    { date: assignment.created_at, label: 'Assignment published', detail: assignment.lesson_title },
+    ...(summary?.started_at ? [{ date: summary.started_at, label: 'Assignment started', detail: summary.current_activity_type ? `First recorded route: ${getActivityLabel(summary.current_activity_type)}` : 'First activity opened' }] : []),
+    ...activityRows.flatMap((row) => [
+      ...(row.started_at ? [{ date: row.started_at, label: `${getActivityLabel(row.activity_type)} started`, detail: row.confidence !== null ? `Confidence ${row.confidence}/5` : 'Activity opened' }] : []),
+      ...(row.completed_at ? [{ date: row.completed_at, label: `${getActivityLabel(row.activity_type)} completed`, detail: evidenceSummary(row) }] : []),
+    ]),
+    ...(summary?.completed_at ? [{ date: summary.completed_at, label: 'Assignment completed', detail: `${summary.completed_activity_count}/${summary.total_activity_count} activities complete` }] : []),
+    ...(assignment.due_at && new Date(assignment.due_at).getTime() < Date.now() && summary?.status !== 'complete' ? [{ date: assignment.due_at, label: 'Deadline passed', detail: `${summary?.progress_percent ?? 0}% complete at the current record` }] : []),
+  ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   return (
     <main className={styles.shell}>
       <div className={styles.topbar}>
         <span>Teacher / Student evidence</span>
-        <Link className={styles.navButton} href={`/teacher/progress?assignment=${assignmentId}`}>Back to class</Link>
-        <Link className={styles.navButton} href="/teacher/set-study">Set study</Link>
+        <Link className={styles.navButton} href={`/teacher/progress?assignment=${assignmentId}`}>Back to interventions</Link>
+        <Link className={styles.navButton} href={`/teacher/assignments/${assignmentId}`}>Assignment</Link>
       </div>
 
       <section className={styles.mainCard}>
@@ -66,6 +78,11 @@ export default async function StudentEvidencePage({ params }: Props) {
           <article className={styles.metric}><span>Started</span><strong style={{ fontSize: '1.05rem' }}>{formatDate(summary?.started_at ?? null)}</strong></article>
           <article className={styles.metric}><span>Last active</span><strong style={{ fontSize: '1.05rem' }}>{formatDate(summary?.last_activity_at ?? null)}</strong></article>
           <article className={styles.metric}><span>Finished</span><strong style={{ fontSize: '1.05rem' }}>{formatDate(summary?.completed_at ?? null)}</strong></article>
+        </section>
+
+        <section className={styles.priority}>
+          <div className={styles.sectionHeader}><div><h2>Learning timeline</h2><p>A chronological view of this student's work on the assignment.</p></div><span className={styles.badge}>{timeline.length} events</span></div>
+          <div className={styles.timeline}>{timeline.map((event, index) => <article key={`${event.date}-${index}`}><time>{formatDate(event.date)}</time><div><strong>{event.label}</strong><p>{event.detail}</p></div></article>)}</div>
         </section>
 
         <section className={styles.studentEvidence}>
