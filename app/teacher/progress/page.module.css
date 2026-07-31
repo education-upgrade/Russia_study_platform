@@ -108,6 +108,16 @@
 .priorityItem p,
 .priorityItem small { margin: 3px 0 0; color: var(--muted); font-size: .86rem; font-weight: 760; line-height: 1.32; }
 
+.timeline { display: grid; gap: 0; }
+.timeline article { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 18px; position: relative; padding: 0 0 18px; }
+.timeline article::before { content: ''; position: absolute; left: 160px; top: 6px; width: 10px; height: 10px; border-radius: 999px; background: var(--navy); box-shadow: 0 0 0 5px rgba(22,33,63,.09); }
+.timeline article::after { content: ''; position: absolute; left: 164px; top: 18px; bottom: 0; width: 2px; background: rgba(22,33,63,.12); }
+.timeline article:last-child::after { display: none; }
+.timeline time { color: var(--muted); font-size: .78rem; font-weight: 900; text-align: right; padding-right: 16px; }
+.timeline article > div { padding-left: 18px; }
+.timeline strong { display: block; color: var(--navy); font-weight: 950; }
+.timeline p { margin: 4px 0 0; color: var(--muted); font-size: .86rem; font-weight: 760; line-height: 1.35; }
+
 .tableWrap { overflow-x: auto; border: 1px solid rgba(213,226,235,.95); border-radius: 20px; background: rgba(255,255,255,.94); }
 .studentTable { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .studentTable th,
@@ -161,4 +171,9 @@
   .filters { grid-template-columns: 1fr; }
   .filters button { width: 100%; }
   .studentTable { font-size: .86rem; }
+  .timeline article { grid-template-columns: 1fr; gap: 5px; padding-left: 24px; }
+  .timeline article::before { left: 2px; }
+  .timeline article::after { left: 6px; }
+  .timeline time { text-align: left; padding: 0; }
+  .timeline article > div { padding-left: 0; }
 }
