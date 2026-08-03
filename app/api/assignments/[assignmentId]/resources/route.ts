@@ -8,13 +8,16 @@ async function authorise(assignmentId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: NextResponse.json({ error: 'Sign in first.' }, { status: 401 }) };
   const profile = await getProfile(supabase, user.id);
-  if (!profile || profile.status !== 'active' || !['teacher', 'admin'].includes(profile.role)) {
-    return { error: NextResponse.json({ error: 'Only active teachers can manage attachments.' }, { status: 403 }) };
-  }
-  const { data: assignment } = await supabase.from('classroom_assignments').select('id, pathway_slug').eq('id', assignmentId).maybeSingle();
+  if (!profile || profile.status !== 'active' || !['teacher', 'admin'].includes(profile.role)) return { error: NextResponse.json({ error: 'Only active teachers can manage attachments.' }, { status: 403 }) };
+
+  const { data: assignment } = await supabase.from('classroom_assignments').select('id, class_id, pathway_slug').eq('id', assignmentId).maybeSingle();
   if (!assignment) return { error: NextResponse.json({ error: 'Assignment not found.' }, { status: 404 }) };
-  const { data: teacherLink } = await supabase.from('classroom_assignments').select('id').eq('id', assignmentId).maybeSingle();
-  if (!teacherLink) return { error: NextResponse.json({ error: 'Assignment not found.' }, { status: 404 }) };
+
+  if (profile.role !== 'admin') {
+    const { data: teacherLink } = await supabase.from('class_teachers').select('class_id').eq('class_id', assignment.class_id).eq('teacher_id', user.id).maybeSingle();
+    if (!teacherLink) return { error: NextResponse.json({ error: 'Assignment not found or access denied.' }, { status: 404 }) };
+  }
+
   return { supabase, user, assignment };
 }
 
