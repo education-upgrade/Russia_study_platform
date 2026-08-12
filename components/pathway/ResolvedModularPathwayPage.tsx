@@ -28,6 +28,13 @@ type ActivityProgressRow = {
   status: 'not_started' | 'in_progress' | 'complete';
 };
 
+type AssignmentResourceRow = {
+  lesson_resources:
+    | { id: string; title: string; description: string | null; resource_type: string; resource_url: string }
+    | { id: string; title: string; description: string | null; resource_type: string; resource_url: string }[]
+    | null;
+};
+
 type Props = {
   pathwaySlug: string;
   fallbackInstructions?: string;
@@ -47,6 +54,14 @@ function dateLabel(value: string | null) {
 
 function unwrapAssignment(value: Assignment | Assignment[] | null) {
   return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+function unwrapResource(value: AssignmentResourceRow['lesson_resources']) {
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+function resourceTypeLabel(value: string) {
+  return value.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 export const dynamic = 'force-dynamic';
@@ -109,13 +124,25 @@ export default async function ResolvedModularPathwayPage({
   const activities = await materialisePathwayActivities(pathwaySlug, resolved);
 
   let activityProgress: ActivityProgressRow[] = [];
+  let resources: { id: string; title: string; description: string | null; resource_type: string; resource_url: string }[] = [];
+
   if (assignment && user) {
-    const { data } = await supabase
-      .from('student_activity_progress')
-      .select('activity_type, status')
-      .eq('assignment_id', assignment.id)
-      .eq('student_id', user.id);
-    activityProgress = (data ?? []) as ActivityProgressRow[];
+    const [{ data: progressData }, { data: resourceData }] = await Promise.all([
+      supabase
+        .from('student_activity_progress')
+        .select('activity_type, status')
+        .eq('assignment_id', assignment.id)
+        .eq('student_id', user.id),
+      supabase
+        .from('assignment_resources')
+        .select('lesson_resources(id, title, description, resource_type, resource_url)')
+        .eq('assignment_id', assignment.id),
+    ]);
+
+    activityProgress = (progressData ?? []) as ActivityProgressRow[];
+    resources = ((resourceData ?? []) as AssignmentResourceRow[])
+      .map((row) => unwrapResource(row.lesson_resources))
+      .filter((resource): resource is NonNullable<typeof resource> => Boolean(resource));
   }
 
   const progressByType = new Map(activityProgress.map((row) => [row.activity_type, row.status]));
@@ -159,6 +186,31 @@ export default async function ResolvedModularPathwayPage({
             {next ? 'Start now' : 'Review route'}
           </Link>
         </section>
+
+        {resources.length > 0 && (
+          <section className={styles.resources}>
+            <div className={styles.resourcesHeader}>
+              <div>
+                <p className={styles.eyebrow}>Supporting resources</p>
+                <h2>Resources from your teacher</h2>
+                <p>Use these alongside the pathway when they are helpful.</p>
+              </div>
+              <span className={styles.pill}>{resources.length} resource{resources.length === 1 ? '' : 's'}</span>
+            </div>
+            <div className={styles.resourceList}>
+              {resources.map((resource) => (
+                <a className={styles.resourceItem} key={resource.id} href={resource.resource_url} target="_blank" rel="noreferrer">
+                  <span className={styles.resourceType}>{resourceTypeLabel(resource.resource_type)}</span>
+                  <span className={styles.resourceText}>
+                    <strong>{resource.title}</strong>
+                    {resource.description && <span>{resource.description}</span>}
+                  </span>
+                  <span className={styles.resourceOpen}>Open ↗</span>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className={styles.route}>
           <div className={styles.progressTop}>
