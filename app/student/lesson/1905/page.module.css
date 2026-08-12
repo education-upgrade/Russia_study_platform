@@ -128,6 +128,86 @@
   box-shadow: 0 14px 28px rgba(22, 33, 63, 0.18);
   white-space: nowrap;
 }
+.resources {
+  padding: clamp(16px, 3vw, 26px);
+  border-top: 1px solid rgba(213, 226, 235, 0.75);
+  border-bottom: 1px solid rgba(213, 226, 235, 0.75);
+  background: rgba(255,255,255,0.42);
+}
+.resourcesHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.resourcesHeader h2 {
+  margin: 0;
+  color: var(--navy);
+  font-size: clamp(1.3rem, 4vw, 1.9rem);
+  letter-spacing: -0.035em;
+}
+.resourcesHeader p:not(.eyebrow) {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-weight: 740;
+}
+.resourceList {
+  display: grid;
+  gap: 9px;
+  margin-top: 14px;
+}
+.resourceItem {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+  min-height: 64px;
+  border: 1px solid rgba(213, 226, 235, 0.95);
+  border-radius: 18px;
+  padding: 11px 12px;
+  background: rgba(255,255,255,0.86);
+  color: var(--navy);
+  text-decoration: none;
+}
+.resourceItem:hover {
+  border-color: rgba(22,33,63,0.32);
+  box-shadow: 0 8px 18px rgba(22,33,63,0.07);
+}
+.resourceType {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  border-radius: 999px;
+  padding: 6px 9px;
+  background: rgba(238,232,248,0.95);
+  color: var(--navy);
+  font-size: 0.7rem;
+  font-weight: 950;
+  white-space: nowrap;
+}
+.resourceText {
+  min-width: 0;
+}
+.resourceText strong,
+.resourceText span {
+  display: block;
+}
+.resourceText strong {
+  font-weight: 950;
+}
+.resourceText span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 740;
+}
+.resourceOpen {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
 .route {
   padding: clamp(16px, 3vw, 26px);
 }
@@ -272,6 +352,23 @@
   .primaryButton {
     width: 100%;
     min-height: 54px;
+  }
+  .resources {
+    padding: 16px;
+  }
+  .resourcesHeader {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .resourcesHeader .pill {
+    justify-self: start;
+  }
+  .resourceItem {
+    grid-template-columns: 1fr auto;
+  }
+  .resourceType {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
   .route {
     padding: 16px;
