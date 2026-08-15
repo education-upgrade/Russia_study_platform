@@ -205,7 +205,7 @@ export default async function ClassWorkspacePage({
           <h2>{teachingClass.name}</h2>
           <p>{teachingClass.academic_year || 'Academic year not set'} · Join code <strong>{teachingClass.join_code}</strong></p>
         </div>
-        <Link className={styles.primaryAction} href="/teacher/set-study">Set work</Link>
+        <div className={styles.headerActions}><Link className={styles.secondaryAction} href={`/teacher/classes/${classId}/tracking`}>Open tracking</Link><Link className={styles.primaryAction} href="/teacher/set-study">Set work</Link></div>
       </section>
 
       {loadError && <section className={styles.notice} role="alert"><strong>Some class information could not be loaded.</strong><span>{loadError.message}</span></section>}
@@ -214,6 +214,7 @@ export default async function ClassWorkspacePage({
         {tabs.map((tab) => (
           <Link key={tab.id} href={`/teacher/classes/${classId}?tab=${tab.id}`} className={activeTab === tab.id ? styles.activeTab : styles.tab} aria-current={activeTab === tab.id ? 'page' : undefined}>{tab.label}</Link>
         ))}
+        <Link href={`/teacher/classes/${classId}/tracking`} className={styles.tab}>Tracking</Link>
       </nav>
 
       {activeTab === 'overview' && (
