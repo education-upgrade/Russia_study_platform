@@ -64,6 +64,38 @@ function resourceTypeLabel(value: string) {
   return value.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function parseYouTubeUrl(value: string) {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.replace(/^www\./, '').toLowerCase();
+    let videoId = '';
+    if (host === 'youtu.be') videoId = url.pathname.split('/').filter(Boolean)[0] ?? '';
+    else if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com') {
+      if (url.pathname === '/watch') videoId = url.searchParams.get('v') ?? '';
+      else if (url.pathname.startsWith('/shorts/')) videoId = url.pathname.split('/')[2] ?? '';
+      else if (url.pathname.startsWith('/embed/')) videoId = url.pathname.split('/')[2] ?? '';
+    }
+    if (!/^[A-Za-z0-9_-]{11}$/.test(videoId)) return null;
+
+    const timeValue = url.searchParams.get('t') ?? url.searchParams.get('start');
+    let startSeconds = 0;
+    if (timeValue) {
+      if (/^\d+$/.test(timeValue)) startSeconds = Number(timeValue);
+      else {
+        const match = timeValue.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/i);
+        if (match) startSeconds = Number(match[1] ?? 0) * 3600 + Number(match[2] ?? 0) * 60 + Number(match[3] ?? 0);
+      }
+    }
+
+    return {
+      videoId,
+      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}${startSeconds > 0 ? `?start=${startSeconds}` : ''}`,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -198,16 +230,42 @@ export default async function ResolvedModularPathwayPage({
               <span className={styles.pill}>{resources.length} resource{resources.length === 1 ? '' : 's'}</span>
             </div>
             <div className={styles.resourceList}>
-              {resources.map((resource) => (
-                <a className={styles.resourceItem} key={resource.id} href={resource.resource_url} target="_blank" rel="noreferrer">
-                  <span className={styles.resourceType}>{resourceTypeLabel(resource.resource_type)}</span>
-                  <span className={styles.resourceText}>
-                    <strong>{resource.title}</strong>
-                    {resource.description && <span>{resource.description}</span>}
-                  </span>
-                  <span className={styles.resourceOpen}>Open ↗</span>
-                </a>
-              ))}
+              {resources.map((resource) => {
+                const youtube = parseYouTubeUrl(resource.resource_url);
+                if (youtube) {
+                  return (
+                    <article className={styles.videoResource} key={resource.id}>
+                      <div className={styles.videoHeader}>
+                        <div>
+                          <span className={styles.resourceType}>YouTube video</span>
+                          <h3>{resource.title}</h3>
+                          {resource.description && <p>{resource.description}</p>}
+                        </div>
+                        <a href={resource.resource_url} target="_blank" rel="noreferrer">Open on YouTube ↗</a>
+                      </div>
+                      <div className={styles.videoFrame}>
+                        <iframe
+                          src={youtube.embedUrl}
+                          title={resource.title}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          referrerPolicy="strict-origin-when-cross-origin"
+                          allowFullScreen
+                        />
+                      </div>
+                    </article>
+                  );
+                }
+                return (
+                  <a className={styles.resourceItem} key={resource.id} href={resource.resource_url} target="_blank" rel="noreferrer">
+                    <span className={styles.resourceType}>{resourceTypeLabel(resource.resource_type)}</span>
+                    <span className={styles.resourceText}>
+                      <strong>{resource.title}</strong>
+                      {resource.description && <span>{resource.description}</span>}
+                    </span>
+                    <span className={styles.resourceOpen}>Open ↗</span>
+                  </a>
+                );
+              })}
             </div>
           </section>
         )}
