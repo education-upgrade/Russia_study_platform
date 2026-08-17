@@ -3,18 +3,18 @@ import type { SubjectCourseUnit } from '@/subjects/types';
 export const psychologyAqaCourseUnits: SubjectCourseUnit[] = [
   {
     unitNumber: 1,
-    title: 'Memory',
-    subtitle: 'Pilot pathways used to test subject portability without changing the shared platform.',
+    title: 'Social influence',
+    subtitle: 'Conformity, obedience, resistance and minority influence.',
     yearGroup: 'Y12',
-    status: 'planned',
-    pathwaySlugs: ['psychology-memory-models', 'psychology-memory-eyewitness'],
+    status: 'building',
+    pathwaySlugs: ['psychology-social-influence-conformity'],
   },
   {
     unitNumber: 2,
-    title: 'Social influence',
-    subtitle: 'A second pilot unit to prove cross-unit organisation inside a non-History pack.',
+    title: 'Memory',
+    subtitle: 'Models of memory and eyewitness testimony pathways planned for the next portability tests.',
     yearGroup: 'Y12',
     status: 'planned',
-    pathwaySlugs: ['psychology-social-influence-conformity'],
+    pathwaySlugs: ['psychology-memory-models', 'psychology-memory-eyewitness'],
   },
 ];

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import GenericActivityRenderer from '@/components/GenericActivityRenderer';
 import { supabase } from '@/lib/supabase';
 import { DEMO_STUDENT_ID } from '@/lib/demoIdentity';
-import { getPathwayConfig } from '@/lib/pathwayRegistry';
+import { getActivePathwayConfig } from '@/lib/activeSubjectRuntime';
 import { materialisePathwayActivities } from '@/lib/pathwayActivityPersistence';
 import { findActivityByRouteSlug, getNextActivityHref, resolvePathwayActivities } from '@/lib/pathwayResolver';
 import styles from '@/app/student/lesson/1905/flashcards/page.module.css';
@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function ResolvedModularActivityPage({ pathwaySlug, activitySlug, fallbackContentByActivityType = {} }: Props) {
-  const config = getPathwayConfig(pathwaySlug);
+  const config = getActivePathwayConfig(pathwaySlug);
   if (!supabase) return <main className={styles.shell}><section className="card warm"><h1>Supabase is not configured</h1></section></main>;
 
   const { data: lessonRows } = await supabase.from('lessons').select('id').eq('title', config.lessonTitle).limit(1);
