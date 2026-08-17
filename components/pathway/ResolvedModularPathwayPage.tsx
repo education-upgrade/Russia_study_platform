@@ -1,8 +1,7 @@
 import '@/lib/unit6RegistryActivation';
 import Link from 'next/link';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { getPathwayConfig } from '@/lib/pathwayRegistry';
-import { getActivityLabel } from '@/lib/activityTypeRegistry';
+import { getActiveActivityLabel, getActivePathwayConfig } from '@/lib/activeSubjectRuntime';
 import { materialisePathwayActivities } from '@/lib/pathwayActivityPersistence';
 import { resolvePathwayActivities } from '@/lib/pathwayResolver';
 import styles from '@/app/student/lesson/1905/page.module.css';
@@ -104,7 +103,7 @@ export default async function ResolvedModularPathwayPage({
   fallbackInstructions,
   fallbackContentByActivityType = {},
 }: Props) {
-  const config = getPathwayConfig(pathwaySlug);
+  const config = getActivePathwayConfig(pathwaySlug);
   const supabase = await createServerSupabaseClient();
 
   if (!supabase) {
@@ -184,6 +183,7 @@ export default async function ResolvedModularPathwayPage({
     const status = assignment ? progressByType.get(activity.activity_type) ?? 'not_started' : 'not_started';
     return {
       ...activity,
+      label: getActiveActivityLabel(activity.activity_type),
       status,
       complete: status === 'complete',
       href: `${config.routeBase}/${activity.routeSlug}${assignmentQuery}`,
@@ -211,7 +211,7 @@ export default async function ResolvedModularPathwayPage({
         <section className={styles.nextPanel}>
           <div>
             <p className={styles.eyebrow}>{next ? 'Next task' : 'Finished'}</p>
-            <h2>{next ? getActivityLabel(next.activity_type) : 'Review pathway'}</h2>
+            <h2>{next ? getActiveActivityLabel(next.activity_type) : 'Review pathway'}</h2>
             <p>{next?.title ?? 'All required activities have been saved.'}</p>
           </div>
           <Link className={styles.primaryButton} href={next?.href ?? `${config.routeBase}${assignmentQuery}`}>
