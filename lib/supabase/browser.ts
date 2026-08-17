@@ -1,16 +1,23 @@
 import { createBrowserClient } from '@supabase/ssr';
 
+function getSupabasePublicKey() {
+  return (
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
+}
+
 export function isSupabaseAuthConfigured() {
-  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && getSupabasePublicKey());
 }
 
 export function createBrowserSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const publicKey = getSupabasePublicKey();
 
-  if (!url || !anonKey) {
+  if (!url || !publicKey) {
     throw new Error('Supabase authentication is not configured.');
   }
 
-  return createBrowserClient(url, anonKey);
+  return createBrowserClient(url, publicKey);
 }
