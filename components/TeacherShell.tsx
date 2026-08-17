@@ -6,96 +6,40 @@ import type { ReactNode } from 'react';
 import styles from './TeacherShell.module.css';
 
 type TeacherShellProps = { children: ReactNode };
-
-type RouteMeta = {
-  title: string;
-  description: string;
-  section: 'home' | 'classes' | 'assignments' | 'progress';
-  primaryHref?: string;
-  primaryLabel?: string;
-};
+type Section = 'home' | 'classes' | 'assignments' | 'interventions';
 
 const navigation = [
   { id: 'home', label: 'Home', href: '/teacher/dashboard', icon: '⌂' },
   { id: 'classes', label: 'Classes', href: '/teacher/classes', icon: '▦' },
-  { id: 'assignments', label: 'Assignments', href: '/teacher/set-study', icon: '✓' },
-  { id: 'progress', label: 'Progress', href: '/teacher/progress', icon: '↗' },
+  { id: 'assignments', label: 'Assignments', href: '/teacher/assignments', icon: '✓' },
+  { id: 'interventions', label: 'Interventions', href: '/teacher/progress', icon: '↗' },
 ] as const;
 
-function getRouteMeta(pathname: string): RouteMeta {
-  if (pathname.startsWith('/teacher/classes')) {
-    return {
-      title: 'Classes',
-      description: 'Manage teaching groups, join codes and class membership.',
-      section: 'classes',
-      primaryHref: '/teacher/set-study',
-      primaryLabel: 'Set work',
-    };
-  }
-
-  if (pathname.startsWith('/teacher/set-study')) {
-    return {
-      title: 'Assignments',
-      description: 'Set, review and manage guided study for your classes.',
-      section: 'assignments',
-    };
-  }
-
-  if (pathname.startsWith('/teacher/progress/')) {
-    return {
-      title: 'Student evidence',
-      description: 'Review an individual student’s progress and saved activity evidence.',
-      section: 'progress',
-      primaryHref: '/teacher/progress',
-      primaryLabel: 'Class progress',
-    };
-  }
-
-  if (pathname.startsWith('/teacher/progress')) {
-    return {
-      title: 'Progress',
-      description: 'Identify completion, confidence and students who need attention.',
-      section: 'progress',
-      primaryHref: '/teacher/set-study',
-      primaryLabel: 'Set work',
-    };
-  }
-
-  return {
-    title: 'Teacher home',
-    description: 'Open a class, set work and review student progress.',
-    section: 'home',
-    primaryHref: '/teacher/set-study',
-    primaryLabel: 'Set work',
-  };
+function sectionFor(pathname: string): Section {
+  if (pathname.startsWith('/teacher/classes')) return 'classes';
+  if (pathname.startsWith('/teacher/assignments') || pathname.startsWith('/teacher/set-study')) return 'assignments';
+  if (pathname.startsWith('/teacher/progress')) return 'interventions';
+  return 'home';
 }
 
-function Breadcrumbs({ pathname, title }: { pathname: string; title: string }) {
-  const items: { label: string; href?: string }[] = [{ label: 'Teacher', href: '/teacher/dashboard' }];
+function isNestedWorkspace(pathname: string) {
+  return /^\/teacher\/classes\/[^/]+/.test(pathname)
+    || /^\/teacher\/assignments\/[^/]+/.test(pathname)
+    || /^\/teacher\/progress\/.+/.test(pathname);
+}
 
-  if (pathname.startsWith('/teacher/classes')) items.push({ label: 'Classes' });
-  else if (pathname.startsWith('/teacher/set-study')) items.push({ label: 'Assignments' });
-  else if (pathname.startsWith('/teacher/progress/')) {
-    items.push({ label: 'Progress', href: '/teacher/progress' });
-    items.push({ label: title });
-  } else if (pathname.startsWith('/teacher/progress')) items.push({ label: 'Progress' });
-  else items.push({ label: 'Home' });
-
-  return (
-    <nav className={styles.breadcrumbs} aria-label="Breadcrumb">
-      {items.map((item, index) => (
-        <span key={`${item.label}-${index}`}>
-          {index > 0 && <span className={styles.separator} aria-hidden="true">/</span>}
-          {item.href ? <Link href={item.href}>{item.label}</Link> : <span aria-current="page">{item.label}</span>}
-        </span>
-      ))}
-    </nav>
-  );
+function topLevelMeta(section: Section) {
+  if (section === 'classes') return { title: 'Classes', description: 'Open a teaching group or create a new class.' };
+  if (section === 'assignments') return { title: 'Assignments', description: 'Find existing work or set a new assignment.' };
+  if (section === 'interventions') return { title: 'Interventions', description: 'Focus on students who need teacher attention.' };
+  return { title: 'Teacher home', description: 'What needs your attention today.' };
 }
 
 export default function TeacherShell({ children }: TeacherShellProps) {
   const pathname = usePathname();
-  const meta = getRouteMeta(pathname);
+  const section = sectionFor(pathname);
+  const nested = isNestedWorkspace(pathname);
+  const meta = topLevelMeta(section);
 
   return (
     <div className={styles.shell}>
@@ -107,46 +51,30 @@ export default function TeacherShell({ children }: TeacherShellProps) {
 
         <nav className={styles.navigation} aria-label="Teacher navigation">
           {navigation.map((item) => {
-            const active = item.id === meta.section;
-            return (
-              <Link className={`${styles.navItem} ${active ? styles.active : ''}`} href={item.href} key={item.id} aria-current={active ? 'page' : undefined}>
-                <span className={styles.navIcon} aria-hidden="true">{item.icon}</span>
-                <span>{item.label}</span>
-              </Link>
-            );
+            const active = item.id === section;
+            return <Link className={`${styles.navItem} ${active ? styles.active : ''}`} href={item.href} key={item.id} aria-current={active ? 'page' : undefined}>
+              <span className={styles.navIcon} aria-hidden="true">{item.icon}</span><span>{item.label}</span>
+            </Link>;
           })}
         </nav>
 
-        <div className={styles.futureNavigation} aria-label="Future teacher sections">
-          <span><b aria-hidden="true">◇</b> Resources <small>Coming soon</small></span>
-          <span><b aria-hidden="true">⚙</b> Settings <small>Coming soon</small></span>
-        </div>
+        <Link className={styles.primaryAction} href="/teacher/set-study">+ Set work</Link>
       </aside>
 
       <div className={styles.workspace}>
-        <header className={styles.pageHeader}>
-          <div className={styles.headerText}>
-            <Breadcrumbs pathname={pathname} title={meta.title} />
-            <h1>{meta.title}</h1>
-            <p>{meta.description}</p>
-          </div>
-          {meta.primaryHref && meta.primaryLabel && (
-            <Link className={styles.primaryAction} href={meta.primaryHref}>{meta.primaryLabel}</Link>
-          )}
-        </header>
-
+        {!nested && pathname !== '/teacher/set-study' && <header className={styles.pageHeader}>
+          <div className={styles.headerText}><h1>{meta.title}</h1><p>{meta.description}</p></div>
+          {section !== 'assignments' && <Link className={styles.primaryAction} href="/teacher/set-study">Set work</Link>}
+        </header>}
         <main className={styles.content}>{children}</main>
       </div>
 
       <nav className={styles.mobileNavigation} aria-label="Teacher mobile navigation">
         {navigation.map((item) => {
-          const active = item.id === meta.section;
-          return (
-            <Link href={item.href} key={item.id} className={active ? styles.mobileActive : ''} aria-current={active ? 'page' : undefined}>
-              <span aria-hidden="true">{item.icon}</span>
-              <small>{item.label}</small>
-            </Link>
-          );
+          const active = item.id === section;
+          return <Link href={item.href} key={item.id} className={active ? styles.mobileActive : ''} aria-current={active ? 'page' : undefined}>
+            <span aria-hidden="true">{item.icon}</span><small>{item.label}</small>
+          </Link>;
         })}
       </nav>
     </div>
