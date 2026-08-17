@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getActivityLabel, orderSupportedActivityTypes } from '@/lib/activityTypeRegistry';
+import { orderSupportedActivityTypes } from '@/lib/activityTypeRegistry';
 import { getOrganisedReadyUnits, getPathwayDisplayTitle } from '@/lib/pathwayCourseOrganisation';
 import { activeSubjectPack } from '@/subjects/activeSubject';
 import type { StudyMode } from '@/subjects/types';
@@ -33,8 +33,11 @@ const pathwayOptions = activeSubjectPack.pathways;
 const activityOptions = activeSubjectPack.activityOptions;
 const modes = activeSubjectPack.activityPresets;
 const activityMinutes = Object.fromEntries(activityOptions.map((item) => [item.activityType, item.estimatedMinutes]));
-const organisedUnits = getOrganisedReadyUnits();
+const organisedUnits = getOrganisedReadyUnits(pathwayOptions);
 
+function activityLabel(activityType: string) {
+  return activityOptions.find((item) => item.activityType === activityType)?.label ?? activityType.replaceAll('_', ' ');
+}
 function defaultInstructions(mode: StudyMode, title: string) {
   return activeSubjectPack.defaultInstructions(mode, title);
 }
@@ -140,7 +143,7 @@ export default function GuidedStudyAssignmentForm({ classOptions, initialClassId
           <article className={styles.reviewCard}><span>Deadline</span><strong>{deadlineText(deadlineAt)}</strong><p>{collisions.length ? `${collisions.length} deadline clash${collisions.length === 1 ? '' : 'es'}` : 'No same-day class clash'}</p></article>
           <article className={styles.reviewCard}><span>Estimated time</span><strong>{estimatedMinutes} minutes</strong><p>{activities.length} required activities</p></article>
         </div>
-        <ol className={styles.route}>{activities.map((item) => <li key={item}>{getActivityLabel(item)}</li>)}</ol>
+        <ol className={styles.route}>{activities.map((item) => <li key={item}>{activityLabel(item)}</li>)}</ol>
         <div className={styles.instructionPreview}><span>Students will see</span><p>{instructions || 'No additional instructions.'}</p></div>
         {message && <div className={status === 'error' ? styles.error : styles.notice}>{message}</div>}
         <div className={styles.footer}><button type="button" className={styles.secondary} onClick={() => setStep(2)}>← Edit</button><div className={styles.publishActions}><button type="button" className={styles.secondary} onClick={() => save(false)} disabled={status === 'saving'}>Save draft</button><button type="button" onClick={() => save(true)} disabled={status === 'saving' || !activities.length}>{status === 'saving' ? 'Saving…' : `Publish to ${selectedClass.studentCount} students`}</button></div></div>
