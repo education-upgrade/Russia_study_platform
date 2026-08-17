@@ -113,7 +113,10 @@ export default async function ClassTrackingPage({ params, searchParams }: { para
   }).sort((a, b) => a.name.localeCompare(b.name));
 
   const selectedAssignment = assignments.find((assignment) => assignment.id === selectedAssignmentId) ?? null;
-  const selectedRows = selectedAssignment ? studentRows.map((row) => row.cells.find((cell) => cell.assignment.id === selectedAssignment.id) ? { row, cell: row.cells.find((cell) => cell.assignment.id === selectedAssignment.id)! } : null).filter(Boolean) as { row: typeof studentRows[number]; cell: typeof studentRows[number]['cells'][number] }[] : [];
+  const selectedRows = selectedAssignment ? studentRows.map((row) => {
+    const cell = row.cells.find((candidate) => candidate.assignment.id === selectedAssignment.id);
+    return cell ? { row, cell } : null;
+  }).filter(Boolean) as { row: typeof studentRows[number]; cell: typeof studentRows[number]['cells'][number] }[] : [];
   const selectedComplete = selectedRows.filter(({ cell }) => cell.state === 'complete').length;
   const selectedIncomplete = selectedRows.filter(({ cell }) => cell.state === 'incomplete').length;
   const selectedNotAttempted = selectedRows.filter(({ cell }) => cell.state === 'not_attempted').length;
@@ -137,26 +140,27 @@ export default async function ClassTrackingPage({ params, searchParams }: { para
     </section>
 
     <section className={styles.panel}>
-      <form className={styles.filters}><input name="search" defaultValue={typeof query.search === 'string' ? query.search : ''} placeholder="Search student" /><select name="status" defaultValue={statusFilter}><option value="all">All students</option><option value="complete">Fully complete</option><option value="incomplete">Has incomplete work</option><option value="not_attempted">Has not attempted work</option></select><button type="submit">Apply</button></form>
-
-      {assignments.length === 0 ? <div className={styles.empty}>No published or archived assignment history yet.</div> : <>
-        <section className={styles.mobileTracker}>
-          <form className={styles.assignmentPicker}>
-            {typeof query.search === 'string' && <input type="hidden" name="search" value={query.search} />}
-            {statusFilter !== 'all' && <input type="hidden" name="status" value={statusFilter} />}
-            <label><span>Assignment</span><select name="assignment" defaultValue={selectedAssignmentId}>{assignments.map((assignment) => <option key={assignment.id} value={assignment.id}>{assignment.lesson_title}</option>)}</select></label>
-            <button type="submit">View</button>
+      <section className={styles.mobileTracker}>
+        {assignments.length === 0 ? <div className={styles.empty}>No published or archived assignment history yet.</div> : <>
+          <form className={styles.mobileControls}>
+            <label className={styles.assignmentSelect}><span>Assignment</span><select name="assignment" defaultValue={selectedAssignmentId}>{assignments.map((assignment) => <option key={assignment.id} value={assignment.id}>{assignment.lesson_title}</option>)}</select></label>
+            <input name="search" defaultValue={typeof query.search === 'string' ? query.search : ''} placeholder="Search student" aria-label="Search student" />
+            <select name="status" defaultValue={statusFilter} aria-label="Filter students"><option value="all">All students</option><option value="complete">Fully complete</option><option value="incomplete">Has incomplete work</option><option value="not_attempted">Has not attempted work</option></select>
+            <button type="submit">Update view</button>
           </form>
           {selectedAssignment && <>
             <div className={styles.mobileAssignmentHeader}><div><p className={styles.eyebrow}>Selected assignment</p><h2>{selectedAssignment.lesson_title}</h2><p>Due {formatDate(selectedAssignment.due_at)}</p></div></div>
             <div className={styles.mobileMetrics}><article><span>Complete</span><strong>{selectedComplete}</strong></article><article><span>Incomplete</span><strong>{selectedIncomplete}</strong></article><article><span>Not attempted</span><strong>{selectedNotAttempted}</strong></article></div>
             <div className={styles.mobileStudentList}>{selectedRows.map(({ row, cell }) => <Link href={`/teacher/progress/${selectedAssignment.id}/${row.studentId}`} className={styles.mobileStudent} key={row.studentId}><div><strong>{row.name}</strong><span>{cell.progress ? `${cell.progress.progress_percent}% complete` : 'No recorded progress'}</span></div><span className={`${styles.mobileStatus} ${styles[cell.state]}`}>{stateLabel(cell.state)}</span></Link>)}</div>
           </>}
-          <details className={styles.matrixDetails}><summary>View full matrix</summary><p>Best used on a larger screen. You can still scroll it horizontally here.</p></details>
-        </section>
+          <details className={styles.matrixDetails}><summary>View full matrix</summary><p>Best used on a larger screen. You can still scroll it horizontally here.</p><div className={styles.matrixWrapMobile}><table className={styles.matrix}><thead><tr><th>Student</th>{assignments.map((assignment) => <th key={assignment.id}><span>{assignment.lesson_title}</span><small>{formatDate(assignment.due_at)}</small></th>)}<th>Overall</th></tr></thead><tbody>{studentRows.map((row) => <tr key={row.studentId}><th><strong>{row.name}</strong><small>{row.complete}/{row.assigned} complete</small></th>{row.cells.map((cell) => <td key={cell.assignment.id}><Link href={`/teacher/progress/${cell.assignment.id}/${row.studentId}`} className={`${styles.cell} ${styles[cell.state]}`} title={`${cell.assignment.title}: ${stateLabel(cell.state)}`}><strong>{cell.state === 'complete' ? '✓' : cell.state === 'incomplete' ? '◐' : cell.state === 'not_attempted' ? '○' : '—'}</strong><span>{stateLabel(cell.state)}</span>{cell.progress && <small>{cell.progress.progress_percent}%</small>}</Link></td>)}<td><div className={styles.overall}><strong>{row.complete}/{row.assigned}</strong><span>{row.incomplete} incomplete</span><span>{row.notAttempted} not attempted</span></div></td></tr>)}</tbody></table></div></details>
+        </>}
+      </section>
 
-        <div className={styles.matrixWrap}><table className={styles.matrix}><thead><tr><th>Student</th>{assignments.map((assignment) => <th key={assignment.id}><span>{assignment.lesson_title}</span><small>{formatDate(assignment.due_at)}</small></th>)}<th>Overall</th></tr></thead><tbody>{studentRows.map((row) => <tr key={row.studentId}><th><strong>{row.name}</strong><small>{row.complete}/{row.assigned} complete</small></th>{row.cells.map((cell) => <td key={cell.assignment.id}><Link href={`/teacher/progress/${cell.assignment.id}/${row.studentId}`} className={`${styles.cell} ${styles[cell.state]}`} title={`${cell.assignment.title}: ${stateLabel(cell.state)}`}><strong>{cell.state === 'complete' ? '✓' : cell.state === 'incomplete' ? '◐' : cell.state === 'not_attempted' ? '○' : '—'}</strong><span>{stateLabel(cell.state)}</span>{cell.progress && <small>{cell.progress.progress_percent}%</small>}</Link></td>)}<td><div className={styles.overall}><strong>{row.complete}/{row.assigned}</strong><span>{row.incomplete} incomplete</span><span>{row.notAttempted} not attempted</span></div></td></tr>)}</tbody></table></div>
-      </>}
+      <section className={styles.desktopTracker}>
+        <form className={styles.filters}><input name="search" defaultValue={typeof query.search === 'string' ? query.search : ''} placeholder="Search student" /><select name="status" defaultValue={statusFilter}><option value="all">All students</option><option value="complete">Fully complete</option><option value="incomplete">Has incomplete work</option><option value="not_attempted">Has not attempted work</option></select><button type="submit">Apply</button></form>
+        {assignments.length === 0 ? <div className={styles.empty}>No published or archived assignment history yet.</div> : <div className={styles.matrixWrap}><table className={styles.matrix}><thead><tr><th>Student</th>{assignments.map((assignment) => <th key={assignment.id}><span>{assignment.lesson_title}</span><small>{formatDate(assignment.due_at)}</small></th>)}<th>Overall</th></tr></thead><tbody>{studentRows.map((row) => <tr key={row.studentId}><th><strong>{row.name}</strong><small>{row.complete}/{row.assigned} complete</small></th>{row.cells.map((cell) => <td key={cell.assignment.id}><Link href={`/teacher/progress/${cell.assignment.id}/${row.studentId}`} className={`${styles.cell} ${styles[cell.state]}`} title={`${cell.assignment.title}: ${stateLabel(cell.state)}`}><strong>{cell.state === 'complete' ? '✓' : cell.state === 'incomplete' ? '◐' : cell.state === 'not_attempted' ? '○' : '—'}</strong><span>{stateLabel(cell.state)}</span>{cell.progress && <small>{cell.progress.progress_percent}%</small>}</Link></td>)}<td><div className={styles.overall}><strong>{row.complete}/{row.assigned}</strong><span>{row.incomplete} incomplete</span><span>{row.notAttempted} not attempted</span></div></td></tr>)}</tbody></table></div>}
+      </section>
     </section>
   </main>;
 }
