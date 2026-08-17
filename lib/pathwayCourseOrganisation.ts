@@ -1,4 +1,5 @@
 import { pathwayOptions, type PathwayConfig } from './pathwayRegistry';
+import type { SubjectPathway } from '@/subjects/types';
 import { unit7Pathways } from './unit7RegistryActivation';
 import { unit8Pathways } from './unit8RegistryActivation';
 
@@ -72,20 +73,20 @@ pathwayOptions.sort((first, second) => {
   return first.courseWeek - second.courseWeek;
 });
 
-export type OrganisedPathway = PathwayConfig & { displayTitle: string; lessonNumber: number };
-export type OrganisedUnit = { unitNumber: number; unitTitle: string; yearGroup: PathwayConfig['yearGroup']; lessons: OrganisedPathway[] };
+export type OrganisedPathway = SubjectPathway & { displayTitle: string; lessonNumber: number };
+export type OrganisedUnit = { unitNumber: number; unitTitle: string; yearGroup: SubjectPathway['yearGroup']; lessons: OrganisedPathway[] };
 
-export function getPathwayDisplayTitle(pathway: PathwayConfig) {
+export function getPathwayDisplayTitle(pathway: Pick<SubjectPathway, 'pathwaySlug' | 'title'>) {
   return displayTitleOverrides[pathway.pathwaySlug] ?? pathway.title;
 }
 
-function isAvailablePathway(pathway: PathwayConfig) {
+function isAvailablePathway(pathway: SubjectPathway) {
   return pathway.status === 'ready' || builtPathwaySlugs.has(pathway.pathwaySlug);
 }
 
-export function getOrganisedReadyUnits(): OrganisedUnit[] {
-  const grouped = new Map<string, PathwayConfig[]>();
-  pathwayOptions.filter(isAvailablePathway).forEach((pathway) => {
+export function getOrganisedReadyUnits(sourcePathways: SubjectPathway[] = pathwayOptions): OrganisedUnit[] {
+  const grouped = new Map<string, SubjectPathway[]>();
+  sourcePathways.filter(isAvailablePathway).forEach((pathway) => {
     const key = `${pathway.yearGroup}-${pathway.unitNumber}`;
     grouped.set(key, [...(grouped.get(key) ?? []), pathway]);
   });
