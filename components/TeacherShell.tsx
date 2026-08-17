@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { activeSubjectIdentity } from '@/subjects/activeSubject';
 import styles from './TeacherShell.module.css';
 
 type TeacherShellProps = { children: ReactNode };
@@ -45,9 +46,9 @@ export default function TeacherShell({ children }: TeacherShellProps) {
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
-        <Link className={styles.brand} href="/teacher/dashboard" aria-label="Russia Study Platform teacher home">
-          <span className={styles.brandMark}>R</span>
-          <span><strong>Russia Study</strong><small>Teacher workspace</small></span>
+        <Link className={styles.brand} href="/teacher/dashboard" aria-label={`${activeSubjectIdentity.platformName} teacher home`}>
+          <span className={styles.brandMark}>{activeSubjectIdentity.brandMark}</span>
+          <span><strong>{activeSubjectIdentity.platformName}</strong><small>Teacher workspace</small></span>
         </Link>
 
         <nav className={styles.navigation} aria-label="Teacher navigation">
