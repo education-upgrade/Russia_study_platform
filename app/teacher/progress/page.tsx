@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import InterventionCentre from '@/components/InterventionCentre';
 
 type Props = {
@@ -9,5 +10,9 @@ export const revalidate = 0;
 
 export default async function TeacherProgressPage({ searchParams }: Props) {
   const params = searchParams ? await searchParams : {};
-  return <InterventionCentre initialFilters={params} />;
+  const insightsHref = params.classId ? `/teacher/analytics?classId=${encodeURIComponent(params.classId)}` : '/teacher/analytics';
+  return <>
+    <div className="button-row" style={{ justifyContent: 'flex-end', marginBottom: 10 }}><Link className="button secondary" href={insightsHref}>View insights</Link></div>
+    <InterventionCentre initialFilters={params} />
+  </>;
 }

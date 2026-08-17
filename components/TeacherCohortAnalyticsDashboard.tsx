@@ -1,196 +1,180 @@
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
-import { isTrackableActivity, orderSupportedActivityTypes } from '@/lib/activityTypeRegistry';
-import { aggregateActivityEvidence, normaliseActivityEvidence, type ActivityEvidence, type RawActivityResponse } from '@/lib/activityEvidence';
-import { recommendIntervention } from '@/lib/interventionEngine';
-import styles from '@/app/teacher/progress/page.module.css';
+import { requireRoles } from '@/lib/auth/access';
+import { getActivityLabel } from '@/lib/activityTypeRegistry';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
+import styles from '@/app/teacher/analytics/page.module.css';
 
-const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
-
+type Props = { initialClassId?: string };
 type Assignment = {
   id: string;
-  pathway_slug: string | null;
-  lesson_title: string | null;
-  mode: string;
-  required_activity_types: string[];
-  assigned_class: string | null;
-  assigned_student_id: string | null;
-  assigned_student_ids?: string[] | null;
-  recipient_count?: number | null;
-  deadline_at: string | null;
+  class_id: string;
+  title: string;
+  lesson_title: string;
+  status: string;
   created_at: string;
+  teaching_classes: { id: string; name: string } | { id: string; name: string }[] | null;
+  assignment_recipients: { student_id: string; status: string }[] | null;
+};
+type Progress = {
+  assignment_id: string;
+  student_id: string;
+  status: 'not_started' | 'in_progress' | 'complete';
+  progress_percent: number;
+  last_activity_at: string | null;
+};
+type ActivityProgress = {
+  assignment_id: string;
+  student_id: string;
+  activity_type: string;
+  status: 'not_started' | 'in_progress' | 'complete';
+  score: number | null;
+  max_score: number | null;
+  confidence: number | null;
+  attempt_count: number;
+  last_saved_at: string | null;
 };
 
-type UserRow = { id: string; name: string; email: string };
-type ActivityRow = { id: string; lesson_id: string | null; activity_type: string; title: string };
-type LessonRow = { id: string; title: string };
-type ResponseRow = RawActivityResponse & { student_id: string; activity_id: string };
+type Insight = { title: string; detail: string; level: 'attention' | 'watch' | 'positive'; href?: string };
 
-type StudentAnalytics = {
-  id: string;
-  name: string;
-  assignment: Assignment;
-  evidence: ActivityEvidence[];
-  complete: number;
-  required: number;
-  completionPercentage: number;
-  averageMastery: number | null;
-  averageConfidence: number | null;
-  recommendationTitle: string;
-  recommendationMode: string;
-  flags: string[];
-};
+function relation<T>(value: T | T[] | null) { return Array.isArray(value) ? value[0] ?? null : value; }
+function average(values: number[]) { return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null; }
+function pct(value: number | null) { return value === null ? '—' : `${Math.round(value)}%`; }
+function scorePercent(row: ActivityProgress) { return row.score !== null && row.max_score ? Math.round((row.score / row.max_score) * 100) : null; }
 
-function formatDate(value: string | null) {
-  if (!value) return 'No deadline';
-  return new Date(value).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-}
+export default async function TeacherCohortAnalyticsDashboard({ initialClassId }: Props) {
+  const auth = await requireRoles(['teacher', 'admin']);
+  const supabase = await createServerSupabaseClient();
+  if (!auth || !supabase) return null;
 
-function average(values: number[]) {
-  return values.length ? Math.round(values.reduce((total, value) => total + value, 0) / values.length) : null;
-}
+  const { data: classLinks } = await supabase
+    .from('class_teachers')
+    .select('class_id, teaching_classes(id, name)')
+    .eq('teacher_id', auth.userId);
 
-function unique<T>(values: T[]) {
-  return Array.from(new Set(values));
-}
+  const classes = (classLinks ?? []).map((row: any) => relation(row.teaching_classes)).filter(Boolean) as { id: string; name: string }[];
+  const allowedClassIds = new Set(classes.map((item) => item.id));
+  const selectedClassId = initialClassId && allowedClassIds.has(initialClassId) ? initialClassId : '';
+  const scopedClassIds = selectedClassId ? [selectedClassId] : classes.map((item) => item.id);
 
-function getAssignmentStudentIds(assignment: Assignment) {
-  const ids = assignment.assigned_student_ids?.length ? assignment.assigned_student_ids : [];
-  if (assignment.assigned_student_id) ids.push(assignment.assigned_student_id);
-  return unique(ids.length ? ids : [DEMO_STUDENT_ID]);
-}
-
-function getStatusClass(flag: string) {
-  if (flag === 'Submitted') return styles.submitted;
-  if (flag === 'Secure progression') return styles.secure;
-  return styles.intervention;
-}
-
-export default async function TeacherCohortAnalyticsDashboard() {
-  if (!supabase) {
-    return <main className={styles.shell}><section className={styles.mainCard}><header className={styles.header}><h1>Supabase not configured</h1></header></section></main>;
+  if (!scopedClassIds.length) {
+    return <main className={styles.page}><section className={styles.empty}><h2>No classes yet</h2><p>Create a class before teacher insights can identify learning patterns.</p><Link className={styles.primaryButton} href="/teacher/classes">Go to classes</Link></section></main>;
   }
 
-  const { data: assignmentsData } = await supabase
-    .from('guided_study_assignments')
-    .select('id, pathway_slug, lesson_title, mode, required_activity_types, assigned_class, assigned_student_id, assigned_student_ids, recipient_count, deadline_at, created_at')
-    .eq('status', 'active')
-    .order('created_at', { ascending: false })
-    .limit(30);
+  const { data: assignmentData, error: assignmentError } = await supabase
+    .from('classroom_assignments')
+    .select('id, class_id, title, lesson_title, status, created_at, teaching_classes(id, name), assignment_recipients(student_id, status)')
+    .in('class_id', scopedClassIds)
+    .in('status', ['published', 'archived'])
+    .order('created_at', { ascending: false });
 
-  const assignments = (assignmentsData ?? []) as Assignment[];
+  const assignments = (assignmentData ?? []) as Assignment[];
+  const assignmentIds = assignments.map((item) => item.id);
+  const studentIds = Array.from(new Set(assignments.flatMap((assignment) => (assignment.assignment_recipients ?? []).filter((r) => r.status === 'assigned').map((r) => r.student_id))));
 
-  if (!assignments.length) {
-    return <main className={styles.shell}><section className={styles.mainCard}><header className={styles.header}><div><p className={styles.eyebrow}>Teacher analytics</p><h1>No active assignments</h1><p>Create a guided study assignment first.</p></div><Link className={styles.navButton} href="/teacher/set-study">Set study</Link></header></section></main>;
-  }
+  const [profilesResult, progressResult, activityResult] = await Promise.all([
+    studentIds.length ? supabase.from('profiles').select('id, full_name').in('id', studentIds) : Promise.resolve({ data: [], error: null }),
+    assignmentIds.length ? supabase.from('assignment_progress').select('assignment_id, student_id, status, progress_percent, last_activity_at').in('assignment_id', assignmentIds) : Promise.resolve({ data: [], error: null }),
+    assignmentIds.length ? supabase.from('student_activity_progress').select('assignment_id, student_id, activity_type, status, score, max_score, confidence, attempt_count, last_saved_at').in('assignment_id', assignmentIds) : Promise.resolve({ data: [], error: null }),
+  ]);
 
-  const studentIds = unique(assignments.flatMap(getAssignmentStudentIds));
-  const lessonTitles = unique(assignments.map((assignment) => assignment.lesson_title).filter((title): title is string => Boolean(title)));
+  const profileMap = new Map((profilesResult.data ?? []).map((row: any) => [row.id, row.full_name?.trim() || 'Student']));
+  const progressRows = (progressResult.data ?? []) as Progress[];
+  const activityRows = (activityResult.data ?? []) as ActivityProgress[];
+  const progressMap = new Map(progressRows.map((row) => [`${row.assignment_id}:${row.student_id}`, row]));
 
-  const { data: usersData } = studentIds.length ? await supabase.from('users').select('id, name, email').in('id', studentIds) : { data: [] };
-  const users = (usersData ?? []) as UserRow[];
+  const recipientPairs = assignments.flatMap((assignment) => (assignment.assignment_recipients ?? [])
+    .filter((recipient) => recipient.status === 'assigned')
+    .map((recipient) => ({ assignment, studentId: recipient.student_id, progress: progressMap.get(`${assignment.id}:${recipient.student_id}`) })));
 
-  const { data: lessonsData } = lessonTitles.length ? await supabase.from('lessons').select('id, title').in('title', lessonTitles) : { data: [] };
-  const lessons = (lessonsData ?? []) as LessonRow[];
-  const lessonIds = lessons.map((lesson) => lesson.id);
+  const totalRecipients = recipientPairs.length;
+  const completedRecipients = recipientPairs.filter((item) => item.progress?.status === 'complete').length;
+  const overallCompletion = totalRecipients ? Math.round((completedRecipients / totalRecipients) * 100) : 0;
 
-  const { data: activitiesData } = lessonIds.length ? await supabase.from('activities').select('id, lesson_id, activity_type, title').in('lesson_id', lessonIds) : { data: [] };
-  const activities = (activitiesData ?? []) as ActivityRow[];
-  const activityIds = activities.map((activity) => activity.id);
+  const confidenceValues = activityRows.map((row) => row.confidence).filter((value): value is number => value !== null);
+  const averageConfidence = average(confidenceValues);
+  const scoredRows = activityRows.filter((row) => scorePercent(row) !== null);
+  const averageScore = average(scoredRows.map((row) => scorePercent(row) as number));
 
-  const { data: responsesData } = activityIds.length && studentIds.length
-    ? await supabase.from('student_responses').select('student_id, activity_id, status, score, response_type, response_json, last_saved_at').in('activity_id', activityIds).in('student_id', studentIds)
-    : { data: [] };
-  const responses = (responsesData ?? []) as ResponseRow[];
-
-  const analytics: StudentAnalytics[] = assignments.flatMap((assignment) => {
-    const assignmentStudentIds = getAssignmentStudentIds(assignment);
-    const lesson = lessons.find((item) => item.title === assignment.lesson_title);
-    const lessonActivities = activities.filter((activity) => activity.lesson_id === lesson?.id);
-    const requiredTypes = orderSupportedActivityTypes(assignment.required_activity_types ?? []).filter(isTrackableActivity);
-
-    return assignmentStudentIds.map((studentId) => {
-      const user = users.find((item) => item.id === studentId);
-      const evidence = requiredTypes.map((activityType) => {
-        const activity = lessonActivities.find((item) => item.activity_type === activityType);
-        const response = activity ? responses.find((item) => item.student_id === studentId && item.activity_id === activity.id) : undefined;
-        return normaliseActivityEvidence(activityType, response);
-      });
-      const aggregate = aggregateActivityEvidence(evidence);
-      const recommendation = recommendIntervention(evidence);
-      return {
-        id: studentId,
-        name: user?.name ?? (studentId === DEMO_STUDENT_ID ? 'Demo Student' : 'Student'),
-        assignment,
-        evidence,
-        complete: aggregate.complete,
-        required: aggregate.trackable,
-        completionPercentage: aggregate.completionPercentage,
-        averageMastery: aggregate.averageMastery,
-        averageConfidence: aggregate.averageConfidence,
-        recommendationTitle: recommendation.title,
-        recommendationMode: recommendation.routeMode,
-        flags: aggregate.flags.map((flag) => flag.interventionFlag),
-      };
-    });
+  const studentSummaries = studentIds.map((studentId) => {
+    const pairs = recipientPairs.filter((item) => item.studentId === studentId);
+    const incomplete = pairs.filter((item) => item.progress?.status !== 'complete').length;
+    const complete = pairs.length - incomplete;
+    const studentActivities = activityRows.filter((row) => row.student_id === studentId);
+    const lowConfidenceAssignments = new Set(studentActivities.filter((row) => row.confidence !== null && row.confidence <= 2).map((row) => row.assignment_id)).size;
+    const repeatedAttemptActivities = studentActivities.filter((row) => row.attempt_count >= 3).length;
+    const weakScoredActivities = studentActivities.filter((row) => { const score = scorePercent(row); return score !== null && score < 60; }).length;
+    return { studentId, name: profileMap.get(studentId) ?? 'Student', assigned: pairs.length, incomplete, complete, lowConfidenceAssignments, repeatedAttemptActivities, weakScoredActivities };
   });
 
-  const cohortCompletion = average(analytics.map((item) => item.completionPercentage)) ?? 0;
-  const cohortMastery = average(analytics.map((item) => item.averageMastery).filter((value): value is number => typeof value === 'number'));
-  const cohortConfidence = analytics.map((item) => item.averageConfidence).filter((value): value is number => typeof value === 'number');
-  const confidenceAverage = cohortConfidence.length ? Math.round((cohortConfidence.reduce((total, value) => total + value, 0) / cohortConfidence.length) * 10) / 10 : null;
-  const studentsWithFlags = analytics.filter((item) => item.flags.length > 0);
+  const persistentIncomplete = studentSummaries.filter((student) => student.incomplete >= 2);
+  const repeatedLowConfidence = studentSummaries.filter((student) => student.lowConfidenceAssignments >= 2);
+  const repeatedAttempts = studentSummaries.filter((student) => student.repeatedAttemptActivities >= 2);
+  const weakScores = studentSummaries.filter((student) => student.weakScoredActivities >= 2);
 
-  const activityWeaknesses = orderSupportedActivityTypes(unique(analytics.flatMap((item) => item.evidence.map((evidence) => evidence.activityType))))
-    .map((activityType) => {
-      const matching = analytics.flatMap((item) => item.evidence).filter((evidence) => evidence.activityType === activityType);
-      const flagged = matching.filter((evidence) => evidence.interventionFlag !== 'Submitted');
-      const masteryScores = matching.map((evidence) => evidence.masteryScore).filter((value): value is number => typeof value === 'number');
-      return {
-        activityType,
-        label: matching[0]?.label ?? activityType,
-        flaggedCount: flagged.length,
-        averageMastery: average(masteryScores),
-      };
-    })
-    .sort((a, b) => b.flaggedCount - a.flaggedCount || (a.averageMastery ?? 999) - (b.averageMastery ?? 999));
+  const activityTypes = Array.from(new Set(activityRows.map((row) => row.activity_type)));
+  const activityPatterns = activityTypes.map((activityType) => {
+    const rows = activityRows.filter((row) => row.activity_type === activityType);
+    const completed = rows.filter((row) => row.status === 'complete').length;
+    const completion = rows.length ? (completed / rows.length) * 100 : null;
+    const scores = rows.map(scorePercent).filter((value): value is number => value !== null);
+    const confidence = rows.map((row) => row.confidence).filter((value): value is number => value !== null);
+    return { activityType, label: getActivityLabel(activityType), evidenceCount: rows.length, completion, score: average(scores), confidence: average(confidence) };
+  }).filter((item) => item.evidenceCount >= 2)
+    .sort((a, b) => (a.completion ?? 100) - (b.completion ?? 100) || (a.score ?? 100) - (b.score ?? 100));
 
-  const interventionGroups = unique(analytics.map((item) => item.recommendationTitle)).map((title) => ({
-    title,
-    students: analytics.filter((item) => item.recommendationTitle === title),
-  }));
+  const weakestActivity = activityPatterns[0] ?? null;
+  const strongestActivity = [...activityPatterns].sort((a, b) => (b.completion ?? 0) - (a.completion ?? 0) || (b.score ?? 0) - (a.score ?? 0))[0] ?? null;
 
-  return (
-    <main className={styles.shell}>
-      <div className={styles.topbar}><span>Teacher / Cohort analytics</span><Link className={styles.navButton} href="/teacher/progress">Evidence view</Link><Link className={styles.navButton} href="/teacher/set-study">Set study</Link></div>
-      <section className={styles.mainCard}>
-        <header className={styles.header}>
-          <div><p className={styles.eyebrow}>Class intelligence</p><h1>Russia guided study analytics</h1><p>Live cohort overview across active guided-study assignments.</p></div>
-          <aside className={styles.decisionCard}><strong>{analytics.length}</strong><span>student-assignment profiles analysed</span></aside>
-        </header>
+  const insights: Insight[] = [];
+  if (persistentIncomplete.length) insights.push({ title: `${persistentIncomplete.length} student${persistentIncomplete.length === 1 ? '' : 's'} repeatedly leave assignments incomplete`, detail: 'These students have at least two assigned pieces of work that are not complete. This is a pattern across assignments, not a single missed task.', level: 'attention', href: '/teacher/progress?filter=all' });
+  if (repeatedLowConfidence.length) insights.push({ title: `${repeatedLowConfidence.length} student${repeatedLowConfidence.length === 1 ? '' : 's'} repeatedly report low confidence`, detail: 'Each has confidence of 1–2/5 recorded across at least two different assignments.', level: 'attention', href: '/teacher/progress?filter=low_confidence' });
+  if (repeatedAttempts.length) insights.push({ title: `${repeatedAttempts.length} student${repeatedAttempts.length === 1 ? '' : 's'} show repeated attempts across activities`, detail: 'These students have at least two activities with three or more recorded attempts. Review their evidence before deciding whether this reflects productive practice or difficulty.', level: 'watch' });
+  if (weakScores.length) insights.push({ title: `${weakScores.length} student${weakScores.length === 1 ? '' : 's'} have repeated weak scored evidence`, detail: 'Each has at least two scored activities below 60%. This signal uses only activities that store a score and maximum score.', level: 'watch' });
+  if (weakestActivity) insights.push({ title: `${weakestActivity.label} is currently the weakest activity pattern`, detail: `${pct(weakestActivity.completion)} completion${weakestActivity.score !== null ? ` · ${pct(weakestActivity.score)} average scored evidence` : ''}${weakestActivity.confidence !== null ? ` · ${weakestActivity.confidence.toFixed(1)}/5 confidence` : ''}. Based on ${weakestActivity.evidenceCount} saved activity records.`, level: weakestActivity.completion !== null && weakestActivity.completion < 70 ? 'attention' : 'watch' });
+  if (!insights.length && totalRecipients) insights.push({ title: 'No repeated concern pattern is currently strong enough to flag', detail: 'The rules did not find repeated incomplete work, repeated low confidence, repeated weak scored evidence or repeated high-attempt activity.', level: 'positive' });
 
-        <section className={styles.snapshot}>
-          <article className={styles.metric}><span>Completion</span><strong>{cohortCompletion}%</strong><small>average route completion</small></article>
-          <article className={styles.metric}><span>Mastery</span><strong>{cohortMastery ?? '–'}</strong><small>average evidence score</small></article>
-          <article className={styles.metric}><span>Confidence</span><strong>{confidenceAverage ?? '–'}</strong><small>average confidence score</small></article>
-          <article className={styles.metric}><span>Flagged</span><strong>{studentsWithFlags.length}</strong><small>profiles needing checks</small></article>
-        </section>
+  const classRows = classes.filter((item) => scopedClassIds.includes(item.id)).map((classItem) => {
+    const classAssignments = assignments.filter((assignment) => assignment.class_id === classItem.id);
+    const pairs = recipientPairs.filter((item) => item.assignment.class_id === classItem.id);
+    const complete = pairs.filter((item) => item.progress?.status === 'complete').length;
+    return { ...classItem, assignments: classAssignments.length, recipients: pairs.length, completion: pairs.length ? Math.round((complete / pairs.length) * 100) : 0 };
+  });
 
-        <section className={styles.priority}>
-          <div className={styles.sectionHeader}><h2>Weakest activity types</h2><span className={styles.badge}>{activityWeaknesses.length} tracked</span></div>
-          <div className={styles.priorityList}>{activityWeaknesses.map((item) => <article className={styles.priorityItem} key={item.activityType}><div><strong>{item.label}</strong><small>average mastery {item.averageMastery ?? '–'}</small></div><p>{item.flaggedCount} profile{item.flaggedCount === 1 ? '' : 's'} flagged for this activity type.</p><span className={`${styles.statusPill} ${item.flaggedCount ? styles.intervention : styles.secure}`}>{item.flaggedCount ? 'Intervention' : 'Secure'}</span></article>)}</div>
-        </section>
+  const loadError = assignmentError || profilesResult.error || progressResult.error || activityResult.error;
 
-        <section className={styles.priority}>
-          <div className={styles.sectionHeader}><h2>Intervention groups</h2><span className={styles.badge}>{interventionGroups.length} groups</span></div>
-          <div className={styles.priorityList}>{interventionGroups.map((group) => <article className={styles.priorityItem} key={group.title}><div><strong>{group.title}</strong><small>{group.students.map((student) => student.name).join(', ')}</small></div><p>{group.students.length} student profile{group.students.length === 1 ? '' : 's'} should receive this route.</p><span className={`${styles.statusPill} ${getStatusClass(group.title === 'Stretch exam-practice route' ? 'Secure progression' : 'Intervention')}`}>{group.title === 'Stretch exam-practice route' ? 'Stretch' : 'Assign group'}</span></article>)}</div>
-        </section>
+  return <main className={styles.page}>
+    <header className={styles.header}>
+      <div><Link className={styles.backLink} href="/teacher/progress">← Interventions</Link><p className={styles.eyebrow}>Rule-based teacher intelligence</p><h1>Insights</h1><p>Patterns across assignment history and saved evidence. Every flag below is generated from explicit rules, not AI.</p></div>
+      <form className={styles.classFilter}><label htmlFor="classId">Class</label><select id="classId" name="classId" defaultValue={selectedClassId}><option value="">All my classes</option>{classes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select><button type="submit">Apply</button></form>
+    </header>
 
-        <section className={styles.studentEvidence}>
-          <div className={styles.sectionHeader}><h2>Student profiles</h2><span className={styles.badge}>live analytics</span></div>
-          <div className={styles.studentList}>{analytics.map((student) => <article className={styles.studentCard} key={`${student.id}-${student.assignment.id}`}><div className={styles.studentTop}><div><h3>{student.name}</h3><p>{student.assignment.lesson_title} · {student.assignment.assigned_class ?? 'class'} · deadline {formatDate(student.assignment.deadline_at)}</p></div><span className={`${styles.statusPill} ${student.flags.length ? styles.intervention : styles.secure}`}>{student.flags.length ? `${student.flags.length} flag${student.flags.length === 1 ? '' : 's'}` : 'On track'}</span></div><div className={styles.diagnosticGrid}><div className={styles.diagnosticBox}><span>Completion</span><strong>{student.complete}/{student.required}</strong><small>{student.completionPercentage}% complete</small></div><div className={styles.diagnosticBox}><span>Mastery</span><strong>{student.averageMastery ?? '–'}</strong><small>normalised score</small></div><div className={styles.diagnosticBox}><span>Confidence</span><strong>{student.averageConfidence ?? '–'}</strong><small>average confidence</small></div><div className={styles.diagnosticBox}><span>Next route</span><strong>{student.recommendationMode.replaceAll('_', ' ')}</strong><small>{student.recommendationTitle}</small></div></div></article>)}</div>
-        </section>
-      </section>
-    </main>
-  );
+    {loadError && <div className={styles.error}>Some insight data could not be loaded: {loadError.message}</div>}
+
+    <section className={styles.metrics} aria-label="Insight summary">
+      <article><span>Assignment completion</span><strong>{overallCompletion}%</strong><small>{completedRecipients}/{totalRecipients} student-assignment records complete</small></article>
+      <article><span>Average confidence</span><strong>{averageConfidence === null ? '—' : `${averageConfidence.toFixed(1)}/5`}</strong><small>{confidenceValues.length} saved confidence records</small></article>
+      <article><span>Average scored evidence</span><strong>{pct(averageScore)}</strong><small>{scoredRows.length} activities with comparable scores</small></article>
+      <article><span>Repeated concerns</span><strong>{new Set([...persistentIncomplete, ...repeatedLowConfidence, ...weakScores].map((item) => item.studentId)).size}</strong><small>students meeting at least one repeated-pattern rule</small></article>
+    </section>
+
+    <section className={styles.panel}>
+      <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>What stands out</p><h2>Current teaching signals</h2><p>Use these as prompts to inspect evidence, not as automatic judgements about attainment.</p></div><span>{insights.length} signal{insights.length === 1 ? '' : 's'}</span></div>
+      <div className={styles.insightGrid}>{insights.map((insight) => <article key={insight.title} className={`${styles.insight} ${styles[insight.level]}`}><div><strong>{insight.title}</strong><p>{insight.detail}</p></div>{insight.href && <Link href={insight.href}>Review students →</Link>}</article>)}</div>
+    </section>
+
+    <section className={styles.twoColumn}>
+      <article className={styles.panel}><div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Activity patterns</p><h2>Where students appear to struggle</h2></div></div>{activityPatterns.length === 0 ? <div className={styles.emptyInline}>Not enough saved activity evidence yet.</div> : <div className={styles.patternList}>{activityPatterns.slice(0, 8).map((item) => <div key={item.activityType}><div><strong>{item.label}</strong><small>{item.evidenceCount} records</small></div><span>{pct(item.completion)} complete</span><span>{item.score === null ? 'No score' : `${pct(item.score)} score`}</span><span>{item.confidence === null ? 'No confidence' : `${item.confidence.toFixed(1)}/5 confidence`}</span></div>)}</div>}</article>
+      <article className={styles.panel}><div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Class picture</p><h2>Completion by class</h2></div></div><div className={styles.classList}>{classRows.map((item) => <Link href={`/teacher/classes/${item.id}/tracking`} key={item.id}><div><strong>{item.name}</strong><small>{item.assignments} assignments · {item.recipients} student-assignment records</small></div><span>{item.completion}% complete</span></Link>)}</div>{strongestActivity && <div className={styles.positiveNote}><strong>Current strongest pattern: {strongestActivity.label}</strong><p>{pct(strongestActivity.completion)} completion{strongestActivity.score !== null ? ` · ${pct(strongestActivity.score)} average scored evidence` : ''}.</p></div>}</article>
+    </section>
+
+    <section className={styles.panel}>
+      <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Students to review</p><h2>Repeated-pattern groups</h2><p>Students may appear in more than one group.</p></div></div>
+      <div className={styles.groupGrid}>
+        <article><h3>Repeated incomplete work</h3><p>{persistentIncomplete.length ? persistentIncomplete.map((item) => item.name).join(', ') : 'No students currently meet this rule.'}</p><small>Rule: at least 2 assigned pieces not complete.</small></article>
+        <article><h3>Repeated low confidence</h3><p>{repeatedLowConfidence.length ? repeatedLowConfidence.map((item) => item.name).join(', ') : 'No students currently meet this rule.'}</p><small>Rule: confidence 1–2/5 across at least 2 assignments.</small></article>
+        <article><h3>Repeated weak scores</h3><p>{weakScores.length ? weakScores.map((item) => item.name).join(', ') : 'No students currently meet this rule.'}</p><small>Rule: at least 2 scored activities below 60%.</small></article>
+        <article><h3>Repeated attempts</h3><p>{repeatedAttempts.length ? repeatedAttempts.map((item) => item.name).join(', ') : 'No students currently meet this rule.'}</p><small>Rule: at least 2 activities with 3+ attempts.</small></article>
+      </div>
+    </section>
+  </main>;
 }
