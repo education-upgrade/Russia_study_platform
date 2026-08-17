@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { activeSubjectIdentity } from '@/subjects/activeIdentity';
 import styles from './StudentShell.module.css';
 
 const items = [
@@ -22,7 +23,7 @@ export default function StudentShell({ children }: { children: ReactNode }) {
 
   return <div className={`${styles.shell} ${inPathway ? styles.pathwayShell : ''}`}>
     {!inPathway ? <header className={styles.topbar}>
-      <Link className={styles.brand} href="/student/dashboard"><span>R</span><strong>Russia Study</strong></Link>
+      <Link className={styles.brand} href="/student/dashboard"><span>{activeSubjectIdentity.brandMark}</span><strong>{activeSubjectIdentity.platformName}</strong></Link>
       <nav aria-label="Student navigation">{items.map((item) => <Link key={item.href} href={item.href} className={isActive(pathname, item.href) ? styles.active : ''}>{item.label}</Link>)}</nav>
     </header> : null}
     <div className={styles.content}>{children}</div>

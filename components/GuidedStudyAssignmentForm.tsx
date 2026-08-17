@@ -3,12 +3,12 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getActivityLabel, orderSupportedActivityTypes } from '@/lib/activityTypeRegistry';
-import { pathwayOptions } from '@/lib/pathwayRegistry';
 import { getOrganisedReadyUnits, getPathwayDisplayTitle } from '@/lib/pathwayCourseOrganisation';
+import { activeSubjectPack } from '@/subjects/activeSubject';
+import type { StudyMode } from '@/subjects/types';
 import styles from './GuidedStudyAssignmentForm.module.css';
 import unitStyles from './GuidedStudyUnitPicker.module.css';
 
-type StudyMode = 'full_guided_study' | 'exam_practice' | 'recap' | 'confidence_repair';
 type BuilderStep = 1 | 2 | 3;
 
 type ClassOption = { id: string; className: string; yearGroup: string; studentCount: number };
@@ -29,31 +29,14 @@ type Props = {
   template?: Template;
 };
 
-const fullRoute = ['lesson_content', 'timeline', 'flashcards', 'quiz', 'judgement_ranking', 'ao3_interpretation', 'peel_response', 'confidence_exit_ticket'];
-const activityMinutes: Record<string, number> = { lesson_content: 10, timeline: 7, flashcards: 7, quiz: 8, judgement_ranking: 7, ao3_interpretation: 12, peel_response: 15, confidence_exit_ticket: 3 };
-const activityOptions = [
-  ['lesson_content', 'Lesson notes', 'Core explanation and context.'],
-  ['timeline', 'Timeline', 'Chronology and turning points.'],
-  ['flashcards', 'Flashcards', 'Key people, terms and concepts.'],
-  ['quiz', 'Retrieval quiz', 'Trackable knowledge check.'],
-  ['judgement_ranking', 'Judgement ranking', 'Relative importance and significance.'],
-  ['ao3_interpretation', 'AO3 interpretation', 'Evaluate a historical interpretation.'],
-  ['peel_response', 'PEEL response', 'Produce written exam evidence.'],
-  ['confidence_exit_ticket', 'Confidence check', 'Final reflection and self-report.'],
-] as const;
-const modes: { value: StudyMode; title: string; description: string; activities: string[] }[] = [
-  { value: 'full_guided_study', title: 'Full study', description: 'Complete independent pathway.', activities: fullRoute },
-  { value: 'exam_practice', title: 'Exam practice', description: 'Retrieval and written evidence.', activities: ['quiz', 'ao3_interpretation', 'peel_response', 'confidence_exit_ticket'] },
-  { value: 'recap', title: 'Recap', description: 'Repair knowledge efficiently.', activities: ['lesson_content', 'flashcards', 'quiz', 'confidence_exit_ticket'] },
-  { value: 'confidence_repair', title: 'Confidence repair', description: 'Rebuild understanding carefully.', activities: fullRoute },
-];
+const pathwayOptions = activeSubjectPack.pathways;
+const activityOptions = activeSubjectPack.activityOptions;
+const modes = activeSubjectPack.activityPresets;
+const activityMinutes = Object.fromEntries(activityOptions.map((item) => [item.activityType, item.estimatedMinutes]));
 const organisedUnits = getOrganisedReadyUnits();
 
 function defaultInstructions(mode: StudyMode, title: string) {
-  if (mode === 'exam_practice') return `Complete the retrieval and AO3 tasks, then produce a focused PEEL paragraph on ${title}. Finish with the confidence check.`;
-  if (mode === 'recap') return `Use the lesson notes, flashcards and quiz to repair weak knowledge on ${title}. Complete the confidence check last.`;
-  if (mode === 'confidence_repair') return `Move carefully through the ${title} pathway and identify what still feels insecure in the confidence check.`;
-  return `Complete the full ${title} guided study pathway in order. Build knowledge before moving to judgement, interpretation and written argument.`;
+  return activeSubjectPack.defaultInstructions(mode, title);
 }
 function localInput(value: string | null | undefined) {
   if (!value) return '';
@@ -69,7 +52,7 @@ export default function GuidedStudyAssignmentForm({ classOptions, initialClassId
   const firstClass = classOptions.find((item) => item.id === (template?.classId || initialClassId)) ?? classOptions[0];
   const firstTopic = pathwayOptions.find((item) => item.pathwaySlug === template?.pathwaySlug) ?? organisedUnits[0]?.lessons[0] ?? pathwayOptions[0];
   const initialMode = template?.mode ?? 'full_guided_study';
-  const initialActivities = template?.requiredActivityTypes?.length ? template.requiredActivityTypes : modes.find((item) => item.value === initialMode)!.activities;
+  const initialActivities = template?.requiredActivityTypes?.length ? template.requiredActivityTypes : modes.find((item) => item.id === initialMode)!.activities;
   const [step, setStep] = useState<BuilderStep>(1);
   const [classId, setClassId] = useState(firstClass.id);
   const [topicSlug, setTopicSlug] = useState(firstTopic.pathwaySlug);
@@ -97,7 +80,7 @@ export default function GuidedStudyAssignmentForm({ classOptions, initialClassId
   }
   function chooseMode(next: StudyMode) {
     setMode(next);
-    setActivities(orderSupportedActivityTypes(modes.find((item) => item.value === next)!.activities));
+    setActivities(orderSupportedActivityTypes(modes.find((item) => item.id === next)!.activities));
     setInstructions(defaultInstructions(next, topicTitle));
   }
   function toggleActivity(value: string) {
@@ -141,9 +124,9 @@ export default function GuidedStudyAssignmentForm({ classOptions, initialClassId
 
       {step === 2 && <section className={styles.panel}>
         <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Step 2</p><h3>Configure the student experience</h3></div><span>About {estimatedMinutes} minutes</span></div>
-        <div className={styles.modeGrid}>{modes.map((item) => <button type="button" key={item.value} onClick={() => chooseMode(item.value)} className={mode === item.value ? styles.selectedCard : styles.choiceCard}><strong>{item.title}</strong><span>{item.description}</span></button>)}</div>
+        <div className={styles.modeGrid}>{modes.map((item) => <button type="button" key={item.id} onClick={() => chooseMode(item.id)} className={mode === item.id ? styles.selectedCard : styles.choiceCard}><strong>{item.title}</strong><span>{item.description}</span></button>)}</div>
         <div className={styles.configureGrid}>
-          <div><h4>Required activities</h4><div className={styles.activityList}>{activityOptions.map(([value, label, description]) => { const selected = activities.includes(value); return <label key={value} className={selected ? styles.selectedActivity : styles.activity}><input type="checkbox" checked={selected} onChange={() => toggleActivity(value)} /><span><strong>{label}</strong><small>{description}</small></span><em>{selected ? activities.indexOf(value) + 1 : '–'}</em></label>; })}</div></div>
+          <div><h4>Required activities</h4><div className={styles.activityList}>{activityOptions.map((item) => { const selected = activities.includes(item.activityType); return <label key={item.activityType} className={selected ? styles.selectedActivity : styles.activity}><input type="checkbox" checked={selected} onChange={() => toggleActivity(item.activityType)} /><span><strong>{item.label}</strong><small>{item.description}</small></span><em>{selected ? activities.indexOf(item.activityType) + 1 : '–'}</em></label>; })}</div></div>
           <div className={styles.controls}><label><span>Deadline</span><input type="datetime-local" value={deadlineAt} onChange={(event) => setDeadlineAt(event.target.value)} /></label>{collisions.length > 0 && <div className={styles.warning}><strong>{collisions.length} other assignment{collisions.length === 1 ? '' : 's'} due that day</strong>{collisions.map((item) => <span key={item.assignmentId}>{item.title}</span>)}</div>}<label><span>Student instructions</span><textarea rows={7} value={instructions} onChange={(event) => setInstructions(event.target.value)} /></label></div>
         </div>
         <div className={styles.footer}><button type="button" className={styles.secondary} onClick={() => setStep(1)}>← Back</button><span>{activities.length} activities · about {estimatedMinutes} minutes</span><button type="button" onClick={() => setStep(3)} disabled={!activities.length}>Review assignment →</button></div>
@@ -153,7 +136,7 @@ export default function GuidedStudyAssignmentForm({ classOptions, initialClassId
         <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Step 3</p><h3>Check before publishing</h3></div><span>{selectedClass.studentCount} students</span></div>
         <div className={styles.reviewGrid}>
           <article className={styles.reviewCard}><span>Class</span><strong>{selectedClass.className}</strong><p>{selectedClass.yearGroup} · {selectedClass.studentCount} active students</p></article>
-          <article className={styles.reviewCard}><span>Study</span><strong>{topicTitle}</strong><p>{modes.find((item) => item.value === mode)?.title}</p></article>
+          <article className={styles.reviewCard}><span>Study</span><strong>{topicTitle}</strong><p>{modes.find((item) => item.id === mode)?.title}</p></article>
           <article className={styles.reviewCard}><span>Deadline</span><strong>{deadlineText(deadlineAt)}</strong><p>{collisions.length ? `${collisions.length} deadline clash${collisions.length === 1 ? '' : 'es'}` : 'No same-day class clash'}</p></article>
           <article className={styles.reviewCard}><span>Estimated time</span><strong>{estimatedMinutes} minutes</strong><p>{activities.length} required activities</p></article>
         </div>
