@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
-import { activeSubjectIdentity } from '@/subjects/activeSubject';
+import { activeSubjectIdentity } from '@/subjects/activeIdentity';
 import styles from './TeacherShell.module.css';
 
 type TeacherShellProps = { children: ReactNode };
