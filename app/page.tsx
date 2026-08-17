@@ -17,7 +17,7 @@ export default function HomePage() {
           <Link className="button" href="/student">
             Start student pathway
           </Link>
-          <Link className="button secondary" href="/teacher/dashboard">
+          <Link className="button secondary" href="/login?next=/teacher/dashboard">
             Teacher dashboard
           </Link>
         </div>
