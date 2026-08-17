@@ -20,13 +20,11 @@ export default function StudentShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const inPathway = pathname.startsWith('/student/lesson/');
 
-  if (inPathway) return children;
-
-  return <div className={styles.shell}>
-    <header className={styles.topbar}>
+  return <div className={`${styles.shell} ${inPathway ? styles.pathwayShell : ''}`}>
+    {!inPathway ? <header className={styles.topbar}>
       <Link className={styles.brand} href="/student/dashboard"><span>R</span><strong>Russia Study</strong></Link>
       <nav aria-label="Student navigation">{items.map((item) => <Link key={item.href} href={item.href} className={isActive(pathname, item.href) ? styles.active : ''}>{item.label}</Link>)}</nav>
-    </header>
+    </header> : null}
     <div className={styles.content}>{children}</div>
     <nav className={styles.mobileNav} aria-label="Student mobile navigation">{items.map((item) => <Link key={item.href} href={item.href} className={isActive(pathname, item.href) ? styles.active : ''}><span aria-hidden="true">{item.icon}</span><small>{item.label}</small></Link>)}</nav>
   </div>;
