@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import AssignmentLaunchButton from '@/components/AssignmentLaunchButton';
 import { getAuthenticatedProfile } from '@/lib/auth/access';
-import { getActivityLabel } from '@/lib/activityTypeRegistry';
 import { getPathwayConfig } from '@/lib/pathwayRegistry';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import styles from './page.module.css';
@@ -10,191 +9,42 @@ import styles from './page.module.css';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-type AssignmentRow = {
-  id: string;
-  title: string;
-  lesson_title: string;
-  pathway_slug: string;
-  mode: string;
-  required_activity_types: string[];
-  instructions: string | null;
-  due_at: string | null;
-  published_at: string | null;
-  teaching_classes: { name: string } | { name: string }[] | null;
-};
+type AssignmentRow = { id:string; title:string; lesson_title:string; pathway_slug:string; mode:string; required_activity_types:string[]; instructions:string|null; due_at:string|null; published_at:string|null; teaching_classes:{name:string}|{name:string}[]|null };
+type RecipientRow = { assignment_id:string; classroom_assignments:AssignmentRow|AssignmentRow[]|null };
+type ProgressRow = { assignment_id:string; status:'not_started'|'in_progress'|'complete'; completed_activity_count:number; total_activity_count:number; progress_percent:number; current_activity_type:string|null; last_activity_at:string|null; completed_at:string|null };
+type AssignmentView = { assignment:AssignmentRow; progress?:ProgressRow; className:string; state:'overdue'|'due_soon'|'upcoming'|'open'|'complete'; percent:number; remaining:number; launchActivity:string; href:string };
 
-type RecipientRow = { assignment_id: string; classroom_assignments: AssignmentRow | AssignmentRow[] | null };
-type ProgressRow = {
-  assignment_id: string;
-  status: 'not_started' | 'in_progress' | 'complete';
-  completed_activity_count: number;
-  total_activity_count: number;
-  progress_percent: number;
-  current_activity_type: string | null;
-  last_activity_at: string | null;
-  completed_at: string | null;
-};
+function formatMode(mode:string){return mode.replaceAll('_',' ')}
+function formatDeadline(value:string|null){if(!value)return'No deadline';return new Date(value).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
+function formatShortDate(value:string|null){if(!value)return'Not yet';return new Date(value).toLocaleString('en-GB',{day:'numeric',month:'short'})}
+function assignmentState(dueAt:string|null,progress?:ProgressRow):AssignmentView['state']{if(progress?.status==='complete')return'complete';if(!dueAt)return'open';const difference=new Date(dueAt).getTime()-Date.now();if(difference<0)return'overdue';if(difference<=48*60*60*1000)return'due_soon';return'upcoming'}
+function stateLabel(state:AssignmentView['state']){if(state==='overdue')return'Overdue';if(state==='due_soon')return'Due soon';if(state==='complete')return'Complete';if(state==='open')return'No deadline';return'Upcoming'}
+function assignmentStatus(progress?:ProgressRow){if(progress?.status==='complete')return'Complete';if(!progress||progress.status==='not_started'||progress.progress_percent===0)return'Not attempted';return'Incomplete'}
 
-type AssignmentView = {
-  assignment: AssignmentRow;
-  progress?: ProgressRow;
-  className: string;
-  state: 'overdue' | 'due_soon' | 'upcoming' | 'open' | 'complete';
-  percent: number;
-  remaining: number;
-  launchActivity: string;
-  href: string;
-};
-
-function formatMode(mode: string) { return mode.replaceAll('_', ' '); }
-function formatDeadline(value: string | null) {
-  if (!value) return 'No deadline';
-  return new Date(value).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-}
-function formatShortDate(value: string | null) {
-  if (!value) return 'Not yet';
-  return new Date(value).toLocaleString('en-GB', { day: 'numeric', month: 'short' });
-}
-function assignmentState(dueAt: string | null, progress?: ProgressRow): AssignmentView['state'] {
-  if (progress?.status === 'complete') return 'complete';
-  if (!dueAt) return 'open';
-  const difference = new Date(dueAt).getTime() - Date.now();
-  if (difference < 0) return 'overdue';
-  if (difference <= 48 * 60 * 60 * 1000) return 'due_soon';
-  return 'upcoming';
-}
-function stateLabel(state: AssignmentView['state']) {
-  if (state === 'overdue') return 'Overdue';
-  if (state === 'due_soon') return 'Due soon';
-  if (state === 'complete') return 'Complete';
-  if (state === 'open') return 'No deadline';
-  return 'Upcoming';
-}
-function assignmentStatus(progress?: ProgressRow) {
-  if (progress?.status === 'complete') return 'Complete';
-  if (!progress || progress.status === 'not_started' || progress.progress_percent === 0) return 'Not attempted';
-  return 'Incomplete';
-}
-
-export default async function StudentDashboardPage() {
-  const auth = await getAuthenticatedProfile();
-  if (!auth) redirect('/account');
-  const supabase = await createServerSupabaseClient();
-  let assignments: AssignmentRow[] = [];
-  let progressRows: ProgressRow[] = [];
-  let loadError = '';
-
-  if (supabase && auth.profile.role === 'student') {
-    const [{ data, error }, { data: progressData, error: progressError }] = await Promise.all([
-      supabase
-        .from('assignment_recipients')
-        .select('assignment_id, classroom_assignments(id, title, lesson_title, pathway_slug, mode, required_activity_types, instructions, due_at, published_at, teaching_classes(name))')
-        .eq('student_id', auth.userId)
-        .eq('status', 'assigned')
-        .order('assigned_at', { ascending: false }),
-      supabase
-        .from('assignment_progress')
-        .select('assignment_id, status, completed_activity_count, total_activity_count, progress_percent, current_activity_type, last_activity_at, completed_at')
-        .eq('student_id', auth.userId),
+export default async function StudentDashboardPage(){
+  const auth=await getAuthenticatedProfile();if(!auth)redirect('/account');
+  const supabase=await createServerSupabaseClient();let assignments:AssignmentRow[]=[];let progressRows:ProgressRow[]=[];let loadError='';
+  if(supabase&&auth.profile.role==='student'){
+    const [{data,error},{data:progressData,error:progressError}]=await Promise.all([
+      supabase.from('assignment_recipients').select('assignment_id, classroom_assignments(id, title, lesson_title, pathway_slug, mode, required_activity_types, instructions, due_at, published_at, teaching_classes(name))').eq('student_id',auth.userId).eq('status','assigned').order('assigned_at',{ascending:false}),
+      supabase.from('assignment_progress').select('assignment_id, status, completed_activity_count, total_activity_count, progress_percent, current_activity_type, last_activity_at, completed_at').eq('student_id',auth.userId),
     ]);
-
-    if (error || progressError) loadError = error?.message || progressError?.message || 'Assignments could not be loaded.';
-    else {
-      progressRows = (progressData ?? []) as ProgressRow[];
-      assignments = ((data ?? []) as RecipientRow[]).flatMap((recipient) => {
-        const assignment = Array.isArray(recipient.classroom_assignments) ? recipient.classroom_assignments[0] : recipient.classroom_assignments;
-        return assignment ? [assignment] : [];
-      });
-    }
+    if(error||progressError)loadError=error?.message||progressError?.message||'Assignments could not be loaded.';else{progressRows=(progressData??[]) as ProgressRow[];assignments=((data??[]) as RecipientRow[]).flatMap(recipient=>{const assignment=Array.isArray(recipient.classroom_assignments)?recipient.classroom_assignments[0]:recipient.classroom_assignments;return assignment?[assignment]:[]})}
   }
-
-  const progressByAssignment = new Map(progressRows.map((row) => [row.assignment_id, row]));
-  const views: AssignmentView[] = assignments.map((assignment) => {
-    const progress = progressByAssignment.get(assignment.id);
-    const teachingClass = Array.isArray(assignment.teaching_classes) ? assignment.teaching_classes[0] : assignment.teaching_classes;
-    const pathway = getPathwayConfig(assignment.pathway_slug);
-    const total = progress?.total_activity_count || assignment.required_activity_types.length;
-    const completed = progress?.completed_activity_count ?? 0;
-    return {
-      assignment,
-      progress,
-      className: teachingClass?.name ?? 'Your class',
-      state: assignmentState(assignment.due_at, progress),
-      percent: progress?.progress_percent ?? 0,
-      remaining: Math.max(total - completed, 0),
-      launchActivity: progress?.current_activity_type ?? assignment.required_activity_types[0],
-      href: `${pathway.routeBase}?assignment=${assignment.id}`,
-    };
-  });
-
-  const unfinished = views
-    .filter((item) => item.state !== 'complete')
-    .sort((a, b) => {
-      const priority = { overdue: 0, due_soon: 1, upcoming: 2, open: 3, complete: 4 } as const;
-      const priorityDifference = priority[a.state] - priority[b.state];
-      if (priorityDifference !== 0) return priorityDifference;
-      if (!a.assignment.due_at && !b.assignment.due_at) return 0;
-      if (!a.assignment.due_at) return 1;
-      if (!b.assignment.due_at) return -1;
-      return new Date(a.assignment.due_at).getTime() - new Date(b.assignment.due_at).getTime();
-    });
-  const completed = views
-    .filter((item) => item.state === 'complete')
-    .sort((a, b) => new Date(b.progress?.completed_at ?? b.progress?.last_activity_at ?? 0).getTime() - new Date(a.progress?.completed_at ?? a.progress?.last_activity_at ?? 0).getTime());
-  const next = unfinished[0] ?? null;
-  const overdueCount = unfinished.filter((item) => item.state === 'overdue').length;
-  const dueSoonCount = unfinished.filter((item) => item.state === 'due_soon').length;
-  const completedCount = completed.length;
-  const firstName = auth.profile.full_name.split(' ')[0] || 'Student';
-
-  if (auth.profile.role !== 'student') {
-    return <main className={styles.page}><section className={styles.header}><div><p className={styles.eyebrow}>Student dashboard preview</p><h1>Student home</h1><p>Student-specific assignments remain private to each student account.</p></div><Link className={styles.secondaryButton} href="/teacher/dashboard">Return to teacher home</Link></section></main>;
-  }
-
+  const progressByAssignment=new Map(progressRows.map(row=>[row.assignment_id,row]));
+  const views:AssignmentView[]=assignments.map(assignment=>{const progress=progressByAssignment.get(assignment.id);const teachingClass=Array.isArray(assignment.teaching_classes)?assignment.teaching_classes[0]:assignment.teaching_classes;const pathway=getPathwayConfig(assignment.pathway_slug);const total=progress?.total_activity_count||assignment.required_activity_types.length;const done=progress?.completed_activity_count??0;return{assignment,progress,className:teachingClass?.name??'Your class',state:assignmentState(assignment.due_at,progress),percent:progress?.progress_percent??0,remaining:Math.max(total-done,0),launchActivity:progress?.current_activity_type??assignment.required_activity_types[0],href:`${pathway.routeBase}?assignment=${assignment.id}`}});
+  const unfinished=views.filter(item=>item.state!=='complete').sort((a,b)=>{const p={overdue:0,due_soon:1,upcoming:2,open:3,complete:4} as const;const d=p[a.state]-p[b.state];if(d!==0)return d;if(!a.assignment.due_at&&!b.assignment.due_at)return 0;if(!a.assignment.due_at)return 1;if(!b.assignment.due_at)return-1;return new Date(a.assignment.due_at).getTime()-new Date(b.assignment.due_at).getTime()});
+  const completed=views.filter(item=>item.state==='complete').sort((a,b)=>new Date(b.progress?.completed_at??b.progress?.last_activity_at??0).getTime()-new Date(a.progress?.completed_at??a.progress?.last_activity_at??0).getTime());
+  const next=unfinished[0]??null;const overdueCount=unfinished.filter(item=>item.state==='overdue').length;const dueSoonCount=unfinished.filter(item=>item.state==='due_soon').length;const firstName=auth.profile.full_name.split(' ')[0]||'Student';
+  if(auth.profile.role!=='student')return <main className={styles.page}><section className={styles.header}><div><p className={styles.eyebrow}>Student dashboard preview</p><h1>Student home</h1><p>Student-specific assignments remain private to each student account.</p></div><Link className={styles.secondaryButton} href="/teacher/dashboard">Return to teacher home</Link></section></main>;
   return <main className={styles.page}>
-    <header className={styles.header}>
-      <div><p className={styles.eyebrow}>Your study dashboard</p><h1>Hi, {firstName}</h1><p>See what needs doing next, what is coming up, and what you have already completed.</p></div>
-      <Link className={styles.secondaryButton} href="/student/join">Join a class</Link>
-    </header>
-
-    {loadError && <div className={styles.error} role="alert"><strong>Assignments could not be loaded.</strong><span>{loadError}</span></div>}
-
-    <section className={styles.metrics} aria-label="Assignment summary">
-      <article className={overdueCount ? styles.alertMetric : ''}><span>Overdue</span><strong>{overdueCount}</strong></article>
-      <article><span>Due soon</span><strong>{dueSoonCount}</strong></article>
-      <article><span>To do</span><strong>{unfinished.length}</strong></article>
-      <article><span>Completed</span><strong>{completedCount}</strong></article>
-    </section>
-
-    {assignments.length === 0 ? (
-      <section className={styles.empty}>
-        <p className={styles.eyebrow}>Nothing assigned</p><h2>You are up to date</h2><p>New work will appear here when your teacher publishes an assignment for one of your classes.</p><Link className={styles.secondaryButton} href="/student/join">Check your classes</Link>
-      </section>
-    ) : <>
-      <section className={styles.focusSection}>
-        <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Do this next</p><h2>{next ? next.assignment.title : 'You are up to date'}</h2></div>{next && <span className={`${styles.statePill} ${styles[next.state]}`}>{stateLabel(next.state)}</span>}</div>
-        {next ? <div className={styles.focusGrid}>
-          <div>
-            <p className={styles.classLine}>{next.className} · {next.assignment.lesson_title}</p>
-            <p className={styles.instructions}>{next.assignment.instructions || 'Complete the activities selected by your teacher.'}</p>
-            <div className={styles.metaRow}><span>Due {formatDeadline(next.assignment.due_at)}</span><span>{next.remaining} {next.remaining === 1 ? 'activity' : 'activities'} left</span><span>{formatMode(next.assignment.mode)}</span></div>
-          </div>
-          <div className={styles.focusProgress}><strong>{next.percent}%</strong><span>{assignmentStatus(next.progress)}</span><div className={styles.progressBar}><div style={{ width: `${next.percent}%` }} /></div><AssignmentLaunchButton assignmentId={next.assignment.id} activityType={next.launchActivity} href={next.href} label={next.progress && next.percent > 0 ? 'Continue assignment' : 'Start assignment'} /></div>
-        </div> : <div className={styles.upToDate}><strong>Everything currently assigned is complete.</strong><p>Your completed work is shown below.</p></div>}
-      </section>
-
-      {unfinished.length > 0 && <section className={styles.section}>
-        <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Your workload</p><h2>Overdue and upcoming</h2><p>Assignments are ordered by urgency.</p></div><span className={styles.countPill}>{unfinished.length} to do</span></div>
-        <div className={styles.assignmentList}>{unfinished.map((item) => <article className={styles.assignmentCard} key={item.assignment.id}>
-          <div className={styles.assignmentMain}><div className={styles.assignmentTitleRow}><div><span className={`${styles.statePill} ${styles[item.state]}`}>{stateLabel(item.state)}</span><h3>{item.assignment.title}</h3><p>{item.className} · {item.assignment.lesson_title}</p></div><strong className={styles.percent}>{item.percent}%</strong></div><div className={styles.progressBar}><div style={{ width: `${item.percent}%` }} /></div><div className={styles.cardMeta}><span>{formatDeadline(item.assignment.due_at)}</span><span>{item.remaining} {item.remaining === 1 ? 'activity' : 'activities'} left</span><span>{assignmentStatus(item.progress)}</span></div></div>
-          <AssignmentLaunchButton assignmentId={item.assignment.id} activityType={item.launchActivity} href={item.href} label={item.progress && item.percent > 0 ? 'Continue' : 'Start'} />
-        </article>)}</div>
-      </section>}
-
-      <section className={styles.section}>
-        <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Recent progress</p><h2>Completed work</h2><p>A record of the assignments you have finished.</p></div><span className={styles.countPill}>{completedCount} complete</span></div>
-        {completed.length === 0 ? <div className={styles.smallEmpty}><strong>No completed assignments yet.</strong><p>Your first completed assignment will appear here.</p></div> : <div className={styles.completedList}>{completed.slice(0, 6).map((item) => <article key={item.assignment.id}><div><strong>{item.assignment.title}</strong><p>{item.className} · {item.assignment.lesson_title}</p></div><div><span>Completed {formatShortDate(item.progress?.completed_at ?? item.progress?.last_activity_at ?? null)}</span><Link href={item.href}>Review</Link></div></article>)}</div>}
-      </section>
+    <header className={styles.header}><div><p className={styles.eyebrow}>Your study dashboard</p><h1>Hi, {firstName}</h1><p>Focus on what needs doing now. Your full assignment history is in My work.</p></div><Link className={styles.secondaryButton} href="/student/join">My classes</Link></header>
+    {loadError&&<div className={styles.error} role="alert"><strong>Assignments could not be loaded.</strong><span>{loadError}</span></div>}
+    <section className={styles.metrics} aria-label="Assignment summary"><article className={overdueCount?styles.alertMetric:''}><span>Overdue</span><strong>{overdueCount}</strong></article><article><span>Due soon</span><strong>{dueSoonCount}</strong></article><article><span>To do</span><strong>{unfinished.length}</strong></article><article><span>Completed</span><strong>{completed.length}</strong></article></section>
+    {assignments.length===0?<section className={styles.empty}><p className={styles.eyebrow}>Nothing assigned</p><h2>You are up to date</h2><p>New work will appear here when your teacher publishes an assignment for one of your classes.</p><Link className={styles.secondaryButton} href="/student/join">My classes</Link></section>:<>
+      <section className={styles.focusSection}><div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Do this next</p><h2>{next?next.assignment.title:'You are up to date'}</h2></div>{next&&<span className={`${styles.statePill} ${styles[next.state]}`}>{stateLabel(next.state)}</span>}</div>{next?<div className={styles.focusGrid}><div><p className={styles.classLine}>{next.className} · {next.assignment.lesson_title}</p><p className={styles.instructions}>{next.assignment.instructions||'Complete the activities selected by your teacher.'}</p><div className={styles.metaRow}><span>Due {formatDeadline(next.assignment.due_at)}</span><span>{next.remaining} {next.remaining===1?'activity':'activities'} left</span><span>{formatMode(next.assignment.mode)}</span></div></div><div className={styles.focusProgress}><strong>{next.percent}%</strong><span>{assignmentStatus(next.progress)}</span><div className={styles.progressBar}><div style={{width:`${next.percent}%`}}/></div><AssignmentLaunchButton assignmentId={next.assignment.id} activityType={next.launchActivity} href={next.href} label={next.progress&&next.percent>0?'Continue assignment':'Start assignment'}/></div></div>:<div className={styles.upToDate}><strong>Everything currently assigned is complete.</strong><p>Your completed work is available in My work.</p></div>}</section>
+      {unfinished.length>0&&<section className={styles.section}><div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Coming up</p><h2>Your next assignments</h2><p>Only the most urgent work is shown here.</p></div><Link className={styles.secondaryButton} href="/student/work">View all work</Link></div><div className={styles.assignmentList}>{unfinished.slice(0,4).map(item=><article className={styles.assignmentCard} key={item.assignment.id}><div className={styles.assignmentMain}><div className={styles.assignmentTitleRow}><div><span className={`${styles.statePill} ${styles[item.state]}`}>{stateLabel(item.state)}</span><h3>{item.assignment.title}</h3><p>{item.className} · {item.assignment.lesson_title}</p></div><strong className={styles.percent}>{item.percent}%</strong></div><div className={styles.progressBar}><div style={{width:`${item.percent}%`}}/></div><div className={styles.cardMeta}><span>{formatDeadline(item.assignment.due_at)}</span><span>{item.remaining} {item.remaining===1?'activity':'activities'} left</span><span>{assignmentStatus(item.progress)}</span></div></div><AssignmentLaunchButton assignmentId={item.assignment.id} activityType={item.launchActivity} href={item.href} label={item.progress&&item.percent>0?'Continue':'Start'}/></article>)}</div></section>}
+      <section className={styles.section}><div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Recent progress</p><h2>Recently completed</h2><p>Your full completed history is in My work.</p></div><Link className={styles.secondaryButton} href="/student/work?view=complete">View completed</Link></div>{completed.length===0?<div className={styles.smallEmpty}><strong>No completed assignments yet.</strong><p>Your first completed assignment will appear here.</p></div>:<div className={styles.completedList}>{completed.slice(0,3).map(item=><article key={item.assignment.id}><div><strong>{item.assignment.title}</strong><p>{item.className} · {item.assignment.lesson_title}</p></div><div><span>Completed {formatShortDate(item.progress?.completed_at??item.progress?.last_activity_at??null)}</span><Link href={item.href}>Review</Link></div></article>)}</div>}</section>
     </>}
   </main>;
 }
