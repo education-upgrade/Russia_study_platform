@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 type Props = { params: Promise<{ assignmentId: string; studentId: string }> };
-type Assignment = { id: string; title: string; lesson_title: string; mode: string; required_activity_types: string[]; due_at: string | null; created_at: string; teaching_classes: { name: string } | { name: string }[] | null };
+type Assignment = { id: string; title: string; lesson_title: string; mode: string; required_activity_types: string[]; due_at: string | null; created_at: string; teaching_classes: { id: string; name: string } | { id: string; name: string }[] | null };
 type Summary = { status: 'not_started' | 'in_progress' | 'complete'; completed_activity_count: number; total_activity_count: number; progress_percent: number; current_activity_type: string | null; started_at: string | null; completed_at: string | null; last_activity_at: string | null };
 type ActivityProgress = { activity_type: string; status: 'not_started' | 'in_progress' | 'complete'; attempt_count: number; score: number | null; max_score: number | null; confidence: number | null; position: Record<string, unknown> | null; started_at: string | null; completed_at: string | null; last_saved_at: string | null };
 
@@ -33,7 +33,7 @@ export default async function StudentEvidencePage({ params }: Props) {
   if (!supabase) notFound();
 
   const [{ data: assignmentData }, { data: recipient }, { data: profile }, { data: summaryData }, { data: activityData }] = await Promise.all([
-    supabase.from('classroom_assignments').select('id, title, lesson_title, mode, required_activity_types, due_at, created_at, teaching_classes(name)').eq('id', assignmentId).eq('status', 'published').maybeSingle<Assignment>(),
+    supabase.from('classroom_assignments').select('id, title, lesson_title, mode, required_activity_types, due_at, created_at, teaching_classes(id, name)').eq('id', assignmentId).eq('status', 'published').maybeSingle<Assignment>(),
     supabase.from('assignment_recipients').select('student_id').eq('assignment_id', assignmentId).eq('student_id', studentId).maybeSingle(),
     supabase.from('profiles').select('id, full_name').eq('id', studentId).maybeSingle<{ id: string; full_name: string | null }>(),
     supabase.from('assignment_progress').select('status, completed_activity_count, total_activity_count, progress_percent, current_activity_type, started_at, completed_at, last_activity_at').eq('assignment_id', assignmentId).eq('student_id', studentId).maybeSingle<Summary>(),
@@ -64,6 +64,7 @@ export default async function StudentEvidencePage({ params }: Props) {
       <div className={styles.topbar}>
         <span>Teacher / Student evidence</span>
         <Link className={styles.navButton} href={`/teacher/progress?assignment=${assignmentId}`}>Back to interventions</Link>
+        {teachingClass?.id && <Link className={styles.navButton} href={`/teacher/classes/${teachingClass.id}/students/${studentId}`}>Student history</Link>}
         <Link className={styles.navButton} href={`/teacher/assignments/${assignmentId}`}>Assignment</Link>
       </div>
 
