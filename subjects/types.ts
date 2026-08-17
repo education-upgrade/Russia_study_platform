@@ -1,5 +1,3 @@
-import type { PathwayConfig } from '@/lib/pathwayRegistry';
-
 export type SubjectPackIdentity = {
   id: string;
   subject: string;
@@ -9,6 +7,20 @@ export type SubjectPackIdentity = {
   shortName: string;
   platformName: string;
   brandMark: string;
+};
+
+export type SubjectPathway = {
+  pathwaySlug: string;
+  title: string;
+  lessonTitle: string;
+  subtitle: string;
+  yearGroup: 'Y12' | 'Y13';
+  courseWeek: number;
+  unitNumber: number;
+  unitTitle: string;
+  status: 'ready' | 'planned';
+  routeBase: string;
+  metadata?: Record<string, unknown>;
 };
 
 export type SubjectCourseUnit = {
@@ -38,7 +50,7 @@ export type SubjectActivityOption = {
 
 export type SubjectPack = {
   identity: SubjectPackIdentity;
-  pathways: PathwayConfig[];
+  pathways: SubjectPathway[];
   courseUnits: SubjectCourseUnit[];
   activityOptions: SubjectActivityOption[];
   activityPresets: SubjectActivityPreset[];
