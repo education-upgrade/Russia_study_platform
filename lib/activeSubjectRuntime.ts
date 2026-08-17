@@ -15,6 +15,11 @@ export function getActivePathwayConfig(pathwaySlug: string) {
   return getPathwayConfig(pathwaySlug);
 }
 
+export function getActiveActivityLabel(activityType: string) {
+  return activeSubjectPack.activityOptions.find((item) => item.activityType === activityType)?.label
+    ?? getActivityLabel(activityType);
+}
+
 export function getSubjectActivityLabel(pathwaySlug: string, activityType: string) {
   const pack = packForPathway(pathwaySlug);
   return pack?.activityOptions.find((item) => item.activityType === activityType)?.label
