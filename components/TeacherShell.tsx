@@ -18,14 +18,15 @@ const navigation = [
 function sectionFor(pathname: string): Section {
   if (pathname.startsWith('/teacher/classes')) return 'classes';
   if (pathname.startsWith('/teacher/assignments') || pathname.startsWith('/teacher/set-study')) return 'assignments';
-  if (pathname.startsWith('/teacher/progress')) return 'interventions';
+  if (pathname.startsWith('/teacher/progress') || pathname.startsWith('/teacher/analytics')) return 'interventions';
   return 'home';
 }
 
 function isNestedWorkspace(pathname: string) {
   return /^\/teacher\/classes\/[^/]+/.test(pathname)
     || /^\/teacher\/assignments\/[^/]+/.test(pathname)
-    || /^\/teacher\/progress\/.+/.test(pathname);
+    || /^\/teacher\/progress\/.+/.test(pathname)
+    || pathname.startsWith('/teacher/analytics');
 }
 
 function topLevelMeta(section: Section) {
