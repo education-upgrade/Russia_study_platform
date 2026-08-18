@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import AssignmentLaunchButton from '@/components/AssignmentLaunchButton';
 import { getAuthenticatedProfile } from '@/lib/auth/access';
-import { getPathwayConfig } from '@/lib/pathwayRegistry';
+import { getActivePathwayConfig } from '@/lib/activeSubjectRuntime';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import styles from './page.module.css';
 
@@ -32,7 +32,7 @@ export default async function StudentDashboardPage(){
     if(error||progressError)loadError=error?.message||progressError?.message||'Assignments could not be loaded.';else{progressRows=(progressData??[]) as ProgressRow[];assignments=((data??[]) as RecipientRow[]).flatMap(recipient=>{const assignment=Array.isArray(recipient.classroom_assignments)?recipient.classroom_assignments[0]:recipient.classroom_assignments;return assignment?[assignment]:[]})}
   }
   const progressByAssignment=new Map(progressRows.map(row=>[row.assignment_id,row]));
-  const views:AssignmentView[]=assignments.map(assignment=>{const progress=progressByAssignment.get(assignment.id);const teachingClass=Array.isArray(assignment.teaching_classes)?assignment.teaching_classes[0]:assignment.teaching_classes;const pathway=getPathwayConfig(assignment.pathway_slug);const total=progress?.total_activity_count||assignment.required_activity_types.length;const done=progress?.completed_activity_count??0;return{assignment,progress,className:teachingClass?.name??'Your class',state:assignmentState(assignment.due_at,progress),percent:progress?.progress_percent??0,remaining:Math.max(total-done,0),launchActivity:progress?.current_activity_type??assignment.required_activity_types[0],href:`${pathway.routeBase}?assignment=${assignment.id}`}});
+  const views:AssignmentView[]=assignments.map(assignment=>{const progress=progressByAssignment.get(assignment.id);const teachingClass=Array.isArray(assignment.teaching_classes)?assignment.teaching_classes[0]:assignment.teaching_classes;const pathway=getActivePathwayConfig(assignment.pathway_slug);const total=progress?.total_activity_count||assignment.required_activity_types.length;const done=progress?.completed_activity_count??0;return{assignment,progress,className:teachingClass?.name??'Your class',state:assignmentState(assignment.due_at,progress),percent:progress?.progress_percent??0,remaining:Math.max(total-done,0),launchActivity:progress?.current_activity_type??assignment.required_activity_types[0],href:`${pathway.routeBase}?assignment=${assignment.id}`}});
   const unfinished=views.filter(item=>item.state!=='complete').sort((a,b)=>{const p={overdue:0,due_soon:1,upcoming:2,open:3,complete:4} as const;const d=p[a.state]-p[b.state];if(d!==0)return d;if(!a.assignment.due_at&&!b.assignment.due_at)return 0;if(!a.assignment.due_at)return 1;if(!b.assignment.due_at)return-1;return new Date(a.assignment.due_at).getTime()-new Date(b.assignment.due_at).getTime()});
   const completed=views.filter(item=>item.state==='complete').sort((a,b)=>new Date(b.progress?.completed_at??b.progress?.last_activity_at??0).getTime()-new Date(a.progress?.completed_at??a.progress?.last_activity_at??0).getTime());
   const next=unfinished[0]??null;const overdueCount=unfinished.filter(item=>item.state==='overdue').length;const dueSoonCount=unfinished.filter(item=>item.state==='due_soon').length;const firstName=auth.profile.full_name.split(' ')[0]||'Student';
