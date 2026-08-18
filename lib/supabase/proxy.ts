@@ -7,14 +7,21 @@ function safeLocalPath(value: string | null, fallback = '/account') {
   return value && value.startsWith('/') && !value.startsWith('//') ? value : fallback;
 }
 
+function getSupabasePublicKey() {
+  return (
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
+}
+
 export async function updateSupabaseSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const publicKey = getSupabasePublicKey();
 
-  if (!url || !anonKey) return NextResponse.next({ request });
+  if (!url || !publicKey) return NextResponse.next({ request });
 
   let response = NextResponse.next({ request });
-  const supabase = createServerClient(url, anonKey, {
+  const supabase = createServerClient(url, publicKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();
