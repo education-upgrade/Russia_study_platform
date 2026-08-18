@@ -1,0 +1,1 @@
+PR 100 makes assignment publishing resolve pathway metadata from the active subject pack before falling back to the legacy Russia pathway registry. This allows Psychology pathways selected by the shared Set Work UI to publish successfully without changing Russia behaviour.
