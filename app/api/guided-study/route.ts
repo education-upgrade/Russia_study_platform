@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getProfile } from '@/lib/auth/profile';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { getActivityLabel, isSupportedActivityType, orderSupportedActivityTypes } from '@/lib/activityTypeRegistry';
+import { isSupportedActivityType, orderSupportedActivityTypes } from '@/lib/activityTypeRegistry';
 import '@/lib/unit6RegistryActivation';
-import { pathwayRegistry } from '@/lib/pathwayRegistry';
-import { activeSubjectPack } from '@/subjects/activeSubject';
+import { getSubjectActivityLabel, tryGetActivePathwayConfig } from '@/lib/activeSubjectRuntime';
 
 type GuidedStudyRequest = {
   mode: string;
@@ -34,9 +33,7 @@ export async function POST(request: Request) {
   if (!body.mode) return NextResponse.json({ error: 'Choose a guided study mode.' }, { status: 400 });
 
   const pathwaySlug = body.pathwaySlug ?? '';
-  const activePathway = activeSubjectPack.pathways.find((item) => item.pathwaySlug === pathwaySlug);
-  const legacyPathway = pathwayRegistry[pathwaySlug];
-  const pathway = activePathway ?? legacyPathway;
+  const pathway = tryGetActivePathwayConfig(pathwaySlug);
   if (!pathway) return NextResponse.json({ error: `Unknown pathway: ${pathwaySlug}` }, { status: 400 });
 
   const requestedTypes = body.requiredActivityTypes ?? [];
@@ -76,6 +73,6 @@ export async function POST(request: Request) {
     pathwaySlug: pathway.pathwaySlug,
     lessonTitle: pathway.lessonTitle,
     requiredActivityTypes,
-    route: requiredActivityTypes.map(getActivityLabel).join(' → '),
+    route: requiredActivityTypes.map((activityType) => getSubjectActivityLabel(pathway.pathwaySlug, activityType)).join(' → '),
   });
 }
