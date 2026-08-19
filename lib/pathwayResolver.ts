@@ -1,4 +1,5 @@
-import { getActivityLabel, getActivityRouteSlug, orderSupportedActivityTypes } from './activityTypeRegistry';
+import { getActivityRouteSlug, orderSupportedActivityTypes } from './activityTypeRegistry';
+import { getSubjectActivityLabel } from './activeSubjectRuntime';
 
 export type SeededPathwayActivity = {
   id: string;
@@ -21,8 +22,8 @@ type ResolvePathwayActivitiesArgs = {
   fallbackContentByActivityType?: Record<string, any>;
 };
 
-function getFallbackTitle(activityType: string) {
-  return getActivityLabel(activityType);
+function getFallbackTitle(pathwaySlug: string, activityType: string) {
+  return getSubjectActivityLabel(pathwaySlug, activityType);
 }
 
 function isEmptyContent(content: any) {
@@ -45,10 +46,10 @@ function makeVirtualActivity(
   return {
     id: `virtual-${pathwaySlug}-${activityType}`,
     activity_type: activityType,
-    title: getFallbackTitle(activityType),
+    title: getFallbackTitle(pathwaySlug, activityType),
     content_json: fallbackContentByActivityType[activityType] ?? {},
     routeSlug: getActivityRouteSlug(activityType),
-    label: getActivityLabel(activityType),
+    label: getSubjectActivityLabel(pathwaySlug, activityType),
     isVirtual: true,
     fallbackContent: fallbackContentByActivityType[activityType],
   };
@@ -73,7 +74,7 @@ export function resolvePathwayActivities({
         ...seededActivity,
         content_json: getContentOrFallback(activityType, seededActivity.content_json, fallbackContentByActivityType),
         routeSlug: getActivityRouteSlug(activityType),
-        label: getActivityLabel(activityType),
+        label: getSubjectActivityLabel(pathwaySlug, activityType),
         isVirtual: false,
         fallbackContent: fallbackContentByActivityType[activityType],
       } satisfies ResolvedPathwayActivity;
