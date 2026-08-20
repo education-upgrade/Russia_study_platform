@@ -3,37 +3,39 @@ import { notFound } from 'next/navigation';
 import { requireRoles } from '@/lib/auth/access';
 import { getActivityLabel } from '@/lib/activityTypeRegistry';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import styles from '@/app/teacher/progress/page.module.css';
+import styles from './page.module.css';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 type Props = { params: Promise<{ assignmentId: string; studentId: string }> };
-type Assignment = { id: string; title: string; lesson_title: string; mode: string; required_activity_types: string[]; due_at: string | null; created_at: string; teaching_classes: { id: string; name: string } | { id: string; name: string }[] | null };
+type Assignment = { id: string; class_id: string; title: string; lesson_title: string; mode: string; required_activity_types: string[]; due_at: string | null; created_at: string; teaching_classes: { id: string; name: string } | { id: string; name: string }[] | null };
 type Summary = { status: 'not_started' | 'in_progress' | 'complete'; completed_activity_count: number; total_activity_count: number; progress_percent: number; current_activity_type: string | null; started_at: string | null; completed_at: string | null; last_activity_at: string | null };
 type ActivityProgress = { activity_type: string; status: 'not_started' | 'in_progress' | 'complete'; attempt_count: number; score: number | null; max_score: number | null; confidence: number | null; position: Record<string, unknown> | null; started_at: string | null; completed_at: string | null; last_saved_at: string | null };
 
 function firstRelation<T>(value: T | T[] | null) { return Array.isArray(value) ? value[0] ?? null : value; }
-function formatDate(value: string | null) { return value ? new Date(value).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Not yet'; }
-function statusLabel(status?: string) { if (status === 'complete') return 'Complete'; if (status === 'in_progress') return 'In progress'; return 'Not started'; }
-function statusStyle(status?: string) { if (status === 'complete') return styles.secure; if (status === 'in_progress') return styles.submitted; return styles.neutral; }
-function evidenceSummary(row?: ActivityProgress) {
-  if (!row) return 'No evidence saved yet.';
-  const parts: string[] = [];
-  if (row.score !== null) parts.push(row.max_score ? `Score ${row.score}/${row.max_score}` : `Score ${row.score}`);
-  if (row.confidence !== null) parts.push(`Confidence ${row.confidence}/5`);
-  if (row.attempt_count > 0) parts.push(`${row.attempt_count} attempt${row.attempt_count === 1 ? '' : 's'}`);
-  return parts.length ? parts.join(' · ') : row.status === 'complete' ? 'Completion recorded.' : 'Activity opened; no scored evidence yet.';
+function formatDate(value: string | null) { return value ? new Date(value).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Not yet'; }
+function assignmentStatus(summary: Summary | null) { if (summary?.status === 'complete') return 'Complete'; if (!summary || summary.status === 'not_started' || summary.progress_percent === 0) return 'Not attempted'; return 'Incomplete'; }
+function activityStatus(row?: ActivityProgress) { if (row?.status === 'complete') return 'Complete'; if (!row || row.status === 'not_started') return 'Not attempted'; return 'Incomplete'; }
+function statusClass(status: string) { if (status === 'Complete') return styles.complete; if (status === 'Incomplete') return styles.incomplete; return styles.notAttempted; }
+function scorePercent(row: ActivityProgress) { return row.score !== null && row.max_score ? Math.round((row.score / row.max_score) * 100) : null; }
+function friendlyKey(key: string) { return key.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()); }
+function friendlyValue(value: unknown) {
+  if (value === null || value === undefined || value === '') return '—';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (Array.isArray(value)) return value.map((item) => typeof item === 'object' ? JSON.stringify(item) : String(item)).join(', ');
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
 }
 
 export default async function StudentEvidencePage({ params }: Props) {
-  await requireRoles(['teacher', 'admin']);
+  const auth = await requireRoles(['teacher', 'admin']);
   const { assignmentId, studentId } = await params;
   const supabase = await createServerSupabaseClient();
-  if (!supabase) notFound();
+  if (!auth || !supabase) notFound();
 
   const [{ data: assignmentData }, { data: recipient }, { data: profile }, { data: summaryData }, { data: activityData }] = await Promise.all([
-    supabase.from('classroom_assignments').select('id, title, lesson_title, mode, required_activity_types, due_at, created_at, teaching_classes(id, name)').eq('id', assignmentId).eq('status', 'published').maybeSingle<Assignment>(),
+    supabase.from('classroom_assignments').select('id, class_id, title, lesson_title, mode, required_activity_types, due_at, created_at, teaching_classes(id, name)').eq('id', assignmentId).maybeSingle<Assignment>(),
     supabase.from('assignment_recipients').select('student_id').eq('assignment_id', assignmentId).eq('student_id', studentId).maybeSingle(),
     supabase.from('profiles').select('id, full_name').eq('id', studentId).maybeSingle<{ id: string; full_name: string | null }>(),
     supabase.from('assignment_progress').select('status, completed_activity_count, total_activity_count, progress_percent, current_activity_type, started_at, completed_at, last_activity_at').eq('assignment_id', assignmentId).eq('student_id', studentId).maybeSingle<Summary>(),
@@ -47,68 +49,82 @@ export default async function StudentEvidencePage({ params }: Props) {
   const activityMap = new Map(activityRows.map((row) => [row.activity_type, row]));
   const name = profile?.full_name?.trim() || 'Student';
   const teachingClass = firstRelation(assignment.teaching_classes);
+  const requiredRows = assignment.required_activity_types.map((activityType) => activityMap.get(activityType)).filter((row): row is ActivityProgress => Boolean(row));
+  const scoredRows = requiredRows.filter((row) => scorePercent(row) !== null);
+  const averageScore = scoredRows.length ? Math.round(scoredRows.reduce((sum, row) => sum + (scorePercent(row) ?? 0), 0) / scoredRows.length) : null;
+  const confidenceRows = requiredRows.filter((row) => row.confidence !== null);
+  const averageConfidence = confidenceRows.length ? confidenceRows.reduce((sum, row) => sum + (row.confidence ?? 0), 0) / confidenceRows.length : null;
+  const lowConfidence = requiredRows.filter((row) => row.confidence !== null && row.confidence <= 2);
+  const multipleAttempts = requiredRows.filter((row) => row.attempt_count > 1);
+  const incompleteRows = assignment.required_activity_types.filter((activityType) => activityStatus(activityMap.get(activityType)) !== 'Complete');
 
-  const timeline = [
-    { date: assignment.created_at, label: 'Assignment published', detail: assignment.lesson_title },
-    ...(summary?.started_at ? [{ date: summary.started_at, label: 'Assignment started', detail: summary.current_activity_type ? `First recorded route: ${getActivityLabel(summary.current_activity_type)}` : 'First activity opened' }] : []),
-    ...activityRows.flatMap((row) => [
-      ...(row.started_at ? [{ date: row.started_at, label: `${getActivityLabel(row.activity_type)} started`, detail: row.confidence !== null ? `Confidence ${row.confidence}/5` : 'Activity opened' }] : []),
-      ...(row.completed_at ? [{ date: row.completed_at, label: `${getActivityLabel(row.activity_type)} completed`, detail: evidenceSummary(row) }] : []),
-    ]),
-    ...(summary?.completed_at ? [{ date: summary.completed_at, label: 'Assignment completed', detail: `${summary.completed_activity_count}/${summary.total_activity_count} activities complete` }] : []),
-    ...(assignment.due_at && new Date(assignment.due_at).getTime() < Date.now() && summary?.status !== 'complete' ? [{ date: assignment.due_at, label: 'Deadline passed', detail: `${summary?.progress_percent ?? 0}% complete at the current record` }] : []),
-  ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const reviewSignals: { tone: 'attention' | 'positive' | 'neutral'; title: string; detail: string }[] = [];
+  if (assignmentStatus(summary) === 'Not attempted') reviewSignals.push({ tone: 'attention', title: 'No work attempted', detail: 'There is no recorded student activity for this assignment yet.' });
+  else if (incompleteRows.length) reviewSignals.push({ tone: 'attention', title: `${incompleteRows.length} task${incompleteRows.length === 1 ? '' : 's'} still incomplete`, detail: incompleteRows.slice(0, 3).map(getActivityLabel).join(' · ') });
+  if (lowConfidence.length) reviewSignals.push({ tone: 'attention', title: 'Low confidence reported', detail: lowConfidence.map((row) => `${getActivityLabel(row.activity_type)} ${row.confidence}/5`).join(' · ') });
+  if (averageScore !== null && averageScore < 60) reviewSignals.push({ tone: 'attention', title: 'Scored evidence needs review', detail: `Average across ${scoredRows.length} scored task${scoredRows.length === 1 ? '' : 's'} is ${averageScore}%.` });
+  if (multipleAttempts.length) reviewSignals.push({ tone: 'neutral', title: 'Repeated attempts', detail: multipleAttempts.map((row) => `${getActivityLabel(row.activity_type)} ×${row.attempt_count}`).join(' · ') });
+  if (assignmentStatus(summary) === 'Complete' && !lowConfidence.length && (averageScore === null || averageScore >= 70)) reviewSignals.push({ tone: 'positive', title: 'No immediate concern', detail: averageScore === null ? 'All required activities are complete.' : `Complete with an average scored result of ${averageScore}%.` });
+  if (!reviewSignals.length) reviewSignals.push({ tone: 'neutral', title: 'Evidence is still developing', detail: 'Open individual activities below for the latest saved detail.' });
 
   return (
-    <main className={styles.shell}>
-      <div className={styles.topbar}>
-        <span>Teacher / Student evidence</span>
-        <Link className={styles.navButton} href={`/teacher/progress?assignment=${assignmentId}`}>Back to interventions</Link>
-        {teachingClass?.id && <Link className={styles.navButton} href={`/teacher/classes/${teachingClass.id}/students/${studentId}`}>Student history</Link>}
-        <Link className={styles.navButton} href={`/teacher/assignments/${assignmentId}`}>Assignment</Link>
-      </div>
+    <main className={styles.page}>
+      <nav className={styles.breadcrumbs} aria-label="Evidence navigation">
+        <Link href={`/teacher/assignments/${assignmentId}?tab=students`}>← {assignment.title}</Link>
+        {teachingClass?.id && <Link href={`/teacher/classes/${teachingClass.id}/students/${studentId}`}>Student history</Link>}
+      </nav>
 
-      <section className={styles.mainCard}>
-        <header className={styles.header}>
-          <div><p className={styles.eyebrow}>Individual evidence</p><h1>{name}</h1><p>{teachingClass?.name ?? 'Class'} · {assignment.lesson_title} · Due {formatDate(assignment.due_at)}</p></div>
-          <aside className={styles.decisionCard}><strong>{summary?.progress_percent ?? 0}% complete</strong><span>{summary?.completed_activity_count ?? 0}/{summary?.total_activity_count ?? assignment.required_activity_types.length} activities · {statusLabel(summary?.status)}</span></aside>
-        </header>
+      <header className={styles.header}>
+        <div className={styles.headerText}>
+          <p className={styles.eyebrow}>Student evidence</p>
+          <h1>{name}</h1>
+          <p>{teachingClass?.name ?? 'Class'} · {assignment.lesson_title}</p>
+          <p className={styles.meta}>Due {formatDate(assignment.due_at)} · Last active {formatDate(summary?.last_activity_at ?? null)}</p>
+        </div>
+        <div className={`${styles.assignmentState} ${statusClass(assignmentStatus(summary))}`}>
+          <span>{assignmentStatus(summary)}</span>
+          <strong>{summary?.progress_percent ?? 0}%</strong>
+          <small>{summary?.completed_activity_count ?? 0}/{summary?.total_activity_count ?? assignment.required_activity_types.length} activities</small>
+        </div>
+      </header>
 
-        <section className={styles.snapshot}>
-          <article className={styles.metric}><span>Current task</span><strong style={{ fontSize: '1.15rem' }}>{summary?.current_activity_type ? getActivityLabel(summary.current_activity_type) : '—'}</strong></article>
-          <article className={styles.metric}><span>Started</span><strong style={{ fontSize: '1.05rem' }}>{formatDate(summary?.started_at ?? null)}</strong></article>
-          <article className={styles.metric}><span>Last active</span><strong style={{ fontSize: '1.05rem' }}>{formatDate(summary?.last_activity_at ?? null)}</strong></article>
-          <article className={styles.metric}><span>Finished</span><strong style={{ fontSize: '1.05rem' }}>{formatDate(summary?.completed_at ?? null)}</strong></article>
-        </section>
+      <section className={styles.metrics} aria-label="Evidence summary">
+        <article><span>Progress</span><strong>{summary?.progress_percent ?? 0}%</strong><small>{summary?.completed_activity_count ?? 0} of {summary?.total_activity_count ?? assignment.required_activity_types.length} complete</small></article>
+        <article><span>Scored evidence</span><strong>{averageScore === null ? '—' : `${averageScore}%`}</strong><small>{scoredRows.length ? `${scoredRows.length} scored task${scoredRows.length === 1 ? '' : 's'}` : 'No scored tasks yet'}</small></article>
+        <article><span>Confidence</span><strong>{averageConfidence === null ? '—' : `${averageConfidence.toFixed(1)}/5`}</strong><small>{confidenceRows.length ? `${confidenceRows.length} confidence check${confidenceRows.length === 1 ? '' : 's'}` : 'No confidence data yet'}</small></article>
+        <article><span>Attempts</span><strong>{requiredRows.reduce((sum, row) => sum + row.attempt_count, 0)}</strong><small>{multipleAttempts.length ? `${multipleAttempts.length} task${multipleAttempts.length === 1 ? '' : 's'} repeated` : 'No repeated tasks'}</small></article>
+      </section>
 
-        <section className={styles.priority}>
-          <div className={styles.sectionHeader}><div><h2>Learning timeline</h2><p>A chronological view of this student's work on the assignment.</p></div><span className={styles.badge}>{timeline.length} events</span></div>
-          <div className={styles.timeline}>{timeline.map((event, index) => <article key={`${event.date}-${index}`}><time>{formatDate(event.date)}</time><div><strong>{event.label}</strong><p>{event.detail}</p></div></article>)}</div>
-        </section>
+      <section className={styles.reviewPanel}>
+        <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Teacher review</p><h2>What stands out</h2></div><span>{reviewSignals.length} signal{reviewSignals.length === 1 ? '' : 's'}</span></div>
+        <div className={styles.signalGrid}>{reviewSignals.map((signal, index) => <article className={`${styles.signal} ${styles[signal.tone]}`} key={`${signal.title}-${index}`}><strong>{signal.title}</strong><p>{signal.detail}</p></article>)}</div>
+      </section>
 
-        <section className={styles.studentEvidence}>
-          <div className={styles.sectionHeader}><h2>Activity evidence</h2><span className={styles.badge}>{assignment.required_activity_types.length} required</span></div>
-          <div className={styles.studentList}>
-            {assignment.required_activity_types.map((activityType, index) => {
-              const row = activityMap.get(activityType);
-              const positionEntries = row?.position && Object.keys(row.position).length ? Object.entries(row.position).slice(0, 4) : [];
-              return (
-                <article className={styles.studentCard} key={activityType}>
-                  <div className={styles.studentTop}>
-                    <div><h3>{index + 1}. {getActivityLabel(activityType)}</h3><p>{evidenceSummary(row)}</p></div>
-                    <span className={`${styles.statusPill} ${statusStyle(row?.status)}`}>{statusLabel(row?.status)}</span>
-                  </div>
-                  <div className={styles.diagnosticGrid}>
-                    <div className={styles.diagnosticBox}><span>Saved</span><strong>{formatDate(row?.last_saved_at ?? null)}</strong></div>
-                    <div className={styles.diagnosticBox}><span>Score</span><strong>{row?.score !== null && row?.score !== undefined ? `${row.score}${row.max_score ? `/${row.max_score}` : ''}` : '—'}</strong></div>
-                    <div className={styles.diagnosticBox}><span>Confidence</span><strong>{row?.confidence !== null && row?.confidence !== undefined ? `${row.confidence}/5` : '—'}</strong></div>
-                  </div>
-                  {positionEntries.length > 0 && <details className={styles.details} style={{ marginTop: 10 }}><summary>Saved activity detail</summary><div style={{ marginTop: 8 }}>{positionEntries.map(([key, value]) => <p key={key} style={{ margin: '4px 0' }}><strong>{key.replaceAll('_', ' ')}:</strong> {typeof value === 'object' ? JSON.stringify(value) : String(value)}</p>)}</div></details>}
-                </article>
-              );
-            })}
-          </div>
-        </section>
+      <section className={styles.evidenceSection}>
+        <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Required route</p><h2>Activity evidence</h2><p>Completion, score, confidence and the latest saved student detail in route order.</p></div><span>{assignment.required_activity_types.length} activities</span></div>
+        <div className={styles.activityList}>
+          {assignment.required_activity_types.map((activityType, index) => {
+            const row = activityMap.get(activityType);
+            const status = activityStatus(row);
+            const percent = row ? scorePercent(row) : null;
+            const positionEntries = row?.position ? Object.entries(row.position).filter(([, value]) => value !== null && value !== undefined && value !== '').slice(0, 8) : [];
+            return <article className={styles.activityCard} key={activityType}>
+              <div className={styles.activityTop}>
+                <div className={styles.activityTitle}><span>{index + 1}</span><div><h3>{getActivityLabel(activityType)}</h3><p>{row?.last_saved_at ? `Last saved ${formatDate(row.last_saved_at)}` : 'No saved evidence yet'}</p></div></div>
+                <span className={`${styles.status} ${statusClass(status)}`}>{status}</span>
+              </div>
+
+              <div className={styles.activityFacts}>
+                <div><span>Score</span><strong>{row?.score !== null && row?.score !== undefined ? `${row.score}${row.max_score ? `/${row.max_score}` : ''}` : '—'}</strong>{percent !== null && <small>{percent}%</small>}</div>
+                <div><span>Confidence</span><strong>{row?.confidence !== null && row?.confidence !== undefined ? `${row.confidence}/5` : '—'}</strong><small>{row?.confidence !== null && row?.confidence !== undefined && row.confidence <= 2 ? 'Low' : row?.confidence !== null && row?.confidence !== undefined ? 'Recorded' : 'Not recorded'}</small></div>
+                <div><span>Attempts</span><strong>{row?.attempt_count ?? 0}</strong><small>{(row?.attempt_count ?? 0) > 1 ? 'Repeated' : '—'}</small></div>
+                <div><span>Completed</span><strong>{row?.completed_at ? formatDate(row.completed_at) : '—'}</strong><small>{row?.started_at ? `Started ${formatDate(row.started_at)}` : 'Not opened'}</small></div>
+              </div>
+
+              {positionEntries.length > 0 ? <details className={styles.savedDetail}><summary>View saved student detail</summary><dl>{positionEntries.map(([key, value]) => <div key={key}><dt>{friendlyKey(key)}</dt><dd>{friendlyValue(value)}</dd></div>)}</dl></details> : <p className={styles.noDetail}>{row ? 'This activity has progress data but no additional saved response detail.' : 'The student has not attempted this activity.'}</p>}
+            </article>;
+          })}
+        </div>
       </section>
     </main>
   );
