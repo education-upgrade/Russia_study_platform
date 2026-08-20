@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type AdaptiveRendererSupport } from '@/lib/activityRendererContracts';
 import styles from './PeelResponseActivity.module.css';
@@ -19,10 +19,10 @@ type PeelStepKey = 'point' | 'evidence' | 'explain' | 'link';
 type PeelStep = { key: PeelStepKey; title: string; prompt: string; placeholder: string; };
 
 const baseSteps: PeelStep[] = [
-  { key: 'point', title: 'Point', prompt: 'Make one clear argument that answers the question directly.', placeholder: 'One important reason Russia was difficult to govern was...' },
-  { key: 'evidence', title: 'Evidence', prompt: 'Add precise knowledge: dates, events, key terms or consequences.', placeholder: 'For example, Russia was a vast empire with...' },
-  { key: 'explain', title: 'Explain', prompt: 'Explain why the evidence mattered. Show the impact on the question.', placeholder: 'This mattered because it made government difficult by...' },
-  { key: 'link', title: 'Link', prompt: 'Return to the question with a judgement about significance or limitation.', placeholder: 'Therefore, this was significant because...' },
+  { key: 'point', title: 'Point', prompt: 'Make one clear argument that answers the question directly.', placeholder: 'One important reason was...' },
+  { key: 'evidence', title: 'Evidence', prompt: 'Add precise subject knowledge, evidence, examples or research.', placeholder: 'For example...' },
+  { key: 'explain', title: 'Explain', prompt: 'Explain why the evidence matters and how it supports your argument.', placeholder: 'This matters because...' },
+  { key: 'link', title: 'Link', prompt: 'Return to the question with a judgement, implication or limitation.', placeholder: 'Therefore...' },
 ];
 
 function countWords(text: string) {
@@ -31,20 +31,15 @@ function countWords(text: string) {
 
 function getAdaptiveSteps(level: AdaptiveRendererSupport['difficultyLevel']): PeelStep[] {
   if (level === 'scaffolded') {
-    return baseSteps.map((step) => ({
-      ...step,
-      prompt: `${step.prompt} Use the starter to keep your answer focused.`,
-    }));
+    return baseSteps.map((step) => ({ ...step, prompt: `${step.prompt} Use the starter to keep your answer focused.` }));
   }
-
   if (level === 'stretch') {
     return baseSteps.map((step) => {
-      if (step.key === 'explain') return { ...step, prompt: 'Develop the explanation by showing why this factor mattered more or less than another factor.' };
-      if (step.key === 'link') return { ...step, prompt: 'End with a comparative judgement about significance, extent or limitation.' };
+      if (step.key === 'explain') return { ...step, prompt: 'Develop the explanation by showing why this evidence is particularly useful or significant.' };
+      if (step.key === 'link') return { ...step, prompt: 'End with a comparative or qualified judgement that returns directly to the question.' };
       return step;
     });
   }
-
   return baseSteps;
 }
 
@@ -56,6 +51,8 @@ function minimumWords(level: AdaptiveRendererSupport['difficultyLevel']) {
 
 export default function PeelResponseActivity({ activityId, question, stretchQuestion, nextHref = '/student/lesson/1905/confidence', adaptiveSupport }: PeelResponseActivityProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const assignmentId = searchParams.get('assignment');
   const steps = useMemo(() => getAdaptiveSteps(adaptiveSupport?.difficultyLevel), [adaptiveSupport?.difficultyLevel]);
   const targetWords = minimumWords(adaptiveSupport?.difficultyLevel);
   const [activeStepIndex, setActiveStepIndex] = useState(0);
@@ -82,20 +79,42 @@ export default function PeelResponseActivity({ activityId, question, stretchQues
     setSaveStatus('saving');
     setSaveMessage(status === 'submitted' ? 'Submitting...' : 'Autosaving...');
     try {
-      const response = await fetch('/api/student-responses/peel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ activityId, question, point: nextValues.point, evidence: nextValues.evidence, explain: nextValues.explain, link: nextValues.link, fullResponse: nextFullResponse, wordCount: nextWordCount, status, adaptiveSupport, targetWords }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? 'PEEL response could not be saved.');
+      const response = assignmentId
+        ? await fetch('/api/assignment-progress', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              assignmentId,
+              activityType: 'peel_response',
+              status: status === 'submitted' ? 'complete' : 'in_progress',
+              position: {
+                responseType: 'written_response',
+                question,
+                point: nextValues.point,
+                evidence: nextValues.evidence,
+                explain: nextValues.explain,
+                link: nextValues.link,
+                fullResponse: nextFullResponse,
+                wordCount: nextWordCount,
+                responseStatus: status,
+                targetWords,
+              },
+            }),
+          })
+        : await fetch('/api/student-responses/peel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ activityId, question, point: nextValues.point, evidence: nextValues.evidence, explain: nextValues.explain, link: nextValues.link, fullResponse: nextFullResponse, wordCount: nextWordCount, status, adaptiveSupport, targetWords }),
+          });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error ?? 'Written response could not be saved.');
       setSaveStatus('saved');
-      setSaveMessage(status === 'submitted' ? 'Submitted' : 'Saved');
+      setSaveMessage(status === 'submitted' ? 'Submitted — your teacher can view this response.' : 'Saved');
       if (status === 'submitted') setSubmitted(true);
       return true;
     } catch (error) {
       setSaveStatus('error');
-      setSaveMessage(error instanceof Error ? error.message : 'PEEL response could not be saved.');
+      setSaveMessage(error instanceof Error ? error.message : 'Written response could not be saved.');
       return false;
     }
   }
@@ -132,7 +151,7 @@ export default function PeelResponseActivity({ activityId, question, stretchQues
 
   return (
     <div className={styles.shell}>
-      <section className={styles.topbar}><div><h3>PEEL response</h3></div><div className={styles.stats}><span>{completedSections}/4 sections</span><span>{wordCount} words</span><span>target {targetWords}</span><span>{saveStatus === 'saving' ? 'saving' : saveStatus === 'saved' ? 'saved' : submitted ? 'submitted' : 'ready'}</span></div></section>
+      <section className={styles.topbar}><div><h3>Written response</h3></div><div className={styles.stats}><span>{completedSections}/4 sections</span><span>{wordCount} words</span><span>target {targetWords}</span><span>{saveStatus === 'saving' ? 'saving' : saveStatus === 'saved' ? 'saved' : submitted ? 'submitted' : 'ready'}</span></div></section>
       <section className={styles.prompt}><p><strong>Question:</strong> {question}</p>{stretchQuestion && adaptiveSupport?.difficultyLevel === 'stretch' && <p><strong>Stretch:</strong> {stretchQuestion}</p>}{adaptiveSupport?.successTarget && <p><strong>Success target:</strong> {adaptiveSupport.successTarget}</p>}</section>
       <div className={styles.progress}><div style={{ width: `${progressPercentage}%` }} /></div>
       <section className={styles.writer}>
