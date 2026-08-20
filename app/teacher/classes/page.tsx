@@ -30,7 +30,7 @@ export default async function TeacherClassesPage({ searchParams }: { searchParam
           <h2>{item?.name}</h2>
           <p>{item?.academic_year || 'Academic year not set'}</p>
           <div className="button-row compact"><span className="status-pill secure">Code: {item?.join_code}</span><span className="status-pill submitted">{item?.is_active ? 'Active' : 'Archived'}</span></div>
-          <div className="button-row"><Link className="button" href={`/teacher/classes/${link.class_id}`}>Open class</Link></div>
+          <div className="button-row"><Link className="button" href={`/teacher/classes/${link.class_id}`}>Open class</Link><Link className="button secondary" href={`/teacher/classes/${link.class_id}/tracking`}>Progress tracker</Link></div>
         </article>;
       })}</div>}
     </section>
