@@ -1,6 +1,7 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 export type LessonSection = {
@@ -13,26 +14,34 @@ export type LessonSection = {
 type Props = {
   sections: LessonSection[];
   nextHref?: string;
+  pathwayHref: string;
 };
 
 function countWords(value: string) {
   return value.trim().length === 0 ? 0 : value.trim().split(/\s+/).length;
 }
 
-export default function LessonContentActivity({ sections, nextHref }: Props) {
-  const router = useRouter();
+export default function LessonContentActivity({ sections, nextHref, pathwayHref }: Props) {
   const searchParams = useSearchParams();
   const assignmentId = searchParams.get('assignment');
   const [summary, setSummary] = useState('');
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const wordCount = useMemo(() => countWords(summary), [summary]);
   const tooLong = wordCount > 90;
   const canSubmit = wordCount > 0 && !tooLong && !saving;
 
+  function updateSummary(value: string) {
+    setSummary(value);
+    if (saved) setSaved(false);
+    if (error) setError('');
+  }
+
   async function submitSummary() {
     if (!canSubmit) return;
     setSaving(true);
+    setSaved(false);
     setError('');
 
     try {
@@ -56,9 +65,10 @@ export default function LessonContentActivity({ sections, nextHref }: Props) {
         if (!response.ok) throw new Error(result?.error ?? 'Your lesson summary could not be saved.');
       }
 
-      if (nextHref) router.push(nextHref);
+      setSaved(true);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Your lesson summary could not be saved.');
+    } finally {
       setSaving(false);
     }
   }
@@ -149,10 +159,11 @@ export default function LessonContentActivity({ sections, nextHref }: Props) {
 
         <textarea
           value={summary}
-          onChange={(event) => setSummary(event.target.value)}
+          onChange={(event) => updateSummary(event.target.value)}
           placeholder="Write your summary here..."
           rows={7}
           aria-label="Lesson notes summary"
+          disabled={saving}
           style={{
             width: '100%',
             resize: 'vertical',
@@ -175,25 +186,84 @@ export default function LessonContentActivity({ sections, nextHref }: Props) {
           {error && <span style={{ color: '#9f3434', fontWeight: 800 }}>{error}</span>}
         </div>
 
-        <button
-          type="button"
-          onClick={submitSummary}
-          disabled={!canSubmit}
-          style={{
-            minHeight: 52,
-            border: 0,
-            borderRadius: 999,
-            padding: '12px 20px',
-            background: 'var(--navy)',
-            color: 'white',
-            fontWeight: 950,
-            fontSize: 16,
-            opacity: canSubmit ? 1 : 0.48,
-            cursor: canSubmit ? 'pointer' : 'not-allowed',
-          }}
-        >
-          {saving ? 'Saving summary...' : nextHref ? 'Save summary & continue' : 'Save summary'}
-        </button>
+        {!saved ? (
+          <button
+            type="button"
+            onClick={submitSummary}
+            disabled={!canSubmit}
+            style={{
+              minHeight: 52,
+              border: 0,
+              borderRadius: 999,
+              padding: '12px 20px',
+              background: 'var(--navy)',
+              color: 'white',
+              fontWeight: 950,
+              fontSize: 16,
+              opacity: canSubmit ? 1 : 0.48,
+              cursor: canSubmit ? 'pointer' : 'not-allowed',
+            }}
+          >
+            {saving ? 'Saving summary...' : 'Save summary'}
+          </button>
+        ) : (
+          <div style={{ display: 'grid', gap: 10 }}>
+            <div
+              role="status"
+              style={{
+                borderRadius: 18,
+                padding: '13px 16px',
+                background: 'rgba(220, 244, 235, 0.92)',
+                color: 'var(--navy)',
+                fontWeight: 900,
+                textAlign: 'center',
+              }}
+            >
+              ✓ Summary saved. Lesson notes complete.
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: nextHref ? '1fr 1fr' : '1fr', gap: 10 }}>
+              <Link
+                href={pathwayHref}
+                style={{
+                  display: 'inline-flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  minHeight: 52,
+                  borderRadius: 999,
+                  padding: '12px 18px',
+                  border: '1px solid rgba(213, 226, 235, 0.95)',
+                  background: 'white',
+                  color: 'var(--navy)',
+                  fontWeight: 950,
+                  textDecoration: 'none',
+                  textAlign: 'center',
+                }}
+              >
+                Back to pathway
+              </Link>
+              {nextHref && (
+                <Link
+                  href={nextHref}
+                  style={{
+                    display: 'inline-flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    minHeight: 52,
+                    borderRadius: 999,
+                    padding: '12px 18px',
+                    background: 'var(--navy)',
+                    color: 'white',
+                    fontWeight: 950,
+                    textDecoration: 'none',
+                    textAlign: 'center',
+                  }}
+                >
+                  Next activity →
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
       </section>
     </section>
   );
