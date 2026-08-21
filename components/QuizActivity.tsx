@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useRef, useState } from 'react';
 import styles from './QuizActivity.module.css';
 
@@ -20,6 +20,8 @@ function optionsWithBalancedCorrectPosition(question: QuizQuestion, questionInde
 
 export default function QuizActivity({ activityId, questions, nextHref = '/student/lesson/1905/peel' }: QuizActivityProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const assignmentId = searchParams.get('assignment');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [completed, setCompleted] = useState(false);
@@ -53,11 +55,15 @@ export default function QuizActivity({ activityId, questions, nextHref = '/stude
     setSaveStatus('saving');
     setSaveMessage(isComplete ? 'Saving final score...' : 'Auto-saving...');
     try {
-      const response = await fetch('/api/student-responses/quiz', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ activityId, answers: nextAnswers, score: result.score, maxScore: questions.length, percentage: result.percentage, incorrectQuestionIds: result.incorrectQuestionIds, status: isComplete ? 'complete' : 'in_progress' }),
-      });
+      const response = assignmentId
+        ? await fetch('/api/assignment-progress', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ assignmentId, activityType: 'quiz', status: isComplete ? 'complete' : 'in_progress', score: result.score, maxScore: questions.length, position: { percentage: result.percentage, incorrect_question_ids: result.incorrectQuestionIds, answers: nextAnswers } }),
+          })
+        : await fetch('/api/student-responses/quiz', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ activityId, answers: nextAnswers, score: result.score, maxScore: questions.length, percentage: result.percentage, incorrectQuestionIds: result.incorrectQuestionIds, status: isComplete ? 'complete' : 'in_progress' }),
+          });
       const responseBody = await response.json();
       if (!response.ok) throw new Error(responseBody.error ?? 'Quiz result could not be saved.');
       setSaveStatus('saved');
@@ -77,65 +83,14 @@ export default function QuizActivity({ activityId, questions, nextHref = '/stude
     setAnswers(nextAnswers);
     void saveQuiz(nextAnswers, isFinalQuestion);
     if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
-    advanceTimerRef.current = setTimeout(() => {
-      if (isFinalQuestion) setCompleted(true);
-      else setCurrentIndex((previous) => Math.min(previous + 1, questions.length - 1));
-    }, 650);
+    advanceTimerRef.current = setTimeout(() => { if (isFinalQuestion) setCompleted(true); else setCurrentIndex((previous) => Math.min(previous + 1, questions.length - 1)); }, 650);
   }
 
-  function resetQuiz() {
-    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
-    setAnswers({});
-    setCompleted(false);
-    setCurrentIndex(0);
-    setIsMovingNext(false);
-    setSaveStatus('idle');
-    setSaveMessage('');
-  }
-
-  async function moveToNext() {
-    if (isMovingNext) return;
-    setIsMovingNext(true);
-    const saved = await saveQuiz(answers, true);
-    if (saved) {
-      router.push(nextHref);
-      return;
-    }
-    setIsMovingNext(false);
-  }
+  function resetQuiz() { if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current); setAnswers({}); setCompleted(false); setCurrentIndex(0); setIsMovingNext(false); setSaveStatus('idle'); setSaveMessage(''); }
+  async function moveToNext() { if (isMovingNext) return; setIsMovingNext(true); const saved = await saveQuiz(answers, true); if (saved) { router.push(nextHref); return; } setIsMovingNext(false); }
 
   if (!currentQuestion) return <section className="panel warm"><h3>No quiz questions found</h3><p>This activity does not currently have any questions.</p></section>;
+  if (completed) return <div className={styles.shell}><section className={styles.topbar}><div><h3>Quiz complete</h3></div><div className={styles.stats}><span>{score}/{questions.length}</span><span>{percentage}%</span><span>{incorrectQuestionIds.length} revisit</span></div></section><div className={styles.progress}><div style={{ width: '100%' }} /></div><section className={styles.summary}><h2>{score}/{questions.length}</h2><p>{percentage >= 80 ? 'Strong recall. Move on and apply this knowledge.' : 'Good start. Revisit the weaker questions, then apply the knowledge.'}</p></section><section className={styles.bottomNav}><button type="button" className="button secondary" onClick={() => { setCompleted(false); setCurrentIndex(0); }}>Review</button><button type="button" className="button secondary" onClick={resetQuiz}>Try again</button><button type="button" className="button" onClick={moveToNext} disabled={isMovingNext || saveStatus === 'saving'}>{isMovingNext || saveStatus === 'saving' ? 'Saving...' : 'Next'}</button></section>{saveMessage && <p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage}</p>}</div>;
 
-  if (completed) {
-    return (
-      <div className={styles.shell}>
-        <section className={styles.topbar}><div><h3>Quiz complete</h3></div><div className={styles.stats}><span>{score}/{questions.length}</span><span>{percentage}%</span><span>{incorrectQuestionIds.length} revisit</span></div></section>
-        <div className={styles.progress}><div style={{ width: '100%' }} /></div>
-        <section className={styles.summary}><h2>{score}/{questions.length}</h2><p>{percentage >= 80 ? 'Strong recall. Move on to the PEEL response and apply this knowledge.' : 'Good start. Revisit the weaker questions, then apply the knowledge in your PEEL response.'}</p></section>
-        <section className={styles.bottomNav}><button type="button" className="button secondary" onClick={() => { setCompleted(false); setCurrentIndex(0); }}>Review</button><button type="button" className="button secondary" onClick={resetQuiz}>Try again</button><button type="button" className="button" onClick={moveToNext} disabled={isMovingNext || saveStatus === 'saving'}>{isMovingNext || saveStatus === 'saving' ? 'Saving...' : 'Next'}</button></section>
-        {saveMessage && <p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage}</p>}
-      </div>
-    );
-  }
-
-  return (
-    <div className={styles.shell}>
-      <section className={styles.topbar}><div><h3>Question {currentIndex + 1} of {questions.length}</h3></div><div className={styles.stats}><span>{answeredCount}/{questions.length} answered</span><span>{score} correct</span><span>{saveStatus === 'saving' ? 'saving' : saveStatus === 'saved' ? 'saved' : 'ready'}</span></div></section>
-      <div className={styles.progress}><div style={{ width: `${progressPercentage}%` }} /></div>
-      <section className={styles.card}>
-        <h2 className={styles.questionText}>{currentQuestion.question}</h2>
-        <div className={styles.options}>
-          {currentOptions.map((option) => {
-            const isSelected = selectedAnswer === option;
-            const isCorrect = option === currentQuestion.correct;
-            const showCorrect = Boolean(selectedAnswer) && isCorrect;
-            const showIncorrect = isSelected && !isCorrect;
-            return <button type="button" key={option} onClick={() => selectAnswer(option)} className={`${styles.option}${isSelected ? ` ${styles.selected}` : ''}${showCorrect ? ` ${styles.correct}` : ''}${showIncorrect ? ` ${styles.incorrect}` : ''}`} disabled={Boolean(selectedAnswer)}>{option}</button>;
-          })}
-        </div>
-      </section>
-      <section className={styles.bottomNavCompact}><button type="button" className="button secondary" onClick={() => { if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current); setCurrentIndex((previous) => Math.max(previous - 1, 0)); }} disabled={currentIndex === 0}>Previous</button><button type="button" className="button secondary" onClick={() => { if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current); setCurrentIndex((previous) => Math.min(previous + 1, questions.length - 1)); }} disabled={currentIndex === questions.length - 1}>Skip</button></section>
-      {saveStatus === 'error' && saveMessage && <p className={`${styles.saveMessage} ${styles.error}`}>{saveMessage}</p>}
-    </div>
-  );
+  return <div className={styles.shell}><section className={styles.topbar}><div><h3>Question {currentIndex + 1} of {questions.length}</h3></div><div className={styles.stats}><span>{answeredCount}/{questions.length} answered</span><span>{score} correct</span><span>{saveStatus === 'saving' ? 'saving' : saveStatus === 'saved' ? 'saved' : 'ready'}</span></div></section><div className={styles.progress}><div style={{ width: `${progressPercentage}%` }} /></div><section className={styles.card}><h2 className={styles.questionText}>{currentQuestion.question}</h2><div className={styles.options}>{currentOptions.map((option) => { const isSelected = selectedAnswer === option; const isCorrect = option === currentQuestion.correct; const showCorrect = Boolean(selectedAnswer) && isCorrect; const showIncorrect = isSelected && !isCorrect; return <button type="button" key={option} onClick={() => selectAnswer(option)} className={`${styles.option}${isSelected ? ` ${styles.selected}` : ''}${showCorrect ? ` ${styles.correct}` : ''}${showIncorrect ? ` ${styles.incorrect}` : ''}`} disabled={Boolean(selectedAnswer)}>{option}</button>; })}</div></section><section className={styles.bottomNavCompact}><button type="button" className="button secondary" onClick={() => { if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current); setCurrentIndex((previous) => Math.max(previous - 1, 0)); }} disabled={currentIndex === 0}>Previous</button><button type="button" className="button secondary" onClick={() => { if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current); setCurrentIndex((previous) => Math.min(previous + 1, questions.length - 1)); }} disabled={currentIndex === questions.length - 1}>Skip</button></section>{saveStatus === 'error' && saveMessage && <p className={`${styles.saveMessage} ${styles.error}`}>{saveMessage}</p>}</div>;
 }
