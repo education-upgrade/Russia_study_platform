@@ -86,6 +86,7 @@ export default async function StudentHistoryPage({ params }: { params: Promise<{
   return <main className={styles.page}>
     <section className={styles.header}>
       <div><Link href={`/teacher/classes/${classId}/tracking`} className={styles.back}>← Class tracking</Link><p className={styles.eyebrow}>Student history</p><h1>{name}</h1><p>{teachingClass?.name ?? 'Class'} · {teachingClass?.academic_year || 'Academic year'} · private teacher record</p></div>
+      <Link className={styles.insightAction} href={`/teacher/classes/${classId}/students/${studentId}/insight`} target="_blank">Download student insight</Link>
     </section>
 
     <section className={styles.metrics}>
