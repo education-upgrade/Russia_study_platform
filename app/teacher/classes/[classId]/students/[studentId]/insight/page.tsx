@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import PrintInsightButton from '@/components/PrintInsightButton';
 import { requireRoles } from '@/lib/auth/access';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import styles from './page.module.css';
@@ -100,7 +101,7 @@ export default async function StudentInsightPage({ params }: { params: Promise<{
   const generated = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
   return <main className={styles.report}>
-    <div className={styles.screenActions}><Link href={`/teacher/classes/${classId}/students/${studentId}`}>← Back to student history</Link><button type="button" onClick={undefined as never}>Use browser Print / Save as PDF</button></div>
+    <div className={styles.screenActions}><Link href={`/teacher/classes/${classId}/students/${studentId}`}>← Back to student history</Link><PrintInsightButton /></div>
     <header><p className={styles.eyebrow}>Student insight</p><h1>{name}</h1><p>{teachingClass?.name ?? 'Class'} · {teachingClass?.academic_year || 'Academic year'} · generated {generated}</p></header>
     <section className={styles.summary}><article><span>Assignments</span><strong>{rows.length}</strong></article><article><span>Complete</span><strong>{completed}</strong></article><article><span>Completion</span><strong>{completionRate}%</strong></article><article><span>Average scored result</span><strong>{averageQuiz === null ? '—' : `${averageQuiz}%`}</strong></article><article><span>Average confidence</span><strong>{averageConfidence === null ? '—' : `${averageConfidence.toFixed(1)}/5`}</strong></article></section>
     <section className={styles.section}><h2>Assignment summary</h2><div className={styles.tableWrap}><table><thead><tr><th>Assignment</th><th>Status</th><th>Progress</th><th>Score</th><th>Confidence</th><th>Last active</th></tr></thead><tbody>{rows.map((row) => <tr key={row.assignment.id}><td><strong>{row.assignment.lesson_title}</strong><small>{row.assignment.title}</small></td><td>{row.status}</td><td>{row.progress?.progress_percent ?? 0}%</td><td>{row.quiz === null ? '—' : `${row.quiz}%`}</td><td>{row.confidence === null ? '—' : `${row.confidence.toFixed(1)}/5`}</td><td>{formatDate(row.progress?.last_activity_at ?? null)}</td></tr>)}</tbody></table></div></section>
