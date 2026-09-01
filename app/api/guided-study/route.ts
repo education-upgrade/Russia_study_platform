@@ -78,6 +78,7 @@ export async function POST(request: Request) {
         instructions: body.instructions?.trim() || null,
         dueAt: body.deadlineAt || null,
         appOrigin: new URL(request.url).origin,
+        routeBase: pathway.routeBase,
       });
     } catch (notificationError) {
       console.error('Assignment was published but notification email failed', notificationError);
