@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { isSupportedActivityType, orderSupportedActivityTypes } from '@/lib/activityTypeRegistry';
 import '@/lib/unit6RegistryActivation';
 import { getSubjectActivityLabel, tryGetActivePathwayConfig } from '@/lib/activeSubjectRuntime';
+import { sendAssignmentNotifications } from '@/lib/email/assignmentNotification';
 
 type GuidedStudyRequest = {
   mode: string;
@@ -14,6 +15,7 @@ type GuidedStudyRequest = {
   pathwaySlug?: string;
   lessonTitle?: string;
   publishNow?: boolean;
+  emailStudents?: boolean;
 };
 
 export async function POST(request: Request) {
@@ -66,10 +68,28 @@ export async function POST(request: Request) {
     ? await supabase.from('assignment_recipients').select('*', { count: 'exact', head: true }).eq('assignment_id', assignmentId).eq('status', 'assigned')
     : { count: 0 };
 
+  let emailNotification = null;
+  if (publishNow && body.emailStudents !== false) {
+    try {
+      emailNotification = await sendAssignmentNotifications({
+        assignmentId,
+        assignmentTitle,
+        lessonTitle: pathway.lessonTitle,
+        instructions: body.instructions?.trim() || null,
+        dueAt: body.deadlineAt || null,
+        appOrigin: new URL(request.url).origin,
+      });
+    } catch (notificationError) {
+      console.error('Assignment was published but notification email failed', notificationError);
+      emailNotification = { attempted: recipientCount ?? 0, sent: 0, failed: recipientCount ?? 0, skipped: false };
+    }
+  }
+
   return NextResponse.json({
     status: publishNow ? 'published' : 'draft',
     assignmentId,
     recipientCount: recipientCount ?? 0,
+    emailNotification,
     pathwaySlug: pathway.pathwaySlug,
     lessonTitle: pathway.lessonTitle,
     requiredActivityTypes,
