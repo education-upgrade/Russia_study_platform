@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { createBrowserSupabaseClient, isSupabaseAuthConfigured } from '@/lib/supabase/browser';
 import styles from './login.module.css';
 
-type Mode = 'sign-in' | 'sign-up';
+type Mode = 'sign-in' | 'sign-up' | 'forgot-password';
 type AccountType = 'student' | 'staff';
 
 function getPublicAppOrigin() {
@@ -26,6 +26,12 @@ export default function LoginForm() {
   const [submitting, setSubmitting] = useState(false);
   const configured = isSupabaseAuthConfigured();
   const nextPath = useMemo(() => searchParams.get('next') || '/portal', [searchParams]);
+  const queryStatus = useMemo(() => {
+    if (searchParams.get('reset') === 'success') {
+      return 'Password changed successfully. Sign in with your new password.';
+    }
+    return searchParams.get('error');
+  }, [searchParams]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -38,6 +44,21 @@ export default function LoginForm() {
 
     setSubmitting(true);
     const supabase = createBrowserSupabaseClient();
+
+    if (mode === 'forgot-password') {
+      const recoveryUrl = `${getPublicAppOrigin()}/auth/callback?next=${encodeURIComponent('/reset-password')}`;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: recoveryUrl,
+      });
+
+      setStatus(
+        error
+          ? 'We could not send a password reset email right now. Please try again.'
+          : 'If an account exists for that email address, we have sent a password reset link. Please check your inbox.',
+      );
+      setSubmitting(false);
+      return;
+    }
 
     if (mode === 'sign-in') {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -82,12 +103,21 @@ export default function LoginForm() {
     setStatus(null);
   }
 
+  const displayedStatus = status || queryStatus;
+
   return (
     <div className={styles.card}>
       <div className={styles.tabs} role="tablist" aria-label="Authentication options">
-        <button className={`${styles.tab} ${mode === 'sign-in' ? styles.tabActive : ''}`} type="button" onClick={() => switchMode('sign-in')}>Sign in</button>
+        <button className={`${styles.tab} ${mode !== 'sign-up' ? styles.tabActive : ''}`} type="button" onClick={() => switchMode('sign-in')}>Sign in</button>
         <button className={`${styles.tab} ${mode === 'sign-up' ? styles.tabActive : ''}`} type="button" onClick={() => switchMode('sign-up')}>Create account</button>
       </div>
+
+      {mode === 'forgot-password' && (
+        <div className={styles.resetIntro}>
+          <p className={styles.sectionLabel}>Reset your password</p>
+          <p>Enter the email address for your account. We will send you a secure link to choose a new password.</p>
+        </div>
+      )}
 
       <form className={styles.form} onSubmit={submit}>
         {mode === 'sign-up' && (
@@ -115,17 +145,37 @@ export default function LoginForm() {
           Email address
           <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required />
         </label>
-        <label className={styles.field}>
-          Password
-          <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'} minLength={8} required />
-          {mode === 'sign-up' && <small>Use at least 8 characters.</small>}
-        </label>
+        {mode !== 'forgot-password' && (
+          <label className={styles.field}>
+            Password
+            <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'} minLength={8} required />
+            {mode === 'sign-up' && <small>Use at least 8 characters.</small>}
+          </label>
+        )}
+        {mode === 'sign-in' && (
+          <button className={styles.textButton} type="button" onClick={() => switchMode('forgot-password')}>
+            Forgot password?
+          </button>
+        )}
         <button className={styles.submit} type="submit" disabled={submitting || !configured}>
-          {submitting ? 'Please wait…' : mode === 'sign-in' ? 'Sign in' : accountType === 'staff' ? 'Create staff account' : 'Create student account'}
+          {submitting
+            ? 'Please wait…'
+            : mode === 'forgot-password'
+              ? 'Send password reset email'
+              : mode === 'sign-in'
+                ? 'Sign in'
+                : accountType === 'staff'
+                  ? 'Create staff account'
+                  : 'Create student account'}
         </button>
+        {mode === 'forgot-password' && (
+          <button className={styles.secondaryButton} type="button" onClick={() => switchMode('sign-in')}>
+            Back to sign in
+          </button>
+        )}
       </form>
 
-      {status && <p className={styles.message} role="status">{status}</p>}
+      {displayedStatus && <p className={styles.message} role="status">{displayedStatus}</p>}
       {!configured && <p className={`${styles.message} ${styles.warning}`}>Authentication is not configured for this deployment.</p>}
     </div>
   );
