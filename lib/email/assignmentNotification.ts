@@ -7,6 +7,7 @@ type NotificationInput = {
   instructions: string | null;
   dueAt: string | null;
   appOrigin: string;
+  routeBase: string;
 };
 
 export type NotificationResult = {
@@ -25,7 +26,7 @@ function formatDeadline(value: string | null) {
 }
 
 function escapeHtml(value: string) {
-  return value.replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character] ?? character));
+  return value.replace(/[&<>'\"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '\"': '&quot;' }[character] ?? character));
 }
 
 export async function sendAssignmentNotifications(input: NotificationInput): Promise<NotificationResult> {
@@ -52,10 +53,12 @@ export async function sendAssignmentNotifications(input: NotificationInput): Pro
 
   const deadline = formatDeadline(input.dueAt);
   const instructions = input.instructions?.trim() || 'Complete the assignment activities shown in your guided study pathway.';
-  const assignmentUrl = `${input.appOrigin.replace(/\/$/, '')}/student/my-work`;
+  const origin = (process.env.NEXT_PUBLIC_APP_URL || input.appOrigin).replace(/\/$/, '');
+  const routeBase = input.routeBase.startsWith('/') ? input.routeBase : `/${input.routeBase}`;
+  const assignmentUrl = `${origin}${routeBase}?assignment=${encodeURIComponent(input.assignmentId)}`;
   const subject = `New assignment: ${input.lessonTitle}`;
-  const html = `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#14213d;line-height:1.55"><p style="font-size:12px;letter-spacing:.12em;font-weight:700;color:#64748b">EDUCATION UPGRADE</p><h1 style="font-size:26px;margin-bottom:8px">New assignment</h1><h2 style="font-size:20px;margin-top:0">${escapeHtml(input.lessonTitle)}</h2><p>Your teacher has set new guided study work.</p><p><strong>Instructions</strong><br>${escapeHtml(instructions).replace(/\n/g, '<br>')}</p><p><strong>Deadline</strong><br>${escapeHtml(deadline)}</p><p><a href="${escapeHtml(assignmentUrl)}" style="display:inline-block;background:#14213d;color:white;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:700">Open my work</a></p><p style="font-size:13px;color:#64748b">Sign in to Education Upgrade to open the assignment and track your progress.</p></div>`;
-  const text = `New assignment: ${input.lessonTitle}\n\nInstructions: ${instructions}\n\nDeadline: ${deadline}\n\nOpen your work: ${assignmentUrl}`;
+  const html = `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#14213d;line-height:1.55"><p style="font-size:12px;letter-spacing:.12em;font-weight:700;color:#64748b">EDUCATION UPGRADE</p><h1 style="font-size:26px;margin-bottom:8px">New assignment</h1><h2 style="font-size:20px;margin-top:0">${escapeHtml(input.lessonTitle)}</h2><p>Your teacher has set new guided study work.</p><p><strong>Instructions</strong><br>${escapeHtml(instructions).replace(/\n/g, '<br>')}</p><p><strong>Deadline</strong><br>${escapeHtml(deadline)}</p><p><a href="${escapeHtml(assignmentUrl)}" style="display:inline-block;background:#14213d;color:white;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:700">Open assignment</a></p><p style="font-size:13px;color:#64748b">Sign in to Education Upgrade to open this assignment and track your progress.</p></div>`;
+  const text = `New assignment: ${input.lessonTitle}\n\nInstructions: ${instructions}\n\nDeadline: ${deadline}\n\nOpen assignment: ${assignmentUrl}`;
 
   let sent = 0;
   let failed = 0;
