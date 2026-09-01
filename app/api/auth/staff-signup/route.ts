@@ -11,9 +11,11 @@ export async function POST(request: Request) {
   const expectedCode = process.env.STAFF_SIGNUP_CODE?.trim();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !anonKey) return NextResponse.json({ error: 'Authentication is not configured.' }, { status: 503 });
   if (!expectedCode) return NextResponse.json({ error: 'Staff account creation is not enabled.' }, { status: 503 });
+  if (!serviceRoleKey) return NextResponse.json({ error: 'Secure staff account creation is not configured.' }, { status: 503 });
   if (!staffCode || staffCode !== expectedCode) return NextResponse.json({ error: 'The staff invite code is not valid.' }, { status: 403 });
   if (!email || password.length < 8 || !fullName) return NextResponse.json({ error: 'Enter your name, email address and a password of at least 8 characters.' }, { status: 400 });
 
@@ -21,12 +23,17 @@ export async function POST(request: Request) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: {
-      emailRedirectTo: callbackUrl || undefined,
-      data: { full_name: fullName, requested_role: 'teacher', staff_invite_verified: true },
-    },
+    options: { emailRedirectTo: callbackUrl || undefined, data: { full_name: fullName } },
   });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json({ ok: true, userId: data.user?.id ?? null });
+  if (error || !data.user) return NextResponse.json({ error: error?.message || 'Staff account could not be created.' }, { status: 400 });
+
+  const admin = createClient(url, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
+  const { error: profileError } = await admin.from('profiles').update({ role: 'teacher', full_name: fullName }).eq('id', data.user.id);
+  if (profileError) {
+    await admin.auth.admin.deleteUser(data.user.id).catch(() => undefined);
+    return NextResponse.json({ error: 'The staff account could not be authorised. No account was kept.' }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
 }
