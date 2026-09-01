@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { createBrowserSupabaseClient, isSupabaseAuthConfigured } from '@/lib/supabase/browser';
 import styles from '../login/login.module.css';
 
@@ -11,11 +11,22 @@ export default function ResetPasswordForm() {
   const [checkingSession, setCheckingSession] = useState(true);
   const [ready, setReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const exchangeStarted = useRef(false);
   const configured = isSupabaseAuthConfigured();
 
   useEffect(() => {
+    if (exchangeStarted.current) return;
+    exchangeStarted.current = true;
+
     if (!configured) {
       setStatus('Supabase authentication is not configured for this deployment.');
+      setCheckingSession(false);
+      return;
+    }
+
+    const code = new URL(window.location.href).searchParams.get('code');
+    if (!code) {
+      setStatus('This password reset link is invalid or has expired. Request a new reset email from the sign-in page.');
       setCheckingSession(false);
       return;
     }
@@ -23,13 +34,18 @@ export default function ResetPasswordForm() {
     const supabase = createBrowserSupabaseClient();
     let active = true;
 
-    supabase.auth.getUser().then(({ data, error }) => {
+    supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
       if (!active) return;
-      const hasRecoverySession = Boolean(data.user) && !error;
-      setReady(hasRecoverySession);
-      if (!hasRecoverySession) {
-        setStatus('This password reset link is invalid or has expired. Request a new reset email from the sign-in page.');
+
+      if (error) {
+        setReady(false);
+        setStatus('This password reset link could not be verified. It may have expired or already been used. Request a new reset email and try again.');
+        setCheckingSession(false);
+        return;
       }
+
+      window.history.replaceState({}, '', '/reset-password');
+      setReady(true);
       setCheckingSession(false);
     });
 
