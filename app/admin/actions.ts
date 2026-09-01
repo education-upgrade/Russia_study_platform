@@ -38,6 +38,9 @@ export async function setAccountStatusAction(formData: FormData) {
 
   const admin = createSupabaseAdminClient();
   if (!admin) redirect('/admin?error=admin-service-not-configured');
+  const { data: target } = await admin.from('profiles').select('role').eq('id', userId).maybeSingle();
+  if (target?.role === 'admin' && !isPlatformOwner(auth.userId)) redirect('/admin?error=owner-only');
+
   const { error } = await admin.from('profiles').update({ status }).eq('id', userId);
   if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
   revalidatePath('/admin');
@@ -50,10 +53,13 @@ export async function setUserRoleAction(formData: FormData) {
   const role = clean(formData.get('role'));
   if (!userId || !['student', 'teacher', 'admin'].includes(role)) redirect('/admin?error=invalid-role');
   if (isPlatformOwner(userId) && role !== 'admin') redirect('/admin?error=owner-protected');
-  if (role === 'admin' && !isPlatformOwner(auth.userId)) redirect('/admin?error=owner-only');
 
   const admin = createSupabaseAdminClient();
   if (!admin) redirect('/admin?error=admin-service-not-configured');
+  const { data: target } = await admin.from('profiles').select('role').eq('id', userId).maybeSingle();
+  const touchesAdminPrivilege = role === 'admin' || target?.role === 'admin';
+  if (touchesAdminPrivilege && !isPlatformOwner(auth.userId)) redirect('/admin?error=owner-only');
+
   const { error } = await admin.from('profiles').update({ role }).eq('id', userId);
   if (error) redirect(`/admin?error=${encodeURIComponent(error.message)}`);
   revalidatePath('/admin');
@@ -82,7 +88,7 @@ export async function createAdminAccountAction(formData: FormData) {
 
   const { error: profileError } = await admin.from('profiles').update({ role: 'admin', status: 'active', full_name: fullName }).eq('id', data.user.id);
   if (profileError) {
-    await admin.auth.admin.deleteUser(data.user.id).catch(() => undefined);
+    try { await admin.auth.admin.deleteUser(data.user.id); } catch { /* best-effort rollback */ }
     redirect(`/admin?error=${encodeURIComponent(profileError.message)}`);
   }
 
