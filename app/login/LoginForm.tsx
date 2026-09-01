@@ -8,6 +8,12 @@ import styles from './login.module.css';
 type Mode = 'sign-in' | 'sign-up';
 type AccountType = 'student' | 'staff';
 
+function getPublicAppOrigin() {
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (configured) return configured.replace(/\/$/, '');
+  return window.location.origin;
+}
+
 export default function LoginForm() {
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<Mode>('sign-in');
@@ -44,7 +50,7 @@ export default function LoginForm() {
       return;
     }
 
-    const callbackUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+    const callbackUrl = `${getPublicAppOrigin()}/auth/callback?next=${encodeURIComponent(nextPath)}`;
 
     if (accountType === 'staff') {
       const response = await fetch('/api/auth/staff-signup', {
