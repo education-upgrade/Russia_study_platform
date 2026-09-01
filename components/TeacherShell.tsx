@@ -60,7 +60,10 @@ export default function TeacherShell({ children }: TeacherShellProps) {
           })}
         </nav>
 
-        <Link className={styles.primaryAction} href="/teacher/set-study">+ Set work</Link>
+        <div className={styles.sidebarActions}>
+          <Link className={styles.primaryAction} href="/teacher/set-study">+ Set work</Link>
+          <form action="/auth/signout" method="post"><button className={styles.signOut} type="submit">Sign out</button></form>
+        </div>
       </aside>
 
       <div className={styles.workspace}>
@@ -78,6 +81,7 @@ export default function TeacherShell({ children }: TeacherShellProps) {
             <span aria-hidden="true">{item.icon}</span><small>{item.label}</small>
           </Link>;
         })}
+        <form action="/auth/signout" method="post"><button type="submit"><span aria-hidden="true">↪</span><small>Sign out</small></button></form>
       </nav>
     </div>
   );

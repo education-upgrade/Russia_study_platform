@@ -24,9 +24,15 @@ export default function StudentShell({ children }: { children: ReactNode }) {
   return <div className={`${styles.shell} ${inPathway ? styles.pathwayShell : ''}`}>
     {!inPathway ? <header className={styles.topbar}>
       <Link className={styles.brand} href="/student/dashboard"><span>{activeSubjectIdentity.brandMark}</span><strong>{activeSubjectIdentity.platformName}</strong></Link>
-      <nav aria-label="Student navigation">{items.map((item) => <Link key={item.href} href={item.href} className={isActive(pathname, item.href) ? styles.active : ''}>{item.label}</Link>)}</nav>
+      <div className={styles.topbarActions}>
+        <nav aria-label="Student navigation">{items.map((item) => <Link key={item.href} href={item.href} className={isActive(pathname, item.href) ? styles.active : ''}>{item.label}</Link>)}</nav>
+        <form action="/auth/signout" method="post"><button className={styles.signOut} type="submit">Sign out</button></form>
+      </div>
     </header> : null}
     <div className={styles.content}>{children}</div>
-    <nav className={styles.mobileNav} aria-label="Student mobile navigation">{items.map((item) => <Link key={item.href} href={item.href} className={isActive(pathname, item.href) ? styles.active : ''}><span aria-hidden="true">{item.icon}</span><small>{item.label}</small></Link>)}</nav>
+    <nav className={styles.mobileNav} aria-label="Student mobile navigation">
+      {items.map((item) => <Link key={item.href} href={item.href} className={isActive(pathname, item.href) ? styles.active : ''}><span aria-hidden="true">{item.icon}</span><small>{item.label}</small></Link>)}
+      <form action="/auth/signout" method="post"><button type="submit"><span aria-hidden="true">↪</span><small>Sign out</small></button></form>
+    </nav>
   </div>;
 }
