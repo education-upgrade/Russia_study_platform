@@ -1,1 +1,0 @@
-Temporary marker to make the revert branch visibly differ from main while preserving the exact pre-PR113 application tree. Remove this marker before merging if GitHub permits an empty-tree revert commit.
