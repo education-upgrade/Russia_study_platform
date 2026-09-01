@@ -46,7 +46,7 @@ export default function LoginForm() {
     const supabase = createBrowserSupabaseClient();
 
     if (mode === 'forgot-password') {
-      const recoveryUrl = `${getPublicAppOrigin()}/auth/callback?next=${encodeURIComponent('/reset-password')}`;
+      const recoveryUrl = `${getPublicAppOrigin()}/reset-password`;
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: recoveryUrl,
       });
