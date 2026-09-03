@@ -8,25 +8,11 @@ type Props = {
   children: React.ReactNode;
 };
 
-const completionLabels = [
-  'next',
-  'finish',
-  'finished',
-  'complete',
-  'completed',
-  'submit',
-  'continue',
-];
-
 function isCompletionControl(target: EventTarget | null) {
   if (!(target instanceof Element)) return false;
-  // Some activities use buttons while lesson notes use a Next/Continue link.
-  // Treat navigational links with the same completion language as explicit
-  // completion controls so the required lesson_content step can be finished.
-  const control = target.closest('button, a, [role="button"]');
+  const control = target.closest('[data-assignment-complete="true"]');
   if (!control || control.hasAttribute('disabled') || control.getAttribute('aria-disabled') === 'true') return false;
-  const label = (control.textContent ?? '').trim().toLowerCase();
-  return completionLabels.some((candidate) => label === candidate || label.startsWith(`${candidate} `));
+  return true;
 }
 
 async function saveProgress(assignmentId: string, activityType: string, status: 'in_progress' | 'complete') {
