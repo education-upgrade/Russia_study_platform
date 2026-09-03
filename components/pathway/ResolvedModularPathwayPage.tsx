@@ -1,5 +1,6 @@
 import '@/lib/unit6RegistryActivation';
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getActiveActivityLabel, getActivePathwayConfig } from '@/lib/activeSubjectRuntime';
 import { materialisePathwayActivities } from '@/lib/pathwayActivityPersistence';
@@ -117,22 +118,53 @@ export default async function ResolvedModularPathwayPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const requestHeaders = await headers();
+  const requestedAssignmentId = requestHeaders.get('x-assignment-id');
 
   let assignment: Assignment | null = null;
 
   if (user) {
-    const { data: recipientRows } = await supabase
-      .from('assignment_recipients')
-      .select(
-        'assignment_id, assigned_at, classroom_assignments(id, mode, required_activity_types, due_at, instructions, pathway_slug, status)',
-      )
-      .eq('student_id', user.id)
-      .eq('status', 'assigned')
-      .order('assigned_at', { ascending: false });
+    let recipientRows: RecipientRow[] = [];
 
-    assignment = ((recipientRows ?? []) as RecipientRow[])
+    if (requestedAssignmentId) {
+      const { data } = await supabase
+        .from('assignment_recipients')
+        .select(
+          'assignment_id, assigned_at, classroom_assignments(id, mode, required_activity_types, due_at, instructions, pathway_slug, status)',
+        )
+        .eq('student_id', user.id)
+        .eq('assignment_id', requestedAssignmentId)
+        .eq('status', 'assigned')
+        .limit(1);
+      recipientRows = (data ?? []) as RecipientRow[];
+    } else {
+      const { data } = await supabase
+        .from('assignment_recipients')
+        .select(
+          'assignment_id, assigned_at, classroom_assignments(id, mode, required_activity_types, due_at, instructions, pathway_slug, status)',
+        )
+        .eq('student_id', user.id)
+        .eq('status', 'assigned')
+        .order('assigned_at', { ascending: false });
+      recipientRows = (data ?? []) as RecipientRow[];
+    }
+
+    assignment = recipientRows
       .map((row) => unwrapAssignment(row.classroom_assignments))
       .find((item) => item?.status === 'published' && item.pathway_slug === pathwaySlug) ?? null;
+  }
+
+  if (requestedAssignmentId && !assignment) {
+    return (
+      <main className={styles.shell}>
+        <section className={styles.mainCard}>
+          <p className={styles.eyebrow}>Assignment unavailable</p>
+          <h1>This assignment cannot be opened</h1>
+          <p>It may have been archived, removed, or belong to a different class or lesson.</p>
+          <Link className={styles.primaryButton} href="/student/dashboard">Return to dashboard</Link>
+        </section>
+      </main>
+    );
   }
 
   const { data: lessonRows } = await supabase
