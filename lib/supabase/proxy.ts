@@ -14,13 +14,23 @@ function getSupabasePublicKey() {
   );
 }
 
+function nextResponseForRequest(request: NextRequest) {
+  const requestHeaders = new Headers(request.headers);
+  const assignmentId = request.nextUrl.searchParams.get('assignment');
+
+  if (assignmentId) requestHeaders.set('x-assignment-id', assignmentId);
+  else requestHeaders.delete('x-assignment-id');
+
+  return NextResponse.next({ request: { headers: requestHeaders } });
+}
+
 export async function updateSupabaseSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publicKey = getSupabasePublicKey();
 
-  if (!url || !publicKey) return NextResponse.next({ request });
+  if (!url || !publicKey) return nextResponseForRequest(request);
 
-  let response = NextResponse.next({ request });
+  let response = nextResponseForRequest(request);
   const supabase = createServerClient(url, publicKey, {
     cookies: {
       getAll() {
@@ -28,7 +38,7 @@ export async function updateSupabaseSession(request: NextRequest) {
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request });
+        response = nextResponseForRequest(request);
         cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
       },
     },
