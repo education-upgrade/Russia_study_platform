@@ -8,11 +8,23 @@ type Props = {
   children: React.ReactNode;
 };
 
+const explicitCompletionLabels = new Set([
+  'next',
+  'finish',
+  'finished',
+  'complete',
+  'completed',
+  'submit timeline',
+  'submit card sort',
+]);
+
 function isCompletionControl(target: EventTarget | null) {
   if (!(target instanceof Element)) return false;
-  const control = target.closest('[data-assignment-complete="true"]');
+  const control = target.closest('button, a, [role="button"]');
   if (!control || control.hasAttribute('disabled') || control.getAttribute('aria-disabled') === 'true') return false;
-  return true;
+  if (control.getAttribute('data-assignment-complete') === 'true') return true;
+  const label = (control.textContent ?? '').trim().toLowerCase();
+  return explicitCompletionLabels.has(label);
 }
 
 async function saveProgress(assignmentId: string, activityType: string, status: 'in_progress' | 'complete') {
