@@ -10,21 +10,13 @@ type Props = {
   label: string;
 };
 
-export default function AssignmentLaunchButton({ assignmentId, activityType, href, label }: Props) {
+export default function AssignmentLaunchButton({ href, label }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  async function launch() {
+  function launch() {
     setLoading(true);
-    try {
-      await fetch('/api/assignment-progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assignmentId, activityType, status: 'in_progress' }),
-      });
-    } finally {
-      router.push(href);
-    }
+    router.push(href);
   }
 
   return (
