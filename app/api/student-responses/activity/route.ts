@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getLegacySelfStudyAccess } from '@/lib/legacySelfStudyServer';
 import { resolveVirtualActivityId } from '@/lib/resolveVirtualActivityId';
 
 const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
@@ -15,9 +15,9 @@ type ActivitySaveRequest = {
 };
 
 export async function POST(request: Request) {
-  if (!supabase) {
-    return NextResponse.json({ error: 'Supabase is not configured.' }, { status: 500 });
-  }
+  const access = await getLegacySelfStudyAccess();
+  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
+  const supabase = access.client;
 
   const body = (await request.json()) as ActivitySaveRequest;
 
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing responseType.' }, { status: 400 });
   }
 
-  const resolvedActivityId = await resolveVirtualActivityId(body.activityId);
+  const resolvedActivityId = await resolveVirtualActivityId(body.activityId, supabase);
 
   if (resolvedActivityId.startsWith('virtual-')) {
     return NextResponse.json({ error: `Could not resolve activity: ${body.activityId}` }, { status: 500 });
