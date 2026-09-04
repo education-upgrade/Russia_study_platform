@@ -167,12 +167,12 @@ export default function GenericActivityRenderer({
 
     if (activityType === 'ao3_interpretation') {
       const typedContent = normalisedContent as AO3InterpretationContent;
-      return <ActivityShell routeBase={assignmentRouteBase} adaptiveSupport={adaptiveSupport}><AO3InterpretationActivity activityId={activityId} question={typedContent.question} interpretations={typedContent.interpretations} nextHref={assignmentNextHref} /></ActivityShell>;
+      return <ActivityShell routeBase={assignmentRouteBase} adaptiveSupport={adaptiveSupport}><AO3InterpretationActivity activityId={activityId} question={typedContent.question} interpretations={typedContent.interpretations} nextHref={assignmentNextHref} adaptiveSupport={adaptiveSupport} /></ActivityShell>;
     }
 
     if (activityType === 'peel_response') {
       const typedContent = normalisedContent as PeelResponseContent;
-      return <ActivityShell routeBase={assignmentRouteBase} adaptiveSupport={adaptiveSupport}><PeelResponseActivity activityId={activityId} question={typedContent.question} stretchQuestion={typedContent.stretchQuestion} scaffold={typedContent.scaffold} nextHref={assignmentNextHref} /></ActivityShell>;
+      return <ActivityShell routeBase={assignmentRouteBase} adaptiveSupport={adaptiveSupport}><PeelResponseActivity activityId={activityId} question={typedContent.question} stretchQuestion={typedContent.stretchQuestion} scaffold={typedContent.scaffold} nextHref={assignmentNextHref} adaptiveSupport={adaptiveSupport} /></ActivityShell>;
     }
 
     if (activityType === 'confidence_exit_ticket') {
