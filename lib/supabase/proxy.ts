@@ -1,11 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { safeLocalPath } from '@/lib/navigation';
 
 const protectedPrefixes = ['/student', '/teacher', '/account'];
-
-function safeLocalPath(value: string | null, fallback = '/account') {
-  return value && value.startsWith('/') && !value.startsWith('//') ? value : fallback;
-}
 
 function getSupabasePublicKey() {
   return (
@@ -22,6 +19,26 @@ function nextResponseForRequest(request: NextRequest) {
   else requestHeaders.delete('x-assignment-id');
 
   return NextResponse.next({ request: { headers: requestHeaders } });
+}
+
+function isStaleSessionError(error: unknown) {
+  const candidate = error as { code?: string; message?: string } | null;
+  const code = candidate?.code?.toLowerCase() ?? '';
+  const message = candidate?.message?.toLowerCase() ?? '';
+  return (
+    code.includes('refresh_token') ||
+    code === 'session_not_found' ||
+    message.includes('refresh token') ||
+    message.includes('session not found')
+  );
+}
+
+function clearSupabaseAuthCookies(request: NextRequest, targetResponse: NextResponse) {
+  for (const cookie of request.cookies.getAll()) {
+    if (!cookie.name.startsWith('sb-') || !cookie.name.includes('auth-token')) continue;
+    request.cookies.delete(cookie.name);
+    targetResponse.cookies.set(cookie.name, '', { path: '/', maxAge: 0 });
+  }
 }
 
 export async function updateSupabaseSession(request: NextRequest) {
@@ -44,7 +61,10 @@ export async function updateSupabaseSession(request: NextRequest) {
     },
   });
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const staleSession = !user && Boolean(authError) && isStaleSessionError(authError);
+  if (staleSession) clearSupabaseAuthCookies(request, response);
+
   const isProtected = protectedPrefixes.some((prefix) =>
     request.nextUrl.pathname === prefix || request.nextUrl.pathname.startsWith(`${prefix}/`),
   );
@@ -53,7 +73,9 @@ export async function updateSupabaseSession(request: NextRequest) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = '/login';
     loginUrl.searchParams.set('next', `${request.nextUrl.pathname}${request.nextUrl.search}`);
-    return NextResponse.redirect(loginUrl);
+    const redirectResponse = NextResponse.redirect(loginUrl);
+    if (staleSession) clearSupabaseAuthCookies(request, redirectResponse);
+    return redirectResponse;
   }
 
   if (user && request.nextUrl.pathname === '/login') {
