@@ -1,7 +1,8 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
+import { saveAssignmentActivityProgress } from '@/lib/assignmentProgressClient';
 import styles from './CardSortActivity.module.css';
 
 type CardSortCard = {
@@ -21,6 +22,8 @@ type CardSortActivityProps = {
 
 export default function CardSortActivity({ activityId, cards, categories, nextHref }: CardSortActivityProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const assignmentId = searchParams.get('assignment');
   const [placements, setPlacements] = useState<Record<string, string>>({});
   const [reflection, setReflection] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -37,31 +40,56 @@ export default function CardSortActivity({ activityId, cards, categories, nextHr
 
   const canSubmit = completedCount === cards.length && reflection.trim().length > 0;
 
-  async function saveCardSort(status: 'in_progress' | 'complete') {
+  async function saveCardSort(
+    status: 'in_progress' | 'complete',
+    nextPlacements = placements,
+    nextReflection = reflection,
+  ) {
+    const nextCompletedCount = Object.keys(nextPlacements).length;
+    const nextCorrectCount = cards.reduce((total, card) => total + (nextPlacements[card.id] === card.category ? 1 : 0), 0);
+    const nextProgressPercentage = cards.length ? Math.round((nextCompletedCount / cards.length) * 100) : 0;
+
     setSaveStatus('saving');
     setSaveMessage(status === 'complete' ? 'Saving completed card sort...' : 'Saving progress...');
 
     try {
-      const response = await fetch('/api/student-responses/activity', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          activityId,
-          responseType: 'card_sort',
+      if (assignmentId) {
+        await saveAssignmentActivityProgress({
+          assignmentId,
+          activityType: 'card_sort',
           status,
-          score: correctCount,
-          response: {
-            placements,
-            reflection,
+          score: nextCorrectCount,
+          maxScore: cards.length,
+          position: {
+            placements: nextPlacements,
+            reflection: nextReflection,
+            writtenResponse: nextReflection,
             totalCards: cards.length,
-            correctCount,
-            completionPercentage: progressPercentage,
+            correctCount: nextCorrectCount,
+            completionPercentage: nextProgressPercentage,
           },
-        }),
-      });
-
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? 'Card sort could not be saved.');
+        });
+      } else {
+        const response = await fetch('/api/student-responses/activity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            activityId,
+            responseType: 'card_sort',
+            status,
+            score: nextCorrectCount,
+            response: {
+              placements: nextPlacements,
+              reflection: nextReflection,
+              totalCards: cards.length,
+              correctCount: nextCorrectCount,
+              completionPercentage: nextProgressPercentage,
+            },
+          }),
+        });
+        const result = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(result?.error ?? 'Card sort could not be saved.');
+      }
 
       setSaveStatus('saved');
       setSaveMessage(status === 'complete' ? 'Card sort submitted' : 'Saved');
@@ -78,7 +106,7 @@ export default function CardSortActivity({ activityId, cards, categories, nextHr
     const nextPlacements = { ...placements, [cardId]: category };
     setPlacements(nextPlacements);
     setSubmitted(false);
-    void saveCardSort('in_progress');
+    void saveCardSort('in_progress', nextPlacements, reflection);
   }
 
   async function submitCardSort() {
@@ -87,10 +115,10 @@ export default function CardSortActivity({ activityId, cards, categories, nextHr
   }
 
   async function moveToNext() {
-    if (!canSubmit || isMovingNext) return;
+    if (!canSubmit || isMovingNext || !nextHref) return;
     setIsMovingNext(true);
     const saved = await saveCardSort('complete');
-    if (saved && nextHref) {
+    if (saved) {
       router.push(nextHref);
       return;
     }
@@ -131,6 +159,7 @@ export default function CardSortActivity({ activityId, cards, categories, nextHr
                     key={category}
                     className={`${styles.categoryButton}${selectedCategory === category ? ` ${styles.selected}` : ''}${selectedCategory === category && isCorrect ? ` ${styles.correct}` : ''}`}
                     onClick={() => placeCard(card.id, category)}
+                    disabled={saveStatus === 'saving'}
                   >
                     {category}
                   </button>
