@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { schoolLocalInputToIso, toSchoolDateTimeInput } from '@/lib/dateTime';
 import styles from '@/app/teacher/set-study/page.module.css';
 
 type AssignmentManagerProps = {
@@ -11,17 +12,10 @@ type AssignmentManagerProps = {
   status: string;
 };
 
-function toLocalDateTimeInput(value: string | null) {
-  if (!value) return '';
-  const date = new Date(value);
-  const offset = date.getTimezoneOffset();
-  return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 16);
-}
-
 export default function AssignmentManager({ assignmentId, instructions: initialInstructions, dueAt, status }: AssignmentManagerProps) {
   const router = useRouter();
   const [instructions, setInstructions] = useState(initialInstructions ?? '');
-  const [deadline, setDeadline] = useState(toLocalDateTimeInput(dueAt));
+  const [deadline, setDeadline] = useState(toSchoolDateTimeInput(dueAt));
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [isError, setIsError] = useState(false);
@@ -41,7 +35,7 @@ export default function AssignmentManager({ assignmentId, instructions: initialI
           action,
           ...(action === 'update' ? {
             instructions,
-            dueAt: deadline ? new Date(deadline).toISOString() : null,
+            dueAt: deadline ? schoolLocalInputToIso(deadline) : null,
           } : {}),
         }),
       });
@@ -66,7 +60,7 @@ export default function AssignmentManager({ assignmentId, instructions: initialI
       <summary>Manage</summary>
       <div className={styles.manageBody}>
         <label className={styles.manageField}>
-          <span>Deadline</span>
+          <span>Deadline (UK time)</span>
           <input type="datetime-local" value={deadline} onChange={(event) => setDeadline(event.target.value)} />
         </label>
         <label className={styles.manageField}>

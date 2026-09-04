@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireRoles } from '@/lib/auth/access';
 import { getSubjectActivityLabel } from '@/lib/activeSubjectRuntime';
+import { formatSchoolDateTime } from '@/lib/dateTime';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import styles from './page.module.css';
 
@@ -14,7 +15,7 @@ type Summary = { status: 'not_started' | 'in_progress' | 'complete'; completed_a
 type ActivityProgress = { activity_type: string; status: 'not_started' | 'in_progress' | 'complete'; attempt_count: number; score: number | null; max_score: number | null; confidence: number | null; position: Record<string, unknown> | null; started_at: string | null; completed_at: string | null; last_saved_at: string | null };
 
 function firstRelation<T>(value: T | T[] | null) { return Array.isArray(value) ? value[0] ?? null : value; }
-function formatDate(value: string | null) { return value ? new Date(value).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Not yet'; }
+function formatDate(value: string | null) { return value ? formatSchoolDateTime(value, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Not yet'; }
 function assignmentStatus(summary: Summary | null) { if (summary?.status === 'complete') return 'Complete'; if (!summary || summary.status === 'not_started' || summary.progress_percent === 0) return 'Not attempted'; return 'Incomplete'; }
 function activityStatus(row?: ActivityProgress) { if (row?.status === 'complete') return 'Complete'; if (!row || row.status === 'not_started') return 'Not attempted'; return 'Incomplete'; }
 function statusClass(status: string) { if (status === 'Complete') return styles.complete; if (status === 'Incomplete') return styles.incomplete; return styles.notAttempted; }

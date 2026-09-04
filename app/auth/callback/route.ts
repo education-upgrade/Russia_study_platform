@@ -1,17 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-
-function getPublicAppOrigin(requestUrl: URL) {
-  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  return configured ? configured.replace(/\/$/, '') : requestUrl.origin;
-}
+import { getPublicAppOrigin, safeLocalPath } from '@/lib/navigation';
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
-  const publicOrigin = getPublicAppOrigin(requestUrl);
+  const publicOrigin = getPublicAppOrigin(requestUrl.origin);
   const code = requestUrl.searchParams.get('code');
-  const next = requestUrl.searchParams.get('next') || '/account';
-  const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/account';
+  const safeNext = safeLocalPath(requestUrl.searchParams.get('next'), '/account');
 
   if (code) {
     const supabase = await createServerSupabaseClient();

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import GuidedStudyAssignmentForm from '@/components/GuidedStudyAssignmentForm';
 import { requireRoles } from '@/lib/auth/access';
+import { formatSchoolDateTime } from '@/lib/dateTime';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import styles from './page.module.css';
 
@@ -23,7 +24,7 @@ type AssignmentRow = {
 
 function formatDate(value: string | null) {
   if (!value) return 'No deadline';
-  return new Date(value).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return formatSchoolDateTime(value, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export const dynamic = 'force-dynamic';

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireRoles } from '@/lib/auth/access';
+import { formatSchoolDateTime } from '@/lib/dateTime';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import styles from './page.module.css';
 
@@ -30,7 +31,7 @@ type Confidence = { assignment_id: string; student_id: string; confidence: numbe
 type TrackingState = 'complete' | 'incomplete' | 'not_attempted' | 'not_assigned';
 
 function relation<T>(value: T | T[] | null) { return Array.isArray(value) ? value[0] ?? null : value; }
-function formatDate(value: string | null) { return value ? new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'; }
+function formatDate(value: string | null) { return value ? formatSchoolDateTime(value, { day: '2-digit', month: 'short', year: 'numeric' }) : '—'; }
 function trackingState(assigned: boolean, progress?: Progress): TrackingState {
   if (!assigned) return 'not_assigned';
   if (progress?.status === 'complete') return 'complete';

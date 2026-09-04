@@ -4,6 +4,7 @@ import AssignmentManager from '@/components/AssignmentManager';
 import LessonResourceManager from '@/components/LessonResourceManager';
 import { requireRoles } from '@/lib/auth/access';
 import { getActivityLabel } from '@/lib/activityTypeRegistry';
+import { formatSchoolDateTime } from '@/lib/dateTime';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import styles from './page.module.css';
 
@@ -19,7 +20,7 @@ type ActivityProgress = { student_id: string; confidence: number | null; last_sa
 type LessonResource = { id: string; title: string; description: string | null; resource_type: string; resource_url: string; visibility: 'teacher' | 'student' };
 
 function firstRelation<T>(value: T | T[] | null) { return Array.isArray(value) ? value[0] ?? null : value; }
-function formatDate(value: string | null) { if (!value) return 'No deadline'; return new Date(value).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+function formatDate(value: string | null) { if (!value) return 'No deadline'; return formatSchoolDateTime(value, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
 function assignmentStatus(progress?: Progress) {
   if (progress?.status === 'complete') return 'Complete';
   if (!progress || progress.status === 'not_started' || progress.progress_percent === 0) return 'Not attempted';

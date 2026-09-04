@@ -3,16 +3,11 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createBrowserSupabaseClient, isSupabaseAuthConfigured } from '@/lib/supabase/browser';
+import { getPublicAppOrigin, safeLocalPath } from '@/lib/navigation';
 import styles from './login.module.css';
 
 type Mode = 'sign-in' | 'sign-up' | 'forgot-password';
 type AccountType = 'student' | 'staff';
-
-function getPublicAppOrigin() {
-  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  if (configured) return configured.replace(/\/$/, '');
-  return window.location.origin;
-}
 
 export default function LoginForm() {
   const searchParams = useSearchParams();
@@ -25,7 +20,7 @@ export default function LoginForm() {
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const configured = isSupabaseAuthConfigured();
-  const nextPath = useMemo(() => searchParams.get('next') || '/portal', [searchParams]);
+  const nextPath = useMemo(() => safeLocalPath(searchParams.get('next'), '/portal'), [searchParams]);
   const queryStatus = useMemo(() => {
     if (searchParams.get('reset') === 'success') {
       return 'Password changed successfully. Sign in with your new password.';
@@ -44,9 +39,10 @@ export default function LoginForm() {
 
     setSubmitting(true);
     const supabase = createBrowserSupabaseClient();
+    const publicOrigin = getPublicAppOrigin(window.location.origin);
 
     if (mode === 'forgot-password') {
-      const recoveryUrl = `${getPublicAppOrigin()}/reset-password`;
+      const recoveryUrl = `${publicOrigin}/reset-password`;
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: recoveryUrl,
       });
@@ -71,21 +67,40 @@ export default function LoginForm() {
       return;
     }
 
-    const callbackUrl = `${getPublicAppOrigin()}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+    const callbackUrl = `${publicOrigin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
 
     if (accountType === 'staff') {
       const response = await fetch('/api/auth/staff-signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, fullName, staffCode, callbackUrl }),
+        body: JSON.stringify({ email, password, fullName, staffCode, nextPath }),
       });
       const result = await response.json().catch(() => ({}));
-      setStatus(response.ok ? 'Staff account created. Check your email to confirm your account before signing in.' : result.error || 'Staff account could not be created.');
+      if (!response.ok) {
+        setStatus(result.error || 'Staff account could not be created.');
+        setSubmitting(false);
+        return;
+      }
+
+      if (result.requiresEmailConfirmation) {
+        setStatus('Staff account created. Check your email to confirm your account before signing in.');
+        setSubmitting(false);
+        return;
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (!signInError) {
+        window.location.assign(nextPath);
+        return;
+      }
+
+      setMode('sign-in');
+      setStatus('Staff account created. You can sign in now.');
       setSubmitting(false);
       return;
     }
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -94,7 +109,18 @@ export default function LoginForm() {
       },
     });
 
-    setStatus(error ? error.message : 'Check your email to confirm your account before signing in.');
+    if (error) {
+      setStatus(error.message);
+      setSubmitting(false);
+      return;
+    }
+
+    if (data.session) {
+      window.location.assign(nextPath);
+      return;
+    }
+
+    setStatus('Check your email to confirm your account before signing in.');
     setSubmitting(false);
   }
 

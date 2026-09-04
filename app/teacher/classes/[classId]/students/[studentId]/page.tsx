@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import TeacherStudentNoteForm from '@/components/TeacherStudentNoteForm';
 import { requireRoles } from '@/lib/auth/access';
+import { formatSchoolDateTime } from '@/lib/dateTime';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import styles from './page.module.css';
 
@@ -19,7 +20,7 @@ type Note = { id: string; assignment_id: string | null; body: string; created_at
 type Confidence = { assignment_id: string; confidence: number | null; last_saved_at: string };
 
 function relation<T>(value: T | T[] | null) { return Array.isArray(value) ? value[0] ?? null : value; }
-function formatDate(value: string | null) { return value ? new Date(value).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Not yet'; }
+function formatDate(value: string | null) { return value ? formatSchoolDateTime(value, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Not yet'; }
 function state(assigned: boolean, progress?: Progress) {
   if (!assigned) return 'Not assigned';
   if (progress?.status === 'complete') return 'Complete';
