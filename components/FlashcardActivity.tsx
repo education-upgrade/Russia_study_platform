@@ -1,7 +1,8 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
+import { saveAssignmentActivityProgress } from '@/lib/assignmentProgressClient';
 import styles from './FlashcardActivity.module.css';
 
 type FlashcardRating = 'secure' | 'nearly' | 'revisit';
@@ -28,8 +29,10 @@ function getCardId(card: Flashcard, index: number) {
   return card.id ?? `card-${index + 1}`;
 }
 
-export default function FlashcardActivity({ activityId, cards, nextHref = '/student/lesson/1905/quiz' }: FlashcardActivityProps) {
+export default function FlashcardActivity({ activityId, cards, nextHref }: FlashcardActivityProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const assignmentId = searchParams.get('assignment');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [revealedCardIds, setRevealedCardIds] = useState<string[]>([]);
   const [ratings, setRatings] = useState<Record<string, FlashcardRating>>({});
@@ -60,16 +63,52 @@ export default function FlashcardActivity({ activityId, cards, nextHref = '/stud
   async function saveFlashcards(nextRatings: Record<string, FlashcardRating>, nextRevealedCardIds: string[]) {
     setSaveStatus('saving');
     setSaveMessage('');
+
+    const ratingValues = Object.values(nextRatings);
+    const nextSecureCount = ratingValues.filter((rating) => rating === 'secure').length;
+    const nextNearlyCount = ratingValues.filter((rating) => rating === 'nearly').length;
+    const nextRevisitCount = ratingValues.filter((rating) => rating === 'revisit').length;
+    const nextRatedCount = ratingValues.length;
+    const complete = cards.length > 0 && nextRatedCount >= cards.length;
+    const completionPercentage = cards.length ? Math.round((nextRatedCount / cards.length) * 100) : 0;
+    const securePercentage = cards.length ? Math.round((nextSecureCount / cards.length) * 100) : 0;
+    const revisitCardIds = Object.entries(nextRatings)
+      .filter(([, rating]) => rating === 'revisit')
+      .map(([cardId]) => cardId);
+
     try {
-      const response = await fetch('/api/student-responses/flashcards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ activityId, ratings: nextRatings, revealedCardIds: nextRevealedCardIds, totalCards: cards.length }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? 'Flashcard progress could not be saved.');
+      if (assignmentId) {
+        await saveAssignmentActivityProgress({
+          assignmentId,
+          activityType: 'flashcards',
+          status: complete ? 'complete' : 'in_progress',
+          score: nextSecureCount,
+          maxScore: cards.length,
+          position: {
+            ratings: nextRatings,
+            revealedCardIds: nextRevealedCardIds,
+            totalCards: cards.length,
+            ratedCount: nextRatedCount,
+            secureCount: nextSecureCount,
+            nearlyCount: nextNearlyCount,
+            revisitCount: nextRevisitCount,
+            revisitCardIds,
+            completionPercentage,
+            securePercentage,
+          },
+        });
+      } else {
+        const response = await fetch('/api/student-responses/flashcards', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ activityId, ratings: nextRatings, revealedCardIds: nextRevealedCardIds, totalCards: cards.length }),
+        });
+        const result = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(result?.error ?? 'Flashcard progress could not be saved.');
+      }
+
       setSaveStatus('saved');
-      setSaveMessage('Saved');
+      setSaveMessage(complete ? 'Flashcards saved' : 'Saved');
       return true;
     } catch (error) {
       setSaveStatus('error');
@@ -78,22 +117,35 @@ export default function FlashcardActivity({ activityId, cards, nextHref = '/stud
     }
   }
 
-  function rateCard(rating: FlashcardRating) {
-    if (!currentCardId) return;
+  async function rateCard(rating: FlashcardRating) {
+    if (!currentCardId || saveStatus === 'saving') return;
     const nextRatings = { ...ratings, [currentCardId]: rating };
     const nextRevealedCardIds = [...new Set([...revealedCardIds, currentCardId])];
     const isFinalCard = currentIndex === cards.length - 1;
     setRatings(nextRatings);
     setRevealedCardIds(nextRevealedCardIds);
-    void saveFlashcards(nextRatings, nextRevealedCardIds);
-    if (isFinalCard) {
-      window.setTimeout(() => setCompleted(true), 350);
-      return;
-    }
-    window.setTimeout(() => setCurrentIndex((previous) => Math.min(previous + 1, cards.length - 1)), 350);
+
+    const saved = await saveFlashcards(nextRatings, nextRevealedCardIds);
+    if (!saved) return;
+
+    window.setTimeout(() => {
+      if (isFinalCard) setCompleted(true);
+      else setCurrentIndex((previous) => Math.min(previous + 1, cards.length - 1));
+    }, 250);
   }
 
   function resetDeck() {
+    if (assignmentId) {
+      void saveAssignmentActivityProgress({
+        assignmentId,
+        activityType: 'flashcards',
+        status: 'in_progress',
+        newAttempt: true,
+      }).catch((error) => {
+        console.error('Unable to record new flashcard attempt', error);
+      });
+    }
+
     setCurrentIndex(0);
     setRevealedCardIds([]);
     setRatings({});
@@ -104,7 +156,7 @@ export default function FlashcardActivity({ activityId, cards, nextHref = '/stud
   }
 
   async function moveToNext() {
-    if (isMovingNext) return;
+    if (isMovingNext || !nextHref) return;
     setIsMovingNext(true);
     const allCardIds = cards.map((card, index) => getCardId(card, index));
     const nextRevealedCardIds = [...new Set([...revealedCardIds, ...allCardIds.filter((cardId) => ratings[cardId])])];
@@ -125,7 +177,7 @@ export default function FlashcardActivity({ activityId, cards, nextHref = '/stud
       <div className={styles.shell}>
         <section className={styles.topbar}><div><h3>Flashcards complete</h3></div><div className={styles.stats}><span>{secureCount}/{cards.length} secure</span><span>{nearlyCount} nearly</span><span>{revisitCount} revisit</span></div></section>
         <div className={styles.progress}><div style={{ width: '100%' }} /></div>
-        <section className={styles.completionSummary}><h2>{secureCount}/{cards.length}</h2><p>{revisitCount === 0 && nearlyCount <= 3 ? 'Strong flashcard recall. Now test this knowledge in the retrieval quiz.' : 'Good work. Revisit the weaker cards, then test the knowledge in the retrieval quiz.'}</p></section>
+        <section className={styles.completionSummary}><h2>{secureCount}/{cards.length}</h2><p>{revisitCount === 0 && nearlyCount <= 3 ? 'Strong flashcard recall. Move on when you are ready.' : 'Good work. Revisit the weaker cards before moving on.'}</p></section>
         {(revisitCards.length > 0 || nearlyCards.length > 0) && (
           <section className={styles.completionTargets}>
             {revisitCards.length > 0 && <article><strong>Revisit first</strong><span>{revisitList}</span></article>}
@@ -135,7 +187,7 @@ export default function FlashcardActivity({ activityId, cards, nextHref = '/stud
         <section className={styles.completionNav}>
           <button type="button" className="button secondary" onClick={() => { setCompleted(false); setCurrentIndex(0); }}>Review</button>
           <button type="button" className="button secondary" onClick={resetDeck}>Try again</button>
-          <button type="button" className="button" onClick={moveToNext} disabled={isMovingNext || saveStatus === 'saving'}>{isMovingNext || saveStatus === 'saving' ? 'Saving...' : 'Next'}</button>
+          {nextHref && <button type="button" className="button" onClick={moveToNext} disabled={isMovingNext || saveStatus === 'saving'}>{isMovingNext || saveStatus === 'saving' ? 'Saving...' : 'Next'}</button>}
         </section>
         {saveMessage && <p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage}</p>}
       </div>
@@ -150,7 +202,7 @@ export default function FlashcardActivity({ activityId, cards, nextHref = '/stud
       <section className={styles.controls}>
         {!isRevealed ? <button type="button" className={`button ${styles.primary}`} onClick={revealCard}>Reveal answer</button> : (
           <div className={styles.ratingRow}>
-            {(Object.keys(ratingLabels) as FlashcardRating[]).map((rating) => <button type="button" key={rating} className={`${styles.rating} ${styles[rating]}${currentRating === rating ? ` ${styles.selected}` : ''}`} onClick={() => rateCard(rating)}>{ratingLabels[rating]}</button>)}
+            {(Object.keys(ratingLabels) as FlashcardRating[]).map((rating) => <button type="button" key={rating} className={`${styles.rating} ${styles[rating]}${currentRating === rating ? ` ${styles.selected}` : ''}`} onClick={() => void rateCard(rating)} disabled={saveStatus === 'saving'}>{ratingLabels[rating]}</button>)}
           </div>
         )}
       </section>
