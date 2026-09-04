@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getLegacySelfStudyAccess } from '@/lib/legacySelfStudyServer';
 
 const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
 const DEMO_ASSIGNMENT_ID = '44444444-4444-4444-4444-444444444444';
@@ -15,20 +15,14 @@ type QuizSaveRequest = {
 };
 
 export async function POST(request: Request) {
-  if (!supabase) {
-    return NextResponse.json(
-      { error: 'Supabase is not configured.' },
-      { status: 500 }
-    );
-  }
+  const access = await getLegacySelfStudyAccess();
+  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
+  const supabase = access.client;
 
   const body = (await request.json()) as QuizSaveRequest;
 
   if (!body.activityId) {
-    return NextResponse.json(
-      { error: 'Missing activityId.' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'Missing activityId.' }, { status: 400 });
   }
 
   const responseStatus = body.status === 'complete' ? 'complete' : 'in_progress';
