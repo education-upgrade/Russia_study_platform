@@ -37,7 +37,7 @@ function titleFromRegistry(pathwaySlug: string) {
  * privileged client here. Browser/anonymous activity insertion is intentionally
  * no longer supported.
  */
-export async function resolveVirtualActivityId(activityId: string, supabase: SupabaseClient) {
+export async function resolveVirtualActivityId(activityId: string, supabase: SupabaseClient<any>) {
   if (!activityId.startsWith('virtual-')) return activityId;
 
   const parsed = parse(activityId);
