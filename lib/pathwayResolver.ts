@@ -63,8 +63,11 @@ export function resolvePathwayActivities({
 }: ResolvePathwayActivitiesArgs) {
   const seededTypes = seededActivities.map((activity) => activity.activity_type);
   const fallbackTypes = Object.keys(fallbackContentByActivityType);
-  const requestedTypes = requiredActivityTypes.length > 0 ? requiredActivityTypes : seededTypes;
-  const allTypes = orderSupportedActivityTypes(Array.from(new Set([...requestedTypes, ...seededTypes, ...fallbackTypes])));
+  const availableTypes = Array.from(new Set([...seededTypes, ...fallbackTypes]));
+  const routeTypes = requiredActivityTypes.length > 0
+    ? Array.from(new Set(requiredActivityTypes))
+    : availableTypes;
+  const allTypes = orderSupportedActivityTypes(routeTypes);
 
   return allTypes.map((activityType) => {
     const seededActivity = seededActivities.find((activity) => activity.activity_type === activityType);
@@ -89,8 +92,7 @@ export function findActivityByRouteSlug(activities: ResolvedPathwayActivity[], r
 }
 
 export function getNextActivityHref(routeBase: string, activities: ResolvedPathwayActivity[], currentActivityType: string) {
-  const trackableActivities = activities.filter((activity) => activity.activity_type !== 'lesson_content');
-  const currentIndex = trackableActivities.findIndex((activity) => activity.activity_type === currentActivityType);
-  const nextActivity = currentIndex === -1 ? null : trackableActivities[currentIndex + 1];
+  const currentIndex = activities.findIndex((activity) => activity.activity_type === currentActivityType);
+  const nextActivity = currentIndex === -1 ? null : activities[currentIndex + 1];
   return nextActivity ? `${routeBase}/${nextActivity.routeSlug}` : undefined;
 }

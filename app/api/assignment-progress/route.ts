@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     max_score_input: body.maxScore ?? null,
     confidence_input: body.confidence ?? null,
     position_input: body.position ?? {},
+    new_attempt_input: body.newAttempt === true,
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });

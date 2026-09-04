@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/check-assignment-integrity.mjs && next build",
     "start": "next start",
     "lint": "next lint",
+    "check:assignment-integrity": "node scripts/check-assignment-integrity.mjs",
     "generate:pathway": "node scripts/generate-pathway.mjs"
   },
   "dependencies": {

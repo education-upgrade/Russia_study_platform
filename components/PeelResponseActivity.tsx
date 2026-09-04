@@ -49,7 +49,7 @@ function minimumWords(level: AdaptiveRendererSupport['difficultyLevel']) {
   return 90;
 }
 
-export default function PeelResponseActivity({ activityId, question, stretchQuestion, nextHref = '/student/lesson/1905/confidence', adaptiveSupport }: PeelResponseActivityProps) {
+export default function PeelResponseActivity({ activityId, question, stretchQuestion, nextHref, adaptiveSupport }: PeelResponseActivityProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const assignmentId = searchParams.get('assignment');
@@ -138,7 +138,7 @@ export default function PeelResponseActivity({ activityId, question, stretchQues
   }
 
   async function moveToNext() {
-    if (isMovingNext) return;
+    if (isMovingNext || !nextHref) return;
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     setIsMovingNext(true);
     const saved = await saveResponse(values, 'submitted');
@@ -161,7 +161,10 @@ export default function PeelResponseActivity({ activityId, question, stretchQues
       </section>
       <section className={styles.submitRow}>
         <div>{submitted ? <div className={styles.submittedBox}>Submitted. Your teacher can now view this response.</div> : fullResponse ? <div className={styles.preview}>{fullResponse}</div> : <p className={styles.saveMessage}>Build your answer one section at a time.</p>}{hasWriting && !meetsWordTarget && <p className={styles.saveMessage}>Try to reach the adaptive word target before moving on.</p>}{saveMessage && <p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage}</p>}</div>
-        <div style={{ display: 'grid', gap: 8 }}><button type="button" className={`button secondary ${styles.submitButton}`} onClick={submitResponse} disabled={!hasWriting || saveStatus === 'saving'} style={{ opacity: hasWriting ? 1 : 0.5 }}>{saveStatus === 'saving' ? 'Saving...' : submitted ? 'Update response' : 'Submit response'}</button><button type="button" className={`button ${styles.submitButton}`} onClick={moveToNext} disabled={!hasWriting || isMovingNext || saveStatus === 'saving'} style={{ opacity: hasWriting ? 1 : 0.5 }}>{isMovingNext || saveStatus === 'saving' ? 'Saving...' : 'Next'}</button></div>
+        <div style={{ display: 'grid', gap: 8 }}>
+          <button type="button" className={`button secondary ${styles.submitButton}`} onClick={submitResponse} disabled={!hasWriting || saveStatus === 'saving'} style={{ opacity: hasWriting ? 1 : 0.5 }}>{saveStatus === 'saving' ? 'Saving...' : submitted ? 'Update response' : 'Submit response'}</button>
+          {nextHref && <button type="button" className={`button ${styles.submitButton}`} onClick={moveToNext} disabled={!hasWriting || isMovingNext || saveStatus === 'saving'} style={{ opacity: hasWriting ? 1 : 0.5 }}>{isMovingNext || saveStatus === 'saving' ? 'Saving...' : 'Next'}</button>}
+        </div>
       </section>
     </div>
   );

@@ -134,9 +134,9 @@ export default function LessonChunkActivity({
   estimatedMinutes,
   skillFocus,
   difficulty,
-  nextHref = '/student/lesson/1905/flashcards',
-  nextLabel = 'Next: flashcards',
-  completionMessage = 'You have worked through all sections and completed the short checks. Now study the flashcards before testing yourself in the quiz.',
+  nextHref,
+  nextLabel = 'Next activity',
+  completionMessage = 'You have worked through all sections and completed the short checks. Your lesson progress has been saved.',
 }: LessonChunkActivityProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
@@ -219,7 +219,7 @@ export default function LessonChunkActivity({
         </div>
         <div className={styles.finishedActions}>
           <button type="button" className={styles.secondaryButton} onClick={() => setIsFinished(false)}>Review final section</button>
-          <Link className={styles.primaryButton} href={nextHref}>{nextLabel}</Link>
+          {nextHref && <Link className={styles.primaryButton} href={nextHref}>{nextLabel}</Link>}
         </div>
         {saveStatus === 'error' && <p className={styles.errorText}>{saveMessage}</p>}
       </section>
