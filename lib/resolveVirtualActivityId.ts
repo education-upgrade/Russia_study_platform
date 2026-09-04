@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getPathwayConfig } from './pathwayRegistry';
 
 const STUDENT_ID = '22222222-2222-2222-2222-222222222222';
@@ -31,8 +31,14 @@ function titleFromRegistry(pathwaySlug: string) {
   }
 }
 
-export async function resolveVirtualActivityId(activityId: string) {
-  if (!supabase || !activityId.startsWith('virtual-')) return activityId;
+/**
+ * Materialise a virtual self-study activity using a server-only database client.
+ * The caller is responsible for authenticating the user before passing a
+ * privileged client here. Browser/anonymous activity insertion is intentionally
+ * no longer supported.
+ */
+export async function resolveVirtualActivityId(activityId: string, supabase: SupabaseClient<any>) {
+  if (!activityId.startsWith('virtual-')) return activityId;
 
   const parsed = parse(activityId);
   if (!parsed) return activityId;
