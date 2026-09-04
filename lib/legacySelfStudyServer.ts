@@ -1,9 +1,9 @@
 import 'server-only';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 type LegacySelfStudyAccess =
-  | { ok: true; client: ReturnType<typeof createClient>; userId: string }
+  | { ok: true; client: SupabaseClient<any>; userId: string }
   | { ok: false; status: number; error: string };
 
 /**
@@ -32,7 +32,7 @@ export async function getLegacySelfStudyAccess(): Promise<LegacySelfStudyAccess>
     return { ok: false, status: 503, error: 'Secure study persistence is not configured.' };
   }
 
-  const client = createClient(url, serviceRoleKey, {
+  const client: SupabaseClient<any> = createClient(url, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
