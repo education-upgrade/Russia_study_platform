@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import AssignmentLaunchButton from '@/components/AssignmentLaunchButton';
 import { getAuthenticatedProfile } from '@/lib/auth/access';
 import { tryGetActivePathwayConfig } from '@/lib/activeSubjectRuntime';
+import { formatSchoolDateTime } from '@/lib/dateTime';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import styles from './page.module.css';
 
@@ -11,7 +12,7 @@ type Recipient = { assignment_id:string; classroom_assignments:Assignment|Assign
 type Progress = { assignment_id:string; status:'not_started'|'in_progress'|'complete'; progress_percent:number; completed_activity_count:number; total_activity_count:number; current_activity_type:string|null };
 type WorkItem = { assignment:Assignment; progress?:Progress; routeBase:string };
 
-function deadline(value:string|null){return value?new Date(value).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'No deadline'}
+function deadline(value:string|null){return value?formatSchoolDateTime(value,{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'No deadline'}
 function status(progress?:Progress){if(progress?.status==='complete')return 'Complete';if(!progress||progress.status==='not_started'||progress.progress_percent===0)return 'Not attempted';return 'Incomplete'}
 
 export const dynamic='force-dynamic';
