@@ -1,7 +1,8 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
+import { saveAssignmentActivityProgress } from '@/lib/assignmentProgressClient';
 import styles from './TimelineActivity.module.css';
 
 type TimelineEvent = {
@@ -34,6 +35,8 @@ function countWords(text: string) {
 
 export default function TimelineActivity({ activityId, events, nextHref }: TimelineActivityProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const assignmentId = searchParams.get('assignment');
   const [reviewedEventIds, setReviewedEventIds] = useState<string[]>([]);
   const [turningPointId, setTurningPointId] = useState('');
   const [reflection, setReflection] = useState('');
@@ -49,33 +52,64 @@ export default function TimelineActivity({ activityId, events, nextHref }: Timel
   const reflectionWordCount = countWords(reflection);
   const canSubmit = events.length > 0 && reviewedCount === events.length && Boolean(turningPointId) && reflection.trim().length > 0;
 
-  async function saveTimeline(status: 'in_progress' | 'complete') {
+  async function saveTimeline(
+    status: 'in_progress' | 'complete',
+    nextReviewedEventIds = reviewedEventIds,
+    nextTurningPointId = turningPointId,
+    nextReflection = reflection,
+  ) {
+    const nextReviewedCount = nextReviewedEventIds.length;
+    const nextProgressPercentage = events.length ? Math.round((nextReviewedCount / events.length) * 100) : 0;
+    const nextTurningPoint = events.find((event, index) => eventKeys[index] === nextTurningPointId);
+    const nextReflectionWordCount = countWords(nextReflection);
+
     setSaveStatus('saving');
     setSaveMessage(status === 'complete' ? 'Saving completed timeline...' : 'Saving progress...');
 
     try {
-      const response = await fetch('/api/student-responses/activity', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          activityId,
-          responseType: 'timeline',
+      if (assignmentId) {
+        await saveAssignmentActivityProgress({
+          assignmentId,
+          activityType: 'timeline',
           status,
-          score: reviewedCount,
-          response: {
-            reviewedEventIds,
-            turningPointId,
-            turningPointTitle: selectedTurningPoint?.title ?? '',
-            reflection,
-            reflectionWordCount,
+          score: nextReviewedCount,
+          maxScore: events.length,
+          position: {
+            reviewedEventIds: nextReviewedEventIds,
+            turningPointId: nextTurningPointId,
+            turningPointTitle: nextTurningPoint?.title ?? '',
+            chosenEventTitle: nextTurningPoint?.title ?? '',
+            reflection: nextReflection,
+            significanceExplanation: nextReflection,
+            writtenResponse: nextReflection,
+            reflectionWordCount: nextReflectionWordCount,
             totalEvents: events.length,
-            completionPercentage: progressPercentage,
+            completionPercentage: nextProgressPercentage,
           },
-        }),
-      });
-
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error ?? 'Timeline progress could not be saved.');
+        });
+      } else {
+        const response = await fetch('/api/student-responses/activity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            activityId,
+            responseType: 'timeline',
+            status,
+            score: nextReviewedCount,
+            response: {
+              reviewedEventIds: nextReviewedEventIds,
+              turningPointId: nextTurningPointId,
+              turningPointTitle: nextTurningPoint?.title ?? '',
+              reflection: nextReflection,
+              reflectionWordCount: nextReflectionWordCount,
+              totalEvents: events.length,
+              completionPercentage: nextProgressPercentage,
+            },
+          }),
+        });
+        const result = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(result?.error ?? 'Timeline progress could not be saved.');
+      }
 
       setSaveStatus('saved');
       setSaveMessage(status === 'complete' ? 'Timeline submitted' : 'Saved');
@@ -95,7 +129,7 @@ export default function TimelineActivity({ activityId, events, nextHref }: Timel
 
     setReviewedEventIds(nextReviewedEventIds);
     setSubmitted(false);
-    void saveTimeline('in_progress');
+    void saveTimeline('in_progress', nextReviewedEventIds, turningPointId, reflection);
   }
 
   async function submitTimeline() {
@@ -104,10 +138,10 @@ export default function TimelineActivity({ activityId, events, nextHref }: Timel
   }
 
   async function moveToNext() {
-    if (!canSubmit || isMovingNext) return;
+    if (!canSubmit || isMovingNext || !nextHref) return;
     setIsMovingNext(true);
     const saved = await saveTimeline('complete');
-    if (saved && nextHref) {
+    if (saved) {
       router.push(nextHref);
       return;
     }
