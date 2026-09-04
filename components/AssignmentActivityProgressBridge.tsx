@@ -1,67 +1,29 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { saveAssignmentActivityProgress } from '@/lib/assignmentProgressClient';
 
 type Props = {
   activityType: string;
   children: React.ReactNode;
 };
 
-const explicitCompletionLabels = new Set([
-  'next',
-  'finish',
-  'finished',
-  'complete',
-  'completed',
-  'submit timeline',
-  'submit card sort',
-]);
-
-function isCompletionControl(target: EventTarget | null) {
-  if (!(target instanceof Element)) return false;
-  const control = target.closest('button, a, [role="button"]');
-  if (!control || control.hasAttribute('disabled') || control.getAttribute('aria-disabled') === 'true') return false;
-  if (control.getAttribute('data-assignment-complete') === 'true') return true;
-  const label = (control.textContent ?? '').trim().toLowerCase();
-  return explicitCompletionLabels.has(label);
-}
-
-async function saveProgress(assignmentId: string, activityType: string, status: 'in_progress' | 'complete') {
-  const response = await fetch('/api/assignment-progress', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ assignmentId, activityType, status }),
-    keepalive: status === 'complete',
-  });
-
-  if (!response.ok) {
-    const result = await response.json().catch(() => null);
-    throw new Error(result?.error ?? 'Assignment progress could not be saved.');
-  }
-}
-
 export default function AssignmentActivityProgressBridge({ activityType, children }: Props) {
   const searchParams = useSearchParams();
   const assignmentId = searchParams.get('assignment');
-  const completionSent = useRef(false);
 
   useEffect(() => {
-    completionSent.current = false;
     if (!assignmentId) return;
-    void saveProgress(assignmentId, activityType, 'in_progress').catch((error) => {
+
+    void saveAssignmentActivityProgress({
+      assignmentId,
+      activityType,
+      status: 'in_progress',
+    }).catch((error) => {
       console.error('Unable to mark assignment activity as started', error);
     });
   }, [assignmentId, activityType]);
 
-  function captureCompletion(event: React.MouseEvent<HTMLDivElement>) {
-    if (!assignmentId || completionSent.current || !isCompletionControl(event.target)) return;
-    completionSent.current = true;
-    void saveProgress(assignmentId, activityType, 'complete').catch((error) => {
-      completionSent.current = false;
-      console.error('Unable to mark assignment activity as complete', error);
-    });
-  }
-
-  return <div onClickCapture={captureCompletion}>{children}</div>;
+  return <>{children}</>;
 }
