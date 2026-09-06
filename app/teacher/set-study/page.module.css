@@ -207,6 +207,11 @@
   border-color: #d9a3a3;
   background: #fff7f7;
 }
+.manageActions .deleteButton {
+  border-color: #c96c6c;
+  background: #fff1f1;
+  color: #8b1f1f;
+}
 .manageMessage {
   grid-column: 1 / -1;
   margin: 0;
