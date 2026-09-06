@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const root = process.cwd();
@@ -47,7 +47,7 @@ if (bridge.includes('onClickCapture') || bridge.includes('isCompletionControl'))
   fail('AssignmentActivityProgressBridge must not infer completion from button clicks.');
 }
 assertContains('components/AssignmentActivityProgressBridge.tsx', "searchParams.get('assignment')", 'Assignment progress bridge must use the exact assignment ID from the route.');
-assertContains('components/AssignmentActivityProgressBridge.tsx', '/api/assignment-progress', 'Assignment progress bridge must write through the authenticated assignment progress API.');
+assertContains('components/AssignmentActivityProgressBridge.tsx', 'saveAssignmentActivityProgress', 'Assignment progress bridge must write through the authenticated assignment progress client.');
 
 for (const file of [
   'FlashcardActivity.tsx',
