@@ -78,9 +78,10 @@ for (const file of alexanderActivityPages) {
   }
 }
 
-const studentLayout = read('app/student/layout.tsx');
-if (!studentLayout.includes("rpc('sync_my_assignment_recipients')")) {
-  fail('Student area must self-heal missing published assignment recipient links.');
+for (const file of ['app/student/dashboard/page.tsx', 'app/student/work/page.tsx']) {
+  if (!read(file).includes("rpc('sync_my_assignment_recipients')")) {
+    fail(`${file} must repair missing published assignment recipient links before loading work.`);
+  }
 }
 
 if (!process.exitCode) {
