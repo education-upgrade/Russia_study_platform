@@ -7,14 +7,12 @@ import styles from '@/app/teacher/set-study/page.module.css';
 
 type AssignmentManagerProps = {
   assignmentId: string;
-  classId: string;
-  assignmentTitle: string;
   instructions: string | null;
   dueAt: string | null;
   status: string;
 };
 
-export default function AssignmentManager({ assignmentId, classId, assignmentTitle, instructions: initialInstructions, dueAt, status }: AssignmentManagerProps) {
+export default function AssignmentManager({ assignmentId, instructions: initialInstructions, dueAt, status }: AssignmentManagerProps) {
   const router = useRouter();
   const [instructions, setInstructions] = useState(initialInstructions ?? '');
   const [deadline, setDeadline] = useState(toSchoolDateTimeInput(dueAt));
@@ -59,7 +57,7 @@ export default function AssignmentManager({ assignmentId, classId, assignmentTit
 
   async function deleteAssignment() {
     const confirmed = window.confirm(
-      `Permanently delete “${assignmentTitle}”?\n\nThis removes the assignment from students and permanently deletes all progress, responses/evidence, recipient links, attached resource links and assignment notes connected to it. This cannot be undone.`,
+      'Permanently delete this assignment?\n\nThis removes it from students and permanently deletes all progress, responses/evidence, recipient links, attached resource links and assignment notes connected to it. This cannot be undone.',
     );
     if (!confirmed) return;
 
@@ -78,7 +76,7 @@ export default function AssignmentManager({ assignmentId, classId, assignmentTit
       const response = await fetch(`/api/assignments/${assignmentId}`, { method: 'DELETE' });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? 'The assignment could not be deleted.');
-      router.replace(`/teacher/classes/${classId}?tab=assignments`);
+      router.replace('/teacher/assignments');
     } catch (error) {
       setIsError(true);
       setMessage(error instanceof Error ? error.message : 'The assignment could not be deleted.');
