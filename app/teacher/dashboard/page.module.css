@@ -88,7 +88,7 @@
 
 .mainGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(260px, .75fr);
+  grid-template-columns: 1fr;
   gap: 18px;
   align-items: start;
 }
@@ -121,8 +121,7 @@
 
 .attentionList,
 .assignmentList,
-.classList,
-.quickActions {
+.classList {
   display: grid;
   gap: 10px;
 }
@@ -201,24 +200,6 @@
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, var(--navy), #4f7194);
-}
-
-.quickAction {
-  display: flex;
-  min-height: 48px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 15px;
-  background: #fff;
-  color: var(--navy);
-  font-weight: 850;
-}
-
-.quickAction span:last-child {
-  color: var(--muted);
 }
 
 .empty {
