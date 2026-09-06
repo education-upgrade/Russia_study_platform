@@ -50,6 +50,39 @@ if (!progressRoute.includes('new_attempt_input')) {
   fail('Assignment progress API is not forwarding explicit new attempts.');
 }
 
+const alexanderPathway = read('app/student/lesson/alexander-ii-reform/page.tsx');
+if (!alexanderPathway.includes('ModularPathwayPage')) {
+  fail('Alexander II reform must use the authenticated modular assignment pathway.');
+}
+for (const legacyMarker of ['DEMO_STUDENT_ID', 'guided_study_assignments', 'student_responses']) {
+  if (alexanderPathway.includes(legacyMarker)) {
+    fail(`Alexander II reform pathway restored legacy assignment state: ${legacyMarker}.`);
+  }
+}
+
+const alexanderActivityPages = [
+  'app/student/lesson/alexander-ii-reform/[activity]/page.tsx',
+  'app/student/lesson/alexander-ii-reform/lesson/page.tsx',
+  'app/student/lesson/alexander-ii-reform/flashcards/page.tsx',
+  'app/student/lesson/alexander-ii-reform/quiz/page.tsx',
+  'app/student/lesson/alexander-ii-reform/peel/page.tsx',
+  'app/student/lesson/alexander-ii-reform/confidence/page.tsx',
+];
+for (const file of alexanderActivityPages) {
+  const source = read(file);
+  if (!source.includes('ModularActivityPage')) {
+    fail(`${file} must preserve the exact classroom assignment through the modular activity renderer.`);
+  }
+  for (const legacyMarker of ['DEMO_STUDENT_ID', 'guided_study_assignments', 'student_responses']) {
+    if (source.includes(legacyMarker)) fail(`${file} restored legacy assignment state: ${legacyMarker}.`);
+  }
+}
+
+const studentLayout = read('app/student/layout.tsx');
+if (!studentLayout.includes("rpc('sync_my_assignment_recipients')")) {
+  fail('Student area must self-heal missing published assignment recipient links.');
+}
+
 if (!process.exitCode) {
   console.log('Assignment integrity checks passed.');
 }
