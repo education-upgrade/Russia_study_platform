@@ -1,6 +1,7 @@
 import '@/lib/unit6RegistryActivation';
 import Link from 'next/link';
 import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getActiveActivityLabel, getActivePathwayConfig } from '@/lib/activeSubjectRuntime';
 import { materialisePathwayActivities } from '@/lib/pathwayActivityPersistence';
@@ -123,32 +124,22 @@ export default async function ResolvedModularPathwayPage({
 
   let assignment: Assignment | null = null;
 
-  if (user) {
-    let recipientRows: RecipientRow[] = [];
-
-    if (requestedAssignmentId) {
-      const { data } = await supabase
-        .from('assignment_recipients')
-        .select(
-          'assignment_id, assigned_at, classroom_assignments(id, mode, required_activity_types, due_at, instructions, pathway_slug, status)',
-        )
-        .eq('student_id', user.id)
-        .eq('assignment_id', requestedAssignmentId)
-        .eq('status', 'assigned')
-        .limit(1);
-      recipientRows = (data ?? []) as RecipientRow[];
-    } else {
-      const { data } = await supabase
-        .from('assignment_recipients')
-        .select(
-          'assignment_id, assigned_at, classroom_assignments(id, mode, required_activity_types, due_at, instructions, pathway_slug, status)',
-        )
-        .eq('student_id', user.id)
-        .eq('status', 'assigned')
-        .order('assigned_at', { ascending: false });
-      recipientRows = (data ?? []) as RecipientRow[];
+  if (requestedAssignmentId) {
+    if (!user) {
+      redirect(`/login?next=${encodeURIComponent(`${config.routeBase}?assignment=${requestedAssignmentId}`)}`);
     }
 
+    const { data } = await supabase
+      .from('assignment_recipients')
+      .select(
+        'assignment_id, assigned_at, classroom_assignments(id, mode, required_activity_types, due_at, instructions, pathway_slug, status)',
+      )
+      .eq('student_id', user.id)
+      .eq('assignment_id', requestedAssignmentId)
+      .eq('status', 'assigned')
+      .limit(1);
+
+    const recipientRows = (data ?? []) as RecipientRow[];
     assignment = recipientRows
       .map((row) => unwrapAssignment(row.classroom_assignments))
       .find((item) => item?.status === 'published' && item.pathway_slug === pathwaySlug) ?? null;

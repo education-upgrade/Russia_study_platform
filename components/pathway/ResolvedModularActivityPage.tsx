@@ -1,16 +1,15 @@
 import '@/lib/unit6RegistryActivation';
 import Link from 'next/link';
 import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 import GenericActivityRenderer from '@/components/GenericActivityRenderer';
 import { supabase } from '@/lib/supabase';
-import { DEMO_STUDENT_ID } from '@/lib/demoIdentity';
 import { getActivePathwayConfig } from '@/lib/activeSubjectRuntime';
 import { materialisePathwayActivities } from '@/lib/pathwayActivityPersistence';
 import { findActivityByRouteSlug, getNextActivityHref, resolvePathwayActivities } from '@/lib/pathwayResolver';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import styles from '@/app/student/lesson/1905/flashcards/page.module.css';
 
-type LegacyAssignment = { required_activity_types: string[] };
 type ClassroomAssignment = { required_activity_types: string[]; pathway_slug: string; status: string };
 type RecipientRow = { classroom_assignments: ClassroomAssignment | ClassroomAssignment[] | null };
 type Props = { pathwaySlug: string; activitySlug: string; fallbackContentByActivityType?: Record<string, any> };
@@ -35,7 +34,7 @@ export default async function ResolvedModularActivityPage({ pathwaySlug, activit
     const { data: { user } } = authSupabase ? await authSupabase.auth.getUser() : { data: { user: null } };
 
     if (!authSupabase || !user) {
-      return <main className={styles.shell}><section className="card warm"><h1>Assignment unavailable</h1><p>Sign in again to open this assignment.</p></section></main>;
+      redirect(`/login?next=${encodeURIComponent(`${config.routeBase}/${activitySlug}?assignment=${requestedAssignmentId}`)}`);
     }
 
     const { data: recipientData } = await authSupabase
@@ -52,17 +51,6 @@ export default async function ResolvedModularActivityPage({ pathwaySlug, activit
     }
 
     requiredActivityTypes = exactAssignment.required_activity_types;
-  } else {
-    const { data: legacyAssignment } = await supabase
-      .from('guided_study_assignments')
-      .select('required_activity_types')
-      .eq('assigned_student_id', DEMO_STUDENT_ID)
-      .eq('status', 'active')
-      .eq('pathway_slug', pathwaySlug)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle<LegacyAssignment>();
-    requiredActivityTypes = legacyAssignment?.required_activity_types ?? [];
   }
 
   const { data: lessonRows } = await supabase.from('lessons').select('id').eq('title', config.lessonTitle).limit(1);
@@ -74,8 +62,9 @@ export default async function ResolvedModularActivityPage({ pathwaySlug, activit
   const resolved = resolvePathwayActivities({ pathwaySlug, seededActivities: seeded ?? [], requiredActivityTypes, fallbackContentByActivityType });
   const activities = await materialisePathwayActivities(pathwaySlug, resolved);
   const activity = findActivityByRouteSlug(activities, activitySlug);
+  const assignmentQuery = requestedAssignmentId ? `?assignment=${encodeURIComponent(requestedAssignmentId)}` : '';
 
-  if (!activity) return <main className={styles.shell}><section className="card warm"><h1>Activity not found</h1><Link href={config.routeBase}>Return to pathway</Link></section></main>;
+  if (!activity) return <main className={styles.shell}><section className="card warm"><h1>Activity not found</h1><Link href={`${config.routeBase}${assignmentQuery}`}>Return to pathway</Link></section></main>;
 
   const nextHref = getNextActivityHref(config.routeBase, activities, activity.activity_type);
 
