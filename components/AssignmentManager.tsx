@@ -55,6 +55,35 @@ export default function AssignmentManager({ assignmentId, instructions: initialI
     }
   }
 
+  async function deleteAssignment() {
+    const confirmed = window.confirm(
+      'Permanently delete this assignment?\n\nThis removes it from students and permanently deletes all progress, responses/evidence, recipient links, attached resource links and assignment notes connected to it. This cannot be undone.',
+    );
+    if (!confirmed) return;
+
+    const typedConfirmation = window.prompt('To confirm permanent deletion, type DELETE.');
+    if (typedConfirmation?.trim().toUpperCase() !== 'DELETE') {
+      setIsError(true);
+      setMessage('Deletion cancelled. Type DELETE exactly to confirm a permanent deletion.');
+      return;
+    }
+
+    setBusyAction('delete');
+    setMessage('');
+    setIsError(false);
+
+    try {
+      const response = await fetch(`/api/assignments/${assignmentId}`, { method: 'DELETE' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? 'The assignment could not be deleted.');
+      router.replace('/teacher/assignments');
+    } catch (error) {
+      setIsError(true);
+      setMessage(error instanceof Error ? error.message : 'The assignment could not be deleted.');
+      setBusyAction(null);
+    }
+  }
+
   return (
     <details className={styles.managePanel}>
       <summary>Manage</summary>
@@ -81,6 +110,9 @@ export default function AssignmentManager({ assignmentId, instructions: initialI
               {busyAction === 'archive' ? 'Archiving…' : 'Archive'}
             </button>
           )}
+          <button type="button" className={styles.deleteButton} onClick={deleteAssignment} disabled={busyAction !== null}>
+            {busyAction === 'delete' ? 'Deleting…' : 'Delete permanently'}
+          </button>
         </div>
         {message && <p className={`${styles.manageMessage} ${isError ? styles.manageError : ''}`} role="status">{message}</p>}
       </div>
