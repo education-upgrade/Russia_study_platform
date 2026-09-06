@@ -40,7 +40,7 @@ export default async function TeacherClassesPage({ searchParams }: { searchParam
           <span className={item.is_active ? styles.statusActive : styles.statusArchived}>{item.is_active ? 'Active' : 'Archived'}</span>
         </div>
         <div className={styles.badges}><span className={styles.codeBadge}>Join code {item.join_code}</span></div>
-        <div className={styles.actions}><Link className={styles.primaryAction} href={`/teacher/classes/${link.class_id}`}>Open class</Link>{item.is_active && <Link className={styles.secondaryAction} href={`/teacher/set-study?classId=${encodeURIComponent(link.class_id)}`}>Set work</Link>}</div>
+        <div className={styles.actions}><Link className={styles.primaryAction} href={`/teacher/classes/${link.class_id}`}>Open class</Link></div>
       </article>;
     })}</section>}
 
