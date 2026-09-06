@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { requireRoles } from '@/lib/auth/access';
+import { formatSchoolDateTime } from '@/lib/dateTime';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 function formatDate(value: string | null) {
   if (!value) return 'No deadline';
-  return new Date(value).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return formatSchoolDateTime(value, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export const dynamic = 'force-dynamic';
@@ -31,7 +32,7 @@ export default async function TeacherAssignmentsPage({ searchParams }: { searchP
     </div>
 
     <section style={{ marginTop: 14 }}>
-      {assignments.length === 0 ? <article className="card"><h2>No {view} assignments</h2><p>{view === 'active' ? 'There is no active work at the moment. Set work when you are ready.' : `There are no ${view} assignments to show.`}</p>{view === 'active' && <div className="button-row"><Link className="button" href="/teacher/set-study">Set work</Link></div>}</article> : <div className="grid two">{assignments.map((assignment: any) => {
+      {assignments.length === 0 ? <article className="card"><h2>No {view} assignments</h2><p>{view === 'active' ? 'There is no active work at the moment. Use Set work when you are ready.' : `There are no ${view} assignments to show.`}</p></article> : <div className="grid two">{assignments.map((assignment: any) => {
         const teachingClass = Array.isArray(assignment.teaching_classes) ? assignment.teaching_classes[0] : assignment.teaching_classes;
         const recipients = (assignment.assignment_recipients ?? []).filter((recipient: any) => recipient.status === 'assigned').length;
         return <article className="card" key={assignment.id}>
@@ -39,7 +40,7 @@ export default async function TeacherAssignmentsPage({ searchParams }: { searchP
           <h2>{assignment.lesson_title}</h2>
           <p>{assignment.title}</p>
           <p><strong>{recipients}</strong> students · {formatDate(assignment.due_at)}</p>
-          <div className="button-row"><Link className="button" href={`/teacher/assignments/${assignment.id}`}>Open</Link><Link className="button secondary" href={`/teacher/set-study?duplicate=${assignment.id}`}>Duplicate</Link></div>
+          <div className="button-row"><Link className="button" href={`/teacher/assignments/${assignment.id}`}>Open assignment</Link><Link className="button secondary" href={`/teacher/set-study?duplicate=${assignment.id}`}>Duplicate</Link></div>
         </article>;
       })}</div>}
     </section>
