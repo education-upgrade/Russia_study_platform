@@ -26,6 +26,7 @@ export default async function StudentDashboardPage(){
   const auth=await getAuthenticatedProfile();if(!auth)redirect('/account');
   const supabase=await createServerSupabaseClient();let assignments:AssignmentRow[]=[];let progressRows:ProgressRow[]=[];let loadError='';
   if(supabase&&auth.profile.role==='student'){
+    await supabase.rpc('sync_my_assignment_recipients');
     const [{data,error},{data:progressData,error:progressError}]=await Promise.all([
       supabase.from('assignment_recipients').select('assignment_id, classroom_assignments(id, title, lesson_title, pathway_slug, mode, required_activity_types, instructions, due_at, published_at, teaching_classes(name))').eq('student_id',auth.userId).eq('status','assigned').order('assigned_at',{ascending:false}),
       supabase.from('assignment_progress').select('assignment_id, status, completed_activity_count, total_activity_count, progress_percent, current_activity_type, last_activity_at, completed_at').eq('student_id',auth.userId),
