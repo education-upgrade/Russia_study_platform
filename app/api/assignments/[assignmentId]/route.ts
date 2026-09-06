@@ -15,17 +15,25 @@ function parseDueAt(value: string | null | undefined) {
   return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 }
 
-export async function PATCH(request: Request, { params }: RouteContext) {
+async function getAssignmentManager() {
   const supabase = await createServerSupabaseClient();
-  if (!supabase) return NextResponse.json({ error: 'Supabase is not configured.' }, { status: 500 });
+  if (!supabase) return { error: NextResponse.json({ error: 'Supabase is not configured.' }, { status: 500 }) };
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Sign in before managing assignments.' }, { status: 401 });
+  if (!user) return { error: NextResponse.json({ error: 'Sign in before managing assignments.' }, { status: 401 }) };
 
   const profile = await getProfile(supabase, user.id);
   if (!profile || profile.status !== 'active' || !['teacher', 'admin'].includes(profile.role)) {
-    return NextResponse.json({ error: 'Only active teacher accounts can manage assignments.' }, { status: 403 });
+    return { error: NextResponse.json({ error: 'Only active teacher accounts can manage assignments.' }, { status: 403 }) };
   }
+
+  return { supabase };
+}
+
+export async function PATCH(request: Request, { params }: RouteContext) {
+  const manager = await getAssignmentManager();
+  if ('error' in manager) return manager.error;
+  const { supabase } = manager;
 
   const { assignmentId } = await params;
   const body = (await request.json()) as AssignmentManagementRequest;
@@ -64,4 +72,18 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   }
 
   return NextResponse.json({ error: 'Assignment action not recognised.' }, { status: 400 });
+}
+
+export async function DELETE(_request: Request, { params }: RouteContext) {
+  const manager = await getAssignmentManager();
+  if ('error' in manager) return manager.error;
+  const { supabase } = manager;
+
+  const { assignmentId } = await params;
+  const { error } = await supabase.rpc('delete_class_assignment', {
+    assignment_id_input: assignmentId,
+  });
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  return NextResponse.json({ status: 'deleted' });
 }
