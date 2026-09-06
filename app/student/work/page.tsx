@@ -26,6 +26,7 @@ export default async function StudentWorkPage({searchParams}:{searchParams?:Prom
   const view=params.view==='complete'?'complete':'todo';
   const supabase=await createServerSupabaseClient();
   if(!supabase)return null;
+  await supabase.rpc('sync_my_assignment_recipients');
   const [{data:recipientData},{data:progressData}]=await Promise.all([
     supabase.from('assignment_recipients').select('assignment_id, classroom_assignments(id,title,lesson_title,pathway_slug,required_activity_types,due_at,teaching_classes(name))').eq('student_id',auth.userId).eq('status','assigned'),
     supabase.from('assignment_progress').select('assignment_id,status,progress_percent,completed_activity_count,total_activity_count,current_activity_type').eq('student_id',auth.userId),
