@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireRoles } from '@/lib/auth/access';
 import { getActivityLabel } from '@/lib/activityTypeRegistry';
+import { formatSchoolDateTime } from '@/lib/dateTime';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import styles from './page.module.css';
 
@@ -58,7 +59,7 @@ function firstName(value: string | null | undefined) {
 
 function formatDueDate(value: string | null) {
   if (!value) return 'No deadline';
-  return new Date(value).toLocaleString('en-GB', {
+  return formatSchoolDateTime(value, {
     day: 'numeric',
     month: 'short',
     hour: '2-digit',
@@ -144,23 +145,14 @@ export default async function TeacherDashboardPage() {
       .filter((recipient) => recipient.status === 'assigned')
       .map((recipient) => recipient.student_id),
   )));
-
   const classIds = activeClasses.map((teachingClass) => teachingClass.id);
 
   const [progressResult, confidenceResult, profilesResult, membershipsResult] = await Promise.all([
     assignmentIds.length
-      ? supabase
-          .from('assignment_progress')
-          .select('assignment_id, student_id, status, progress_percent, current_activity_type, last_activity_at')
-          .in('assignment_id', assignmentIds)
+      ? supabase.from('assignment_progress').select('assignment_id, student_id, status, progress_percent, current_activity_type, last_activity_at').in('assignment_id', assignmentIds)
       : Promise.resolve({ data: [], error: null }),
     assignmentIds.length
-      ? supabase
-          .from('student_activity_progress')
-          .select('assignment_id, student_id, confidence, last_saved_at')
-          .in('assignment_id', assignmentIds)
-          .not('confidence', 'is', null)
-          .order('last_saved_at', { ascending: false })
+      ? supabase.from('student_activity_progress').select('assignment_id, student_id, confidence, last_saved_at').in('assignment_id', assignmentIds).not('confidence', 'is', null).order('last_saved_at', { ascending: false })
       : Promise.resolve({ data: [], error: null }),
     recipientIds.length
       ? supabase.from('profiles').select('id, full_name').in('id', recipientIds)
@@ -195,17 +187,9 @@ export default async function TeacherDashboardPage() {
         const confidence = confidenceByKey.get(key);
         const reason = attentionReason(assignment, progress, confidence);
         if (!reason) return [];
-        return [{
-          assignment,
-          studentId: recipient.student_id,
-          studentName: profiles.get(recipient.student_id) ?? 'Student',
-          progress,
-          reason,
-        }];
+        return [{ assignment, studentId: recipient.student_id, studentName: profiles.get(recipient.student_id) ?? 'Student', progress, reason }];
       }),
-  )
-    .sort((a, b) => a.reason.rank - b.reason.rank || (a.progress?.progress_percent ?? 0) - (b.progress?.progress_percent ?? 0))
-    .slice(0, 6);
+  ).sort((a, b) => a.reason.rank - b.reason.rank || (a.progress?.progress_percent ?? 0) - (b.progress?.progress_percent ?? 0)).slice(0, 6);
 
   const activeAssignmentCards = assignments.slice(0, 4).map((assignment) => {
     const recipients = (assignment.assignment_recipients ?? []).filter((recipient) => recipient.status === 'assigned');
@@ -229,10 +213,7 @@ export default async function TeacherDashboardPage() {
   return (
     <main className={styles.dashboard}>
       <section className={styles.welcome}>
-        <div>
-          <h2>Welcome back, {firstName(auth.profile.full_name)}</h2>
-          <p>Your live teaching picture across classes and published assignments.</p>
-        </div>
+        <div><h2>Welcome back, {firstName(auth.profile.full_name)}</h2><p>Your live teaching picture across classes and published assignments.</p></div>
         <div className={styles.summaryLine} aria-label="Teacher account summary">
           <span className={styles.summaryPill}>{activeClasses.length} active {activeClasses.length === 1 ? 'class' : 'classes'}</span>
           <span className={styles.summaryPill}>{assignments.length} published {assignments.length === 1 ? 'assignment' : 'assignments'}</span>
@@ -240,12 +221,7 @@ export default async function TeacherDashboardPage() {
         </div>
       </section>
 
-      {loadError && (
-        <section className={styles.empty} role="alert">
-          <h3>Some dashboard information could not be loaded</h3>
-          <p>{loadError.message}</p>
-        </section>
-      )}
+      {loadError && <section className={styles.empty} role="alert"><h3>Some dashboard information could not be loaded</h3><p>{loadError.message}</p></section>}
 
       <section className={styles.metrics} aria-label="Teaching summary">
         <article className={`${styles.metric} ${styles.metricAttention}`}><span>Needs attention</span><strong>{attention.length}</strong></article>
@@ -256,115 +232,29 @@ export default async function TeacherDashboardPage() {
 
       <section className={styles.mainGrid}>
         <section className={styles.section}>
-          <header className={styles.sectionHeader}>
-            <div><h2>Needs attention</h2><p>Students prioritised by deadline, confidence and stalled progress.</p></div>
-            <Link className={styles.sectionLink} href="/teacher/progress">Open progress</Link>
-          </header>
-
-          {attention.length === 0 ? (
-            <div className={styles.empty}>
-              <h3>No immediate concerns</h3>
-              <p>There are no overdue non-starters, low-confidence students or stalled assignments in the current data.</p>
-            </div>
-          ) : (
-            <div className={styles.attentionList}>
-              {attention.map((item) => {
-                const teachingClass = firstRelation(item.assignment.teaching_classes);
-                return (
-                  <article className={styles.attentionItem} key={`${item.assignment.id}:${item.studentId}`}>
-                    <div>
-                      <h3>{item.studentName}</h3>
-                      <p>{teachingClass?.name ?? 'Class'} · {item.assignment.lesson_title}</p>
-                      <span className={styles.attentionReason}>{item.reason.label}</span>
-                    </div>
-                    <Link className={styles.actionLink} href={`/teacher/progress/${item.assignment.id}/${item.studentId}`}>View evidence</Link>
-                  </article>
-                );
-              })}
-            </div>
-          )}
+          <header className={styles.sectionHeader}><div><h2>Needs attention</h2><p>Students prioritised by deadline, confidence and stalled progress.</p></div><Link className={styles.sectionLink} href="/teacher/progress">Open progress</Link></header>
+          {attention.length === 0 ? <div className={styles.empty}><h3>No immediate concerns</h3><p>There are no overdue non-starters, low-confidence students or stalled assignments in the current data.</p></div> : <div className={styles.attentionList}>{attention.map((item) => {
+            const teachingClass = firstRelation(item.assignment.teaching_classes);
+            return <article className={styles.attentionItem} key={`${item.assignment.id}:${item.studentId}`}><div><h3>{item.studentName}</h3><p>{teachingClass?.name ?? 'Class'} · {item.assignment.lesson_title}</p><span className={styles.attentionReason}>{item.reason.label}</span></div><Link className={styles.actionLink} href={`/teacher/progress/${item.assignment.id}/${item.studentId}`}>View evidence</Link></article>;
+          })}</div>}
         </section>
-
-        <aside className={styles.section}>
-          <header className={styles.sectionHeader}><div><h2>Quick actions</h2><p>Common tasks without large dashboard cards.</p></div></header>
-          <div className={styles.quickActions}>
-            <Link className={styles.quickAction} href="/teacher/set-study"><span>Set work</span><span>→</span></Link>
-            <Link className={styles.quickAction} href="/teacher/classes"><span>Create or view classes</span><span>→</span></Link>
-            <Link className={styles.quickAction} href="/teacher/progress"><span>Review progress</span><span>→</span></Link>
-            <Link className={styles.quickAction} href="/student/lesson/1905"><span>Preview student pathway</span><span>→</span></Link>
-          </div>
-        </aside>
       </section>
 
       <section className={styles.lowerGrid}>
         <section className={styles.section}>
-          <header className={styles.sectionHeader}>
-            <div><h2>Active assignments</h2><p>Recent published work and class completion.</p></div>
-            <Link className={styles.sectionLink} href="/teacher/set-study">View assignments</Link>
-          </header>
-
-          {activeAssignmentCards.length === 0 ? (
-            <div className={styles.empty}>
-              <h3>No published assignments</h3>
-              <p><Link className={styles.inlineLink} href="/teacher/set-study">Set your first assignment</Link> to begin collecting student progress.</p>
-            </div>
-          ) : (
-            <div className={styles.assignmentList}>
-              {activeAssignmentCards.map(({ assignment, recipients, completed, average }) => {
-                const teachingClass = firstRelation(assignment.teaching_classes);
-                return (
-                  <article className={styles.assignmentCard} key={assignment.id}>
-                    <div>
-                      <h3>{assignment.title}</h3>
-                      <p>{teachingClass?.name ?? 'Class'} · {assignment.lesson_title}</p>
-                      <div className={styles.assignmentMeta}>
-                        <span>{completed}/{recipients} complete</span>
-                        <span>{dueLabel(assignment.due_at)}</span>
-                        <span>{average}% average progress</span>
-                      </div>
-                      <div className={styles.progressTrack} aria-label={`${average}% average progress`}>
-                        <div className={styles.progressFill} style={{ width: `${average}%` }} />
-                      </div>
-                    </div>
-                    <Link className={styles.actionLink} href={`/teacher/progress?assignment=${assignment.id}`}>View progress</Link>
-                  </article>
-                );
-              })}
-            </div>
-          )}
+          <header className={styles.sectionHeader}><div><h2>Active assignments</h2><p>Recent published work and class completion.</p></div><Link className={styles.sectionLink} href="/teacher/assignments">View assignments</Link></header>
+          {activeAssignmentCards.length === 0 ? <div className={styles.empty}><h3>No published assignments</h3><p><Link className={styles.inlineLink} href="/teacher/set-study">Set your first assignment</Link> to begin collecting student progress.</p></div> : <div className={styles.assignmentList}>{activeAssignmentCards.map(({ assignment, recipients, completed, average }) => {
+            const teachingClass = firstRelation(assignment.teaching_classes);
+            return <article className={styles.assignmentCard} key={assignment.id}><div><h3>{assignment.title}</h3><p>{teachingClass?.name ?? 'Class'} · {assignment.lesson_title}</p><div className={styles.assignmentMeta}><span>{completed}/{recipients} complete</span><span>{dueLabel(assignment.due_at)}</span><span>{average}% average progress</span></div><div className={styles.progressTrack} aria-label={`${average}% average progress`}><div className={styles.progressFill} style={{ width: `${average}%` }} /></div></div><Link className={styles.actionLink} href={`/teacher/assignments/${assignment.id}`}>Open assignment</Link></article>;
+          })}</div>}
         </section>
 
         <section className={styles.section}>
-          <header className={styles.sectionHeader}>
-            <div><h2>Classes</h2><p>Your active teaching groups.</p></div>
-            <Link className={styles.sectionLink} href="/teacher/classes">All classes</Link>
-          </header>
-
-          {activeClasses.length === 0 ? (
-            <div className={styles.empty}>
-              <h3>No active classes</h3>
-              <p><Link className={styles.inlineLink} href="/teacher/classes">Create a class</Link> and share its join code with students.</p>
-            </div>
-          ) : (
-            <div className={styles.classList}>
-              {activeClasses.slice(0, 4).map((teachingClass) => {
-                const classAssignments = assignments.filter((assignment) => assignment.class_id === teachingClass.id).length;
-                return (
-                  <article className={styles.classCard} key={teachingClass.id}>
-                    <div>
-                      <h3>{teachingClass.name}</h3>
-                      <p>{teachingClass.academic_year || 'Academic year not set'}</p>
-                      <div className={styles.classMeta}>
-                        <span>{membershipCounts.get(teachingClass.id) ?? 0} students</span>
-                        <span>{classAssignments} active {classAssignments === 1 ? 'assignment' : 'assignments'}</span>
-                      </div>
-                    </div>
-                    <Link className={styles.actionLink} href="/teacher/classes">View</Link>
-                  </article>
-                );
-              })}
-            </div>
-          )}
+          <header className={styles.sectionHeader}><div><h2>Classes</h2><p>Your active teaching groups.</p></div><Link className={styles.sectionLink} href="/teacher/classes">All classes</Link></header>
+          {activeClasses.length === 0 ? <div className={styles.empty}><h3>No active classes</h3><p><Link className={styles.inlineLink} href="/teacher/classes">Create a class</Link> and share its join code with students.</p></div> : <div className={styles.classList}>{activeClasses.slice(0, 4).map((teachingClass) => {
+            const classAssignments = assignments.filter((assignment) => assignment.class_id === teachingClass.id).length;
+            return <article className={styles.classCard} key={teachingClass.id}><div><h3>{teachingClass.name}</h3><p>{teachingClass.academic_year || 'Academic year not set'}</p><div className={styles.classMeta}><span>{membershipCounts.get(teachingClass.id) ?? 0} students</span><span>{classAssignments} active {classAssignments === 1 ? 'assignment' : 'assignments'}</span></div></div><Link className={styles.actionLink} href={`/teacher/classes/${teachingClass.id}`}>Open class</Link></article>;
+          })}</div>}
         </section>
       </section>
     </main>
