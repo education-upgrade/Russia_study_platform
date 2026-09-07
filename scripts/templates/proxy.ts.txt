@@ -1,0 +1,111 @@
+import { createServerClient } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from 'next/server';
+import { safeLocalPath } from '@/lib/navigation';
+
+const protectedPrefixes = ['/student', '/teacher', '/account', '/admin'];
+
+function getSupabasePublicKey() {
+  return (
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
+}
+
+function nextResponseForRequest(request: NextRequest) {
+  const requestHeaders = new Headers(request.headers);
+  const assignmentId = request.nextUrl.searchParams.get('assignment');
+
+  if (assignmentId) requestHeaders.set('x-assignment-id', assignmentId);
+  else requestHeaders.delete('x-assignment-id');
+
+  return NextResponse.next({ request: { headers: requestHeaders } });
+}
+
+function isProtectedPath(pathname: string) {
+  return protectedPrefixes.some((prefix) =>
+    pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+function hasSupabaseAuthCookie(request: NextRequest) {
+  return request.cookies
+    .getAll()
+    .some((cookie) => cookie.name.startsWith('sb-') && cookie.name.includes('auth-token'));
+}
+
+function isStaleSessionError(error: unknown) {
+  const candidate = error as { code?: string; message?: string } | null;
+  const code = candidate?.code?.toLowerCase() ?? '';
+  const message = candidate?.message?.toLowerCase() ?? '';
+  return (
+    code.includes('refresh_token') ||
+    code === 'session_not_found' ||
+    message.includes('refresh token') ||
+    message.includes('session not found')
+  );
+}
+
+function clearSupabaseAuthCookies(request: NextRequest, targetResponse: NextResponse) {
+  for (const cookie of request.cookies.getAll()) {
+    if (!cookie.name.startsWith('sb-') || !cookie.name.includes('auth-token')) continue;
+    request.cookies.delete(cookie.name);
+    targetResponse.cookies.set(cookie.name, '', { path: '/', maxAge: 0 });
+  }
+}
+
+function loginRedirect(request: NextRequest) {
+  const loginUrl = request.nextUrl.clone();
+  loginUrl.pathname = '/login';
+  loginUrl.searchParams.set('next', `${request.nextUrl.pathname}${request.nextUrl.search}`);
+  return NextResponse.redirect(loginUrl);
+}
+
+export async function updateSupabaseSession(request: NextRequest) {
+  const isProtected = isProtectedPath(request.nextUrl.pathname);
+  const isLogin = request.nextUrl.pathname === '/login';
+
+  if (!isProtected && !isLogin) return nextResponseForRequest(request);
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const publicKey = getSupabasePublicKey();
+  if (!url || !publicKey) return nextResponseForRequest(request);
+
+  if (!hasSupabaseAuthCookie(request)) {
+    return isProtected ? loginRedirect(request) : nextResponseForRequest(request);
+  }
+
+  let response = nextResponseForRequest(request);
+  const supabase = createServerClient(url, publicKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        response = nextResponseForRequest(request);
+        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+      },
+    },
+  });
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  const staleSession = !user && Boolean(authError) && isStaleSessionError(authError);
+  if (staleSession) clearSupabaseAuthCookies(request, response);
+
+  if (!user && isProtected) {
+    const redirectResponse = loginRedirect(request);
+    if (staleSession) clearSupabaseAuthCookies(request, redirectResponse);
+    return redirectResponse;
+  }
+
+  if (user && isLogin) {
+    return NextResponse.redirect(
+      new URL(safeLocalPath(request.nextUrl.searchParams.get('next')), request.url),
+    );
+  }
+
+  return response;
+}

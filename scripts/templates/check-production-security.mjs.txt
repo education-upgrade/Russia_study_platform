@@ -1,0 +1,131 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
+const root = process.cwd();
+const full = (file) => path.join(root, file);
+const exists = (file) => fs.existsSync(full(file));
+const read = (file) => fs.readFileSync(full(file), 'utf8');
+const failures = [];
+
+function requireText(file, text, message) {
+  if (!exists(file) || !read(file).includes(text)) failures.push(message);
+}
+
+function forbidText(file, text, message) {
+  if (exists(file) && read(file).includes(text)) failures.push(message);
+}
+
+function requireMissing(file, message) {
+  if (exists(file)) failures.push(message);
+}
+
+const joinPage = 'app/join-class/page.tsx';
+const joinApi = 'app/api/classes/join/route.ts';
+requireText(joinPage, "redirect('/student/join')", 'Legacy /join-class page must redirect to /student/join.');
+requireText(joinApi, 'status: 410', 'Legacy class join API must remain retired with HTTP 410.');
+forbidText(joinApi, 'DEMO_STUDENT_ID', 'Retired class join API must not restore demo student access.');
+
+const retiredSelfStudyRoutes = [
+  'app/api/student-responses/activity/route.ts',
+  'app/api/student-responses/confidence/route.ts',
+  'app/api/student-responses/flashcards/route.ts',
+  'app/api/student-responses/lesson/route.ts',
+  'app/api/student-responses/peel/route.ts',
+  'app/api/student-responses/quiz/route.ts',
+];
+for (const file of retiredSelfStudyRoutes) {
+  requireText(file, 'status: 410', `${file} must remain a retired compatibility endpoint.`);
+  for (const marker of ['DEMO_STUDENT_ID', 'DEMO_ASSIGNMENT_ID', 'student_responses', 'guided_study_assignments', 'getLegacySelfStudyAccess', 'resolveVirtualActivityId', 'SUPABASE_SERVICE_ROLE_KEY']) {
+    forbidText(file, marker, `${file} must not restore legacy persistence marker: ${marker}.`);
+  }
+}
+
+requireMissing('lib/legacySelfStudyServer.ts', 'Legacy self-study service-role helper must not return to production.');
+requireMissing('lib/resolveVirtualActivityId.ts', 'Legacy virtual-activity resolver must not return to production.');
+
+for (const file of ['app/diagnostics/page.tsx', 'app/data-check/page.tsx']) {
+  requireMissing(file, `${file} is a development diagnostic surface and must not ship publicly.`);
+}
+
+const legacyWeek1Routes = new Map([
+  ['app/student/lesson/week-1/page.tsx', '/student/lesson/1855'],
+  ['app/student/lesson/week-1/lesson/page.tsx', '/student/lesson/1855/lesson'],
+  ['app/student/lesson/week-1/flashcards/page.tsx', '/student/lesson/1855/flashcards'],
+  ['app/student/lesson/week-1/quiz/page.tsx', '/student/lesson/1855/quiz'],
+  ['app/student/lesson/week-1/peel/page.tsx', '/student/lesson/1855/peel'],
+  ['app/student/lesson/week-1/confidence/page.tsx', '/student/lesson/1855/confidence'],
+]);
+for (const [file, target] of legacyWeek1Routes) {
+  requireText(file, target, `${file} must redirect to the modular 1855 pathway.`);
+  for (const marker of ['DEMO_STUDENT_ID', 'guided_study_assignments', 'student_responses', '/api/student-responses/']) {
+    forbidText(file, marker, `${file} must not restore demo Week 1 runtime state.`);
+  }
+}
+
+const activityComponents = [
+  'components/LessonChunkActivity.tsx',
+  'components/FlashcardActivity.tsx',
+  'components/QuizActivity.tsx',
+  'components/TimelineActivity.tsx',
+  'components/CardSortActivity.tsx',
+  'components/JudgementRankingActivity.tsx',
+  'components/AO3InterpretationActivity.tsx',
+  'components/PeelResponseActivity.tsx',
+  'components/ConfidenceExitTicketActivity.tsx',
+  'components/LessonContentActivity.tsx',
+];
+for (const file of activityComponents) {
+  forbidText(file, '/api/student-responses/', `${file} must not call retired demo response endpoints.`);
+}
+
+forbidText('app/api/guided-study/route.ts', "from('guided_study_assignments')", 'Assignment publishing must not fall back to the prototype guided_study_assignments table.');
+
+const migration = 'supabase/migrations/20260904113000_lock_down_legacy_demo_surface.sql';
+if (!exists(migration)) {
+  failures.push('Legacy-surface lockdown migration is missing.');
+} else {
+  requireText(migration, 'revoke select, insert, update, delete on public.student_responses', 'Legacy response table must be revoked from browser roles.');
+  requireText(migration, 'revoke execute on function %I.%I(%s) from public, anon', 'SECURITY DEFINER functions must lose PUBLIC/anon execute access.');
+}
+
+const loginForm = 'app/login/LoginForm.tsx';
+requireText(loginForm, 'safeLocalPath', 'Login redirects must be sanitised to a local path.');
+requireText(loginForm, 'if (data.session)', 'Student signup must handle confirmation-off sessions without asking for email confirmation.');
+forbidText(loginForm, 'body: JSON.stringify({ email, password, fullName, staffCode, callbackUrl })', 'Staff signup must not trust a client-supplied callback URL.');
+
+const staffSignup = 'app/api/auth/staff-signup/route.ts';
+requireText(staffSignup, 'consume_staff_signup_rate_limit', 'Staff signup must remain rate limited.');
+requireText(staffSignup, 'timingSafeEqual', 'Staff invite codes must use constant-time comparison.');
+requireText(staffSignup, 'safeLocalPath', 'Staff signup redirects must remain local-only.');
+
+const rateLimitMigration = 'supabase/migrations/20260904133000_add_staff_signup_rate_limit.sql';
+if (!exists(rateLimitMigration)) {
+  failures.push('Staff-signup rate-limit migration is missing.');
+} else {
+  requireText(rateLimitMigration, 'revoke execute on function public.consume_staff_signup_rate_limit', 'Staff signup rate limiter must not be browser-callable.');
+  requireText(rateLimitMigration, 'to service_role', 'Staff signup rate limiter must be service-role only.');
+}
+
+const assignmentForm = 'components/GuidedStudyAssignmentForm.tsx';
+requireText(assignmentForm, "useState(initialClass?.id ?? '')", 'Generic Set Work must not silently preselect the newest class.');
+requireText(assignmentForm, "useState(initialTopic?.pathwaySlug ?? '')", 'Generic Set Work must not silently preselect a topic.');
+requireText(assignmentForm, 'disabled={!canConfigure}', 'Assignment configuration must stay locked until class and topic are chosen.');
+forbidText(assignmentForm, '?? classOptions[0]', 'Assignment builder must not restore a silent first-class fallback.');
+
+const proxyFile = 'lib/supabase/proxy.ts';
+requireText(proxyFile, 'if (!isProtected && !isLogin)', 'Public routes must bypass unnecessary Supabase auth refreshes.');
+requireText(proxyFile, 'hasSupabaseAuthCookie', 'Auth middleware must avoid user lookups when there is no Supabase auth cookie.');
+requireText(proxyFile, 'clearSupabaseAuthCookies', 'Stale Supabase sessions must clear invalid auth cookies.');
+requireText(proxyFile, 'isStaleSessionError', 'Stale-session handling must remain limited to auth-session errors.');
+
+const schoolTime = 'lib/dateTime.ts';
+requireText(schoolTime, "SCHOOL_TIME_ZONE = 'Europe/London'", 'School-facing dates must remain pinned to Europe/London.');
+
+if (!exists('package-lock.json')) failures.push('A committed package-lock.json is required for reproducible production installs.');
+
+if (failures.length) {
+  console.error('Production security check failed:\n- ' + failures.join('\n- '));
+  process.exit(1);
+}
+
+console.log('Production security checks passed.');
