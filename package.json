@@ -2,6 +2,9 @@
   "name": "russia-study-platform",
   "version": "0.1.0",
   "private": true,
+  "allowScripts": {
+    "sharp": true
+  },
   "scripts": {
     "dev": "next dev",
     "build": "node scripts/check-assignment-integrity.mjs && node scripts/check-production-security.mjs && next build",
