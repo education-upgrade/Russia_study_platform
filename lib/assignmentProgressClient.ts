@@ -1,5 +1,15 @@
 export type AssignmentActivityStatus = 'not_started' | 'in_progress' | 'complete';
 
+export type AssignmentActivityProgress = {
+  status: AssignmentActivityStatus;
+  score: number | null;
+  max_score: number | null;
+  confidence: number | null;
+  position: Record<string, unknown> | null;
+  attempt_count: number;
+  updated_at: string | null;
+};
+
 type SaveAssignmentActivityProgressInput = {
   assignmentId: string;
   activityType: string;
@@ -15,6 +25,16 @@ const saveQueues = new Map<string, Promise<unknown>>();
 
 function queueKey(input: SaveAssignmentActivityProgressInput) {
   return `${input.assignmentId}:${input.activityType}`;
+}
+
+export async function loadAssignmentActivityProgress(assignmentId: string, activityType: string) {
+  const response = await fetch(`/api/assignment-progress?assignmentId=${encodeURIComponent(assignmentId)}&activityType=${encodeURIComponent(activityType)}`, {
+    method: 'GET',
+    cache: 'no-store',
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(result?.error ?? 'Saved progress could not be loaded.');
+  return (result?.progress ?? null) as AssignmentActivityProgress | null;
 }
 
 async function postProgress(input: SaveAssignmentActivityProgressInput) {
