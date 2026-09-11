@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { saveAssignmentActivityProgress } from '@/lib/assignmentProgressClient';
 import styles from './CardSortActivity.module.css';
 
@@ -26,7 +26,6 @@ export default function CardSortActivity({ activityId, cards, categories, nextHr
   const assignmentId = searchParams.get('assignment');
   const [placements, setPlacements] = useState<Record<string, string>>({});
   const [reflection, setReflection] = useState('');
-  const [submitted, setSubmitted] = useState(false);
   const [isMovingNext, setIsMovingNext] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [saveMessage, setSaveMessage] = useState('');
@@ -38,7 +37,7 @@ export default function CardSortActivity({ activityId, cards, categories, nextHr
     return cards.reduce((total, card) => total + (placements[card.id] === card.category ? 1 : 0), 0);
   }, [cards, placements]);
 
-  const canSubmit = completedCount === cards.length && reflection.trim().length > 0;
+  const isComplete = completedCount === cards.length && reflection.trim().length > 0;
 
   async function saveCardSort(
     status: 'in_progress' | 'complete',
@@ -50,7 +49,7 @@ export default function CardSortActivity({ activityId, cards, categories, nextHr
     const nextProgressPercentage = cards.length ? Math.round((nextCompletedCount / cards.length) * 100) : 0;
 
     setSaveStatus('saving');
-    setSaveMessage(status === 'complete' ? 'Saving completed card sort...' : 'Saving progress...');
+    setSaveMessage('Saving automatically...');
 
     try {
       if (assignmentId) {
@@ -86,14 +85,14 @@ export default function CardSortActivity({ activityId, cards, categories, nextHr
               completionPercentage: nextProgressPercentage,
             },
           }),
+          keepalive: true,
         });
         const result = await response.json().catch(() => null);
         if (!response.ok) throw new Error(result?.error ?? 'Card sort could not be saved.');
       }
 
       setSaveStatus('saved');
-      setSaveMessage(status === 'complete' ? 'Card sort submitted' : 'Saved');
-      if (status === 'complete') setSubmitted(true);
+      setSaveMessage(status === 'complete' ? 'Saved · activity complete' : 'Saved');
       return true;
     } catch (error) {
       setSaveStatus('error');
@@ -102,20 +101,26 @@ export default function CardSortActivity({ activityId, cards, categories, nextHr
     }
   }
 
+  useEffect(() => {
+    if (!reflection.trim()) return;
+    const timeout = window.setTimeout(() => {
+      const complete = Object.keys(placements).length === cards.length && reflection.trim().length > 0;
+      void saveCardSort(complete ? 'complete' : 'in_progress', placements, reflection);
+    }, 650);
+    return () => window.clearTimeout(timeout);
+    // saveCardSort intentionally omitted: this effect should react only to student evidence/state changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reflection, placements, cards.length]);
+
   function placeCard(cardId: string, category: string) {
     const nextPlacements = { ...placements, [cardId]: category };
     setPlacements(nextPlacements);
-    setSubmitted(false);
-    void saveCardSort('in_progress', nextPlacements, reflection);
-  }
-
-  async function submitCardSort() {
-    if (!canSubmit || saveStatus === 'saving') return;
-    await saveCardSort('complete');
+    const complete = Object.keys(nextPlacements).length === cards.length && reflection.trim().length > 0;
+    void saveCardSort(complete ? 'complete' : 'in_progress', nextPlacements, reflection);
   }
 
   async function moveToNext() {
-    if (!canSubmit || isMovingNext || !nextHref) return;
+    if (!isComplete || isMovingNext || !nextHref) return;
     setIsMovingNext(true);
     const saved = await saveCardSort('complete');
     if (saved) {
@@ -139,7 +144,7 @@ export default function CardSortActivity({ activityId, cards, categories, nextHr
         <div className={styles.stats}>
           <span>{completedCount}/{cards.length} sorted</span>
           <span>{correctCount} correct</span>
-          <span>{saveStatus === 'saving' ? 'saving' : saveStatus === 'saved' ? 'saved' : submitted ? 'submitted' : 'ready'}</span>
+          <span>{saveStatus === 'saving' ? 'saving' : saveStatus === 'saved' ? 'saved' : 'autosave on'}</span>
         </div>
       </section>
 
@@ -159,7 +164,6 @@ export default function CardSortActivity({ activityId, cards, categories, nextHr
                     key={category}
                     className={`${styles.categoryButton}${selectedCategory === category ? ` ${styles.selected}` : ''}${selectedCategory === category && isCorrect ? ` ${styles.correct}` : ''}`}
                     onClick={() => placeCard(card.id, category)}
-                    disabled={saveStatus === 'saving'}
                   >
                     {category}
                   </button>
@@ -180,17 +184,16 @@ export default function CardSortActivity({ activityId, cards, categories, nextHr
           <span>What overall pattern or judgement does this card sort suggest?</span>
           <textarea
             value={reflection}
-            onChange={(event) => { setReflection(event.target.value); setSubmitted(false); }}
+            onChange={(event) => setReflection(event.target.value)}
             placeholder="Overall, the evidence suggests that Alexander II modernised Russia in some areas, but preserved autocratic control because..."
           />
         </label>
       </section>
 
       <section className={styles.submitRow}>
-        <p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage || (canSubmit ? 'Ready to submit.' : 'Sort every card and write a short judgement.')}</p>
+        <p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage || 'Your choices and written judgement save automatically.'}</p>
         <div className={styles.buttonRow}>
-          <button type="button" className="button secondary" onClick={submitCardSort} disabled={!canSubmit || saveStatus === 'saving'}>{saveStatus === 'saving' ? 'Saving...' : submitted ? 'Update card sort' : 'Submit card sort'}</button>
-          {nextHref && <button type="button" className="button" onClick={moveToNext} disabled={!canSubmit || isMovingNext || saveStatus === 'saving'}>{isMovingNext || saveStatus === 'saving' ? 'Saving...' : 'Next'}</button>}
+          {nextHref && <button type="button" className="button" onClick={moveToNext} disabled={!isComplete || isMovingNext}>{isMovingNext ? 'Saving...' : 'Next'}</button>}
         </div>
       </section>
     </div>
