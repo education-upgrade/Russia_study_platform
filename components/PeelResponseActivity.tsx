@@ -3,72 +3,25 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type AdaptiveRendererSupport } from '@/lib/activityRendererContracts';
-import { saveAssignmentActivityProgress } from '@/lib/assignmentProgressClient';
+import { loadAssignmentActivityProgress, saveAssignmentActivityProgress } from '@/lib/assignmentProgressClient';
 import styles from './PeelResponseActivity.module.css';
 
 type PeelResponseActivityProps = { activityId: string; question: string; stretchQuestion?: string; scaffold?: string[]; nextHref?: string; adaptiveSupport?: AdaptiveRendererSupport };
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 type PeelStepKey = 'point' | 'evidence' | 'explain' | 'link';
 type PeelStep = { key: PeelStepKey; title: string; prompt: string; placeholder: string };
-
-const baseSteps: PeelStep[] = [
-  { key:'point', title:'Point', prompt:'Make one clear argument that answers the question directly.', placeholder:'One important reason was...' },
-  { key:'evidence', title:'Evidence', prompt:'Add precise subject knowledge, evidence, examples or research.', placeholder:'For example...' },
-  { key:'explain', title:'Explain', prompt:'Explain why the evidence matters and how it supports your argument.', placeholder:'This matters because...' },
-  { key:'link', title:'Link', prompt:'Return to the question with a judgement, implication or limitation.', placeholder:'Therefore...' },
-];
-
-function countWords(text:string){ return text.trim().length===0?0:text.trim().split(/\s+/).length; }
-function getAdaptiveSteps(level:AdaptiveRendererSupport['difficultyLevel']):PeelStep[]{
-  if(level==='scaffolded') return baseSteps.map((step)=>({...step,prompt:`${step.prompt} Use the starter to keep your answer focused.`}));
-  if(level==='stretch') return baseSteps.map((step)=>step.key==='explain'?{...step,prompt:'Develop the explanation by showing why this evidence is particularly useful or significant.'}:step.key==='link'?{...step,prompt:'End with a comparative or qualified judgement that returns directly to the question.'}:step);
-  return baseSteps;
-}
-function minimumWords(level:AdaptiveRendererSupport['difficultyLevel']){ if(level==='scaffolded') return 60; if(level==='stretch') return 120; return 90; }
+const baseSteps: PeelStep[] = [{key:'point',title:'Point',prompt:'Make one clear argument that answers the question directly.',placeholder:'One important reason was...'},{key:'evidence',title:'Evidence',prompt:'Add precise subject knowledge, evidence, examples or research.',placeholder:'For example...'},{key:'explain',title:'Explain',prompt:'Explain why the evidence matters and how it supports your argument.',placeholder:'This matters because...'},{key:'link',title:'Link',prompt:'Return to the question with a judgement, implication or limitation.',placeholder:'Therefore...'}];
+function countWords(text:string){return text.trim().length===0?0:text.trim().split(/\s+/).length;}
+function getAdaptiveSteps(level:AdaptiveRendererSupport['difficultyLevel']):PeelStep[]{if(level==='scaffolded')return baseSteps.map((step)=>({...step,prompt:`${step.prompt} Use the starter to keep your answer focused.`}));if(level==='stretch')return baseSteps.map((step)=>step.key==='explain'?{...step,prompt:'Develop the explanation by showing why this evidence is particularly useful or significant.'}:step.key==='link'?{...step,prompt:'End with a comparative or qualified judgement that returns directly to the question.'}:step);return baseSteps;}
+function minimumWords(level:AdaptiveRendererSupport['difficultyLevel']){if(level==='scaffolded')return 60;if(level==='stretch')return 120;return 90;}
 
 export default function PeelResponseActivity({ activityId, question, stretchQuestion, nextHref, adaptiveSupport }:PeelResponseActivityProps){
-  const router=useRouter(); const searchParams=useSearchParams(); const assignmentId=searchParams.get('assignment');
-  const steps=useMemo(()=>getAdaptiveSteps(adaptiveSupport?.difficultyLevel),[adaptiveSupport?.difficultyLevel]);
-  const targetWords=minimumWords(adaptiveSupport?.difficultyLevel);
-  const [activeStepIndex,setActiveStepIndex]=useState(0);
-  const [values,setValues]=useState<Record<PeelStepKey,string>>({point:'',evidence:'',explain:'',link:''});
-  const [saveStatus,setSaveStatus]=useState<SaveStatus>('idle'); const [saveMessage,setSaveMessage]=useState(''); const [isMovingNext,setIsMovingNext]=useState(false);
-  const timerRef=useRef<ReturnType<typeof setTimeout>|null>(null); const mountedRef=useRef(false);
-  const activeStep=steps[activeStepIndex];
-  const fullResponse=useMemo(()=>steps.map((step)=>values[step.key].trim()).filter(Boolean).join('\n\n'),[values,steps]);
-  const wordCount=countWords(fullResponse); const completedSections=steps.filter((step)=>values[step.key].trim().length>0).length; const progressPercentage=Math.round((completedSections/steps.length)*100);
-  const hasWriting=wordCount>0; const canComplete=completedSections===steps.length && wordCount>=targetWords;
-
-  async function saveResponse(nextValues:Record<PeelStepKey,string>,status:'in_progress'|'complete'){
-    const nextFullResponse=steps.map((step)=>nextValues[step.key].trim()).filter(Boolean).join('\n\n'); const nextWordCount=countWords(nextFullResponse); if(!nextFullResponse.trim()) return false;
-    setSaveStatus('saving'); setSaveMessage('Saving...');
-    try{
-      if(assignmentId){
-        await saveAssignmentActivityProgress({assignmentId,activityType:'peel_response',status,position:{responseType:'written_response',question,point:nextValues.point,evidence:nextValues.evidence,explain:nextValues.explain,link:nextValues.link,fullResponse:nextFullResponse,wordCount:nextWordCount,responseStatus:status==='complete'?'complete':'draft',targetWords}});
-      }else{
-        const response=await fetch('/api/student-responses/peel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({activityId,question,point:nextValues.point,evidence:nextValues.evidence,explain:nextValues.explain,link:nextValues.link,fullResponse:nextFullResponse,wordCount:nextWordCount,status:status==='complete'?'submitted':'draft',adaptiveSupport,targetWords}),keepalive:true});
-        const result=await response.json().catch(()=>null); if(!response.ok) throw new Error(result?.error??'Written response could not be saved.');
-      }
-      setSaveStatus('saved'); setSaveMessage(status==='complete'?'Complete — saved automatically.':'Saved automatically.'); return true;
-    }catch(error){ setSaveStatus('error'); setSaveMessage(error instanceof Error?error.message:'Written response could not be saved.'); return false; }
-  }
-
-  useEffect(()=>{
-    if(!mountedRef.current){ mountedRef.current=true; return; }
-    if(!hasWriting) return;
-    if(timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current=setTimeout(()=>{ void saveResponse(values,canComplete?'complete':'in_progress'); },650);
-    return()=>{ if(timerRef.current) clearTimeout(timerRef.current); };
-  },[values,hasWriting,canComplete]);
-
-  function updateActiveValue(value:string){ setValues((previous)=>({...previous,[activeStep.key]:value})); }
-  async function moveToNext(){ if(isMovingNext||!nextHref||!hasWriting) return; if(timerRef.current) clearTimeout(timerRef.current); setIsMovingNext(true); const saved=await saveResponse(values,canComplete?'complete':'in_progress'); if(saved){ router.push(nextHref); return; } setIsMovingNext(false); }
-
-  return <div className={styles.shell}>
-    <section className={styles.topbar}><div><h3>Written response</h3></div><div className={styles.stats}><span>{completedSections}/4 sections</span><span>{wordCount} words</span><span>target {targetWords}</span><span>{saveStatus==='saving'?'saving':saveStatus==='saved'?'saved':'autosave on'}</span></div></section>
-    <section className={styles.prompt}><p><strong>Question:</strong> {question}</p>{stretchQuestion&&adaptiveSupport?.difficultyLevel==='stretch'&&<p><strong>Stretch:</strong> {stretchQuestion}</p>}{adaptiveSupport?.successTarget&&<p><strong>Success target:</strong> {adaptiveSupport.successTarget}</p>}</section>
-    <div className={styles.progress}><div style={{width:`${progressPercentage}%`}} /></div>
-    <section className={styles.writer}><div className={styles.stepTabs}>{steps.map((step,index)=><button type="button" key={step.key} className={`${styles.stepTab}${activeStepIndex===index?` ${styles.activeTab}`:''}${activeStepIndex!==index&&values[step.key].trim().length>0?` ${styles.completedTab}`:''}`} onClick={()=>setActiveStepIndex(index)}>{step.title}</button>)}</div><label className={styles.textPanel}><h2>{activeStep.title}</h2><p>{activeStep.prompt}</p><textarea value={values[activeStep.key]} onChange={(event)=>updateActiveValue(event.target.value)} placeholder={activeStep.placeholder} className={styles.textarea} /></label><div className={styles.stepNav}><button type="button" className="button secondary" onClick={()=>setActiveStepIndex((previous)=>Math.max(previous-1,0))} disabled={activeStepIndex===0}>Previous</button><button type="button" className="button secondary" onClick={()=>setActiveStepIndex((previous)=>Math.min(previous+1,steps.length-1))} disabled={activeStepIndex===steps.length-1}>Next section</button></div></section>
-    <section className={styles.submitRow}><div>{fullResponse?<div className={styles.preview}>{fullResponse}</div>:<p className={styles.saveMessage}>Build your answer one section at a time.</p>}{hasWriting&&!canComplete&&<p className={styles.saveMessage}>Your draft is safe. Complete all four sections and aim for {targetWords} words.</p>}{saveMessage&&<p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage}</p>}</div>{nextHref&&<div style={{display:'grid',gap:8}}><button type="button" className={`button ${styles.submitButton}`} onClick={()=>void moveToNext()} disabled={!hasWriting||isMovingNext||saveStatus==='saving'} style={{opacity:hasWriting?1:0.5}}>{isMovingNext||saveStatus==='saving'?'Saving...':'Next'}</button></div>}</section>
-  </div>;
+  const router=useRouter();const searchParams=useSearchParams();const assignmentId=searchParams.get('assignment');const steps=useMemo(()=>getAdaptiveSteps(adaptiveSupport?.difficultyLevel),[adaptiveSupport?.difficultyLevel]);const targetWords=minimumWords(adaptiveSupport?.difficultyLevel);
+  const [activeStepIndex,setActiveStepIndex]=useState(0);const [values,setValues]=useState<Record<PeelStepKey,string>>({point:'',evidence:'',explain:'',link:''});const [hydrated,setHydrated]=useState(!assignmentId);const [saveStatus,setSaveStatus]=useState<SaveStatus>('idle');const [saveMessage,setSaveMessage]=useState('');const [isMovingNext,setIsMovingNext]=useState(false);const timerRef=useRef<ReturnType<typeof setTimeout>|null>(null);
+  const activeStep=steps[activeStepIndex];const fullResponse=useMemo(()=>steps.map((step)=>values[step.key].trim()).filter(Boolean).join('\n\n'),[values,steps]);const wordCount=countWords(fullResponse);const completedSections=steps.filter((step)=>values[step.key].trim().length>0).length;const progressPercentage=Math.round((completedSections/steps.length)*100);const hasWriting=wordCount>0;const canComplete=completedSections===steps.length&&wordCount>=targetWords;
+  useEffect(()=>{if(!assignmentId)return;let cancelled=false;void loadAssignmentActivityProgress(assignmentId,'peel_response').then((progress)=>{if(cancelled||!progress)return;const p=progress.position??{};setValues({point:typeof p.point==='string'?p.point:'',evidence:typeof p.evidence==='string'?p.evidence:'',explain:typeof p.explain==='string'?p.explain:'',link:typeof p.link==='string'?p.link:''});setSaveStatus('saved');setSaveMessage(progress.status==='complete'?'Complete — saved automatically.':'Saved draft restored.');}).catch(()=>undefined).finally(()=>{if(!cancelled)setHydrated(true);});return()=>{cancelled=true;};},[assignmentId]);
+  async function saveResponse(nextValues:Record<PeelStepKey,string>,status:'in_progress'|'complete'){const nextFullResponse=steps.map((step)=>nextValues[step.key].trim()).filter(Boolean).join('\n\n');const nextWordCount=countWords(nextFullResponse);if(!nextFullResponse.trim())return false;setSaveStatus('saving');setSaveMessage('Saving...');try{if(assignmentId){await saveAssignmentActivityProgress({assignmentId,activityType:'peel_response',status,position:{responseType:'written_response',question,...nextValues,fullResponse:nextFullResponse,wordCount:nextWordCount,responseStatus:status==='complete'?'complete':'draft',targetWords}});}else{const response=await fetch('/api/student-responses/peel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({activityId,question,...nextValues,fullResponse:nextFullResponse,wordCount:nextWordCount,status:status==='complete'?'submitted':'draft',adaptiveSupport,targetWords}),keepalive:true});const result=await response.json().catch(()=>null);if(!response.ok)throw new Error(result?.error??'Written response could not be saved.');}setSaveStatus('saved');setSaveMessage(status==='complete'?'Complete — saved automatically.':'Saved automatically.');return true;}catch(error){setSaveStatus('error');setSaveMessage(error instanceof Error?error.message:'Written response could not be saved.');return false;}}
+  useEffect(()=>{if(!hydrated||!hasWriting)return;if(timerRef.current)clearTimeout(timerRef.current);timerRef.current=setTimeout(()=>{void saveResponse(values,canComplete?'complete':'in_progress');},650);return()=>{if(timerRef.current)clearTimeout(timerRef.current);};/* eslint-disable-next-line react-hooks/exhaustive-deps */},[values,hasWriting,canComplete,hydrated]);
+  function updateActiveValue(value:string){setValues((previous)=>({...previous,[activeStep.key]:value}));}async function moveToNext(){if(isMovingNext||!nextHref||!hasWriting)return;if(timerRef.current)clearTimeout(timerRef.current);setIsMovingNext(true);const saved=await saveResponse(values,canComplete?'complete':'in_progress');if(saved){router.push(nextHref);return;}setIsMovingNext(false);}
+  return <div className={styles.shell}><section className={styles.topbar}><div><h3>Written response</h3></div><div className={styles.stats}><span>{completedSections}/4 sections</span><span>{wordCount} words</span><span>target {targetWords}</span><span>{saveStatus==='saving'?'saving':saveStatus==='saved'?'saved':'autosave on'}</span></div></section><section className={styles.prompt}><p><strong>Question:</strong> {question}</p>{stretchQuestion&&adaptiveSupport?.difficultyLevel==='stretch'&&<p><strong>Stretch:</strong> {stretchQuestion}</p>}{adaptiveSupport?.successTarget&&<p><strong>Success target:</strong> {adaptiveSupport.successTarget}</p>}</section><div className={styles.progress}><div style={{width:`${progressPercentage}%`}} /></div><section className={styles.writer}><div className={styles.stepTabs}>{steps.map((step,index)=><button type="button" key={step.key} className={`${styles.stepTab}${activeStepIndex===index?` ${styles.activeTab}`:''}${activeStepIndex!==index&&values[step.key].trim().length>0?` ${styles.completedTab}`:''}`} onClick={()=>setActiveStepIndex(index)}>{step.title}</button>)}</div><label className={styles.textPanel}><h2>{activeStep.title}</h2><p>{activeStep.prompt}</p><textarea value={values[activeStep.key]} onChange={(event)=>updateActiveValue(event.target.value)} placeholder={activeStep.placeholder} className={styles.textarea} /></label><div className={styles.stepNav}><button type="button" className="button secondary" onClick={()=>setActiveStepIndex((p)=>Math.max(p-1,0))} disabled={activeStepIndex===0}>Previous</button><button type="button" className="button secondary" onClick={()=>setActiveStepIndex((p)=>Math.min(p+1,steps.length-1))} disabled={activeStepIndex===steps.length-1}>Next section</button></div></section><section className={styles.submitRow}><div>{fullResponse?<div className={styles.preview}>{fullResponse}</div>:<p className={styles.saveMessage}>Build your answer one section at a time.</p>}{hasWriting&&!canComplete&&<p className={styles.saveMessage}>Your draft is safe. Complete all four sections and aim for {targetWords} words.</p>}{saveMessage&&<p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage}</p>}</div>{nextHref&&<button type="button" className={`button ${styles.submitButton}`} onClick={()=>void moveToNext()} disabled={!hasWriting||isMovingNext||saveStatus==='saving'}>{isMovingNext||saveStatus==='saving'?'Saving...':'Next'}</button>}</section></div>;
 }
