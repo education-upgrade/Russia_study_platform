@@ -12,6 +12,7 @@ export type LessonSection = {
 };
 
 type Props = {
+  activityId: string;
   sections: LessonSection[];
   nextHref?: string;
   pathwayHref: string;
@@ -21,7 +22,7 @@ function countWords(value: string) {
   return value.trim().length === 0 ? 0 : value.trim().split(/\s+/).length;
 }
 
-export default function LessonContentActivity({ sections, nextHref, pathwayHref }: Props) {
+export default function LessonContentActivity({ activityId, sections, nextHref, pathwayHref }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const assignmentId = searchParams.get('assignment');
@@ -59,6 +60,7 @@ export default function LessonContentActivity({ sections, nextHref, pathwayHref 
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            activityId,
             responseType: 'lesson_content',
             status,
             response: {
