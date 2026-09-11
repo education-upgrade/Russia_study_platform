@@ -55,11 +55,6 @@ export default function FlashcardActivity({ activityId, cards, nextHref }: Flash
   const revisitCards = useMemo(() => cards.filter((card, index) => ratings[getCardId(card, index)] === 'revisit'), [cards, ratings]);
   const nearlyCards = useMemo(() => cards.filter((card, index) => ratings[getCardId(card, index)] === 'nearly'), [cards, ratings]);
 
-  function revealCard() {
-    if (!currentCardId || isRevealed) return;
-    setRevealedCardIds((previous) => [...new Set([...previous, currentCardId])]);
-  }
-
   async function saveFlashcards(nextRatings: Record<string, FlashcardRating>, nextRevealedCardIds: string[]) {
     setSaveStatus('saving');
     setSaveMessage('');
@@ -102,6 +97,7 @@ export default function FlashcardActivity({ activityId, cards, nextHref }: Flash
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ activityId, ratings: nextRatings, revealedCardIds: nextRevealedCardIds, totalCards: cards.length }),
+          keepalive: true,
         });
         const result = await response.json().catch(() => null);
         if (!response.ok) throw new Error(result?.error ?? 'Flashcard progress could not be saved.');
@@ -117,8 +113,15 @@ export default function FlashcardActivity({ activityId, cards, nextHref }: Flash
     }
   }
 
+  function revealCard() {
+    if (!currentCardId || isRevealed) return;
+    const nextRevealedCardIds = [...new Set([...revealedCardIds, currentCardId])];
+    setRevealedCardIds(nextRevealedCardIds);
+    void saveFlashcards(ratings, nextRevealedCardIds);
+  }
+
   async function rateCard(rating: FlashcardRating) {
-    if (!currentCardId || saveStatus === 'saving') return;
+    if (!currentCardId) return;
     const nextRatings = { ...ratings, [currentCardId]: rating };
     const nextRevealedCardIds = [...new Set([...revealedCardIds, currentCardId])];
     const isFinalCard = currentIndex === cards.length - 1;
@@ -187,7 +190,7 @@ export default function FlashcardActivity({ activityId, cards, nextHref }: Flash
         <section className={styles.completionNav}>
           <button type="button" className="button secondary" onClick={() => { setCompleted(false); setCurrentIndex(0); }}>Review</button>
           <button type="button" className="button secondary" onClick={resetDeck}>Try again</button>
-          {nextHref && <button type="button" className="button" onClick={moveToNext} disabled={isMovingNext || saveStatus === 'saving'}>{isMovingNext || saveStatus === 'saving' ? 'Saving...' : 'Next'}</button>}
+          {nextHref && <button type="button" className="button" onClick={moveToNext} disabled={isMovingNext}>{isMovingNext ? 'Saving...' : 'Next'}</button>}
         </section>
         {saveMessage && <p className={`${styles.saveMessage} ${styles[saveStatus]}`}>{saveMessage}</p>}
       </div>
@@ -202,7 +205,7 @@ export default function FlashcardActivity({ activityId, cards, nextHref }: Flash
       <section className={styles.controls}>
         {!isRevealed ? <button type="button" className={`button ${styles.primary}`} onClick={revealCard}>Reveal answer</button> : (
           <div className={styles.ratingRow}>
-            {(Object.keys(ratingLabels) as FlashcardRating[]).map((rating) => <button type="button" key={rating} className={`${styles.rating} ${styles[rating]}${currentRating === rating ? ` ${styles.selected}` : ''}`} onClick={() => void rateCard(rating)} disabled={saveStatus === 'saving'}>{ratingLabels[rating]}</button>)}
+            {(Object.keys(ratingLabels) as FlashcardRating[]).map((rating) => <button type="button" key={rating} className={`${styles.rating} ${styles[rating]}${currentRating === rating ? ` ${styles.selected}` : ''}`} onClick={() => void rateCard(rating)}>{ratingLabels[rating]}</button>)}
           </div>
         )}
       </section>
