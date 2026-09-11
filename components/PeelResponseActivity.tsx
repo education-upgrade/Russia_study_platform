@@ -123,7 +123,7 @@ export default function PeelResponseActivity({ activityId, question, stretchQues
     if (!hasMountedRef.current) { hasMountedRef.current = true; return; }
     if (!hasWriting || submitted) return;
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-    autosaveTimerRef.current = setTimeout(() => { void saveResponse(values, 'draft'); }, 900);
+    autosaveTimerRef.current = setTimeout(() => { void saveResponse(values, 'draft'); }, 2500);
     return () => { if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current); };
   }, [values, hasWriting, submitted]);
 
