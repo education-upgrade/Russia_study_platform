@@ -135,7 +135,7 @@ export default function GenericActivityRenderer({
   function renderActivity() {
     if (activityType === 'lesson_content') {
       const sections = getLessonSections(content, fallbackContent);
-      return <ActivityShell routeBase={assignmentRouteBase} adaptiveSupport={adaptiveSupport}><LessonContentActivity sections={sections} nextHref={assignmentNextHref} pathwayHref={assignmentRouteBase} /></ActivityShell>;
+      return <ActivityShell routeBase={assignmentRouteBase} adaptiveSupport={adaptiveSupport}><LessonContentActivity activityId={activityId} sections={sections} nextHref={assignmentNextHref} pathwayHref={assignmentRouteBase} /></ActivityShell>;
     }
 
     const normalisedContent = normaliseRendererContent(activityType, content, fallbackContent);
