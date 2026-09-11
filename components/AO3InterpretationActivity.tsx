@@ -3,87 +3,25 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { type AdaptiveRendererSupport } from '@/lib/activityRendererContracts';
-import { saveAssignmentActivityProgress } from '@/lib/assignmentProgressClient';
+import { loadAssignmentActivityProgress, saveAssignmentActivityProgress } from '@/lib/assignmentProgressClient';
 import styles from './AO3InterpretationActivity.module.css';
 
 type Interpretation = { historian: string; argument: string };
 type Props = { activityId: string; question: string; interpretations: Interpretation[]; nextHref?: string; adaptiveSupport?: AdaptiveRendererSupport };
-
-function supportPlaceholder(level: AdaptiveRendererSupport['difficultyLevel']) {
-  if (level === 'scaffolded') return 'This interpretation is supported by... This shows...';
-  if (level === 'stretch') return 'Use precise contextual knowledge to explain why this interpretation is convincing.';
-  return 'Use contextual knowledge to support the interpretation.';
-}
-function challengePlaceholder(level: AdaptiveRendererSupport['difficultyLevel']) {
-  if (level === 'scaffolded') return 'However, this interpretation is limited because...';
-  if (level === 'stretch') return 'Challenge the interpretation using precise counter-evidence or limitations.';
-  return 'Explain the limitations of the interpretation.';
-}
-function judgementPlaceholder(level: AdaptiveRendererSupport['difficultyLevel']) {
-  if (level === 'scaffolded') return 'Overall, the interpretation is convincing because...';
-  if (level === 'stretch') return 'Reach an independent judgement about the most convincing interpretation and explain why.';
-  return 'Overall, the most convincing interpretation is... because...';
-}
+function supportPlaceholder(level: AdaptiveRendererSupport['difficultyLevel']) { if (level === 'scaffolded') return 'This interpretation is supported by... This shows...'; if (level === 'stretch') return 'Use precise contextual knowledge to explain why this interpretation is convincing.'; return 'Use contextual knowledge to support the interpretation.'; }
+function challengePlaceholder(level: AdaptiveRendererSupport['difficultyLevel']) { if (level === 'scaffolded') return 'However, this interpretation is limited because...'; if (level === 'stretch') return 'Challenge the interpretation using precise counter-evidence or limitations.'; return 'Explain the limitations of the interpretation.'; }
+function judgementPlaceholder(level: AdaptiveRendererSupport['difficultyLevel']) { if (level === 'scaffolded') return 'Overall, the interpretation is convincing because...'; if (level === 'stretch') return 'Reach an independent judgement about the most convincing interpretation and explain why.'; return 'Overall, the most convincing interpretation is... because...'; }
 
 export default function AO3InterpretationActivity({ activityId, question, interpretations, nextHref, adaptiveSupport }: Props) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const assignmentId = searchParams.get('assignment');
-  const [support, setSupport] = useState<Record<number, string>>({});
-  const [challenge, setChallenge] = useState<Record<number, string>>({});
-  const [overallJudgement, setOverallJudgement] = useState('');
-  const [saveStatus, setSaveStatus] = useState<'idle'|'saving'|'saved'|'error'>('idle');
-  const [saveMessage, setSaveMessage] = useState('');
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const mountedRef = useRef(false);
+  const router = useRouter(); const searchParams = useSearchParams(); const assignmentId = searchParams.get('assignment');
+  const [support,setSupport]=useState<Record<number,string>>({}); const [challenge,setChallenge]=useState<Record<number,string>>({}); const [overallJudgement,setOverallJudgement]=useState(''); const [hydrated,setHydrated]=useState(!assignmentId);
+  const [saveStatus,setSaveStatus]=useState<'idle'|'saving'|'saved'|'error'>('idle'); const [saveMessage,setSaveMessage]=useState(''); const timerRef=useRef<ReturnType<typeof setTimeout>|null>(null);
+  const hasEvidence=Object.values(support).some((value)=>value.trim())||Object.values(challenge).some((value)=>value.trim())||overallJudgement.trim().length>0; const canComplete=interpretations.every((_,index)=>support[index]?.trim()&&challenge[index]?.trim())&&overallJudgement.trim().length>0;
 
-  const hasEvidence = Object.values(support).some((value) => value.trim()) || Object.values(challenge).some((value) => value.trim()) || overallJudgement.trim().length > 0;
-  const canComplete = interpretations.every((_, index) => support[index]?.trim() && challenge[index]?.trim()) && overallJudgement.trim().length > 0;
+  useEffect(()=>{if(!assignmentId)return;let cancelled=false;void loadAssignmentActivityProgress(assignmentId,'ao3_interpretation').then((progress)=>{if(cancelled||!progress)return;const position=progress.position??{};if(position.support&&typeof position.support==='object'&&!Array.isArray(position.support))setSupport(position.support as Record<number,string>);if(position.challenge&&typeof position.challenge==='object'&&!Array.isArray(position.challenge))setChallenge(position.challenge as Record<number,string>);if(typeof position.overallJudgement==='string')setOverallJudgement(position.overallJudgement);setSaveStatus('saved');setSaveMessage(progress.status==='complete'?'Complete — saved automatically.':'Saved progress restored.');}).catch(()=>undefined).finally(()=>{if(!cancelled)setHydrated(true);});return()=>{cancelled=true;};},[assignmentId]);
 
-  async function saveInterpretations(status: 'in_progress'|'complete') {
-    if (!hasEvidence) return false;
-    setSaveStatus('saving');
-    setSaveMessage(status === 'complete' ? 'Saving completed response...' : 'Saving...');
-    const evaluation = interpretations.map((interpretation, index) => `${interpretation.historian}\nSupport: ${support[index]?.trim() ?? ''}\nChallenge: ${challenge[index]?.trim() ?? ''}`).join('\n\n');
-    const writtenResponse = `${evaluation}\n\nOverall judgement: ${overallJudgement.trim()}`;
-
-    try {
-      if (assignmentId) {
-        await saveAssignmentActivityProgress({ assignmentId, activityType: 'ao3_interpretation', status, position: { question, support, challenge, overallJudgement, judgement: overallJudgement, evaluation, writtenResponse, adaptiveSupport } });
-      } else {
-        const response = await fetch('/api/student-responses/activity', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ activityId, responseType: 'ao3_interpretation', status, response: { support, challenge, overallJudgement, adaptiveSupport } }), keepalive: true });
-        const result = await response.json().catch(() => null);
-        if (!response.ok) throw new Error(result?.error ?? 'Interpretation response could not be saved.');
-      }
-      setSaveStatus('saved');
-      setSaveMessage(status === 'complete' ? 'Complete — saved automatically.' : 'Saved automatically.');
-      return true;
-    } catch (error) {
-      setSaveStatus('error');
-      setSaveMessage(error instanceof Error ? error.message : 'Interpretation response could not be saved.');
-      return false;
-    }
-  }
-
-  useEffect(() => {
-    if (!mountedRef.current) { mountedRef.current = true; return; }
-    if (!hasEvidence) return;
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => { void saveInterpretations(canComplete ? 'complete' : 'in_progress'); }, 700);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [support, challenge, overallJudgement, canComplete, hasEvidence]);
-
-  async function moveNext() {
-    if (!nextHref || !canComplete) return;
-    if (timerRef.current) clearTimeout(timerRef.current);
-    const saved = await saveInterpretations('complete');
-    if (saved) router.push(nextHref);
-  }
-
-  return <div className={styles.shell}>
-    <section className={styles.header}><h2>AO3 interpretations</h2><p>{question}</p>{adaptiveSupport?.supportStrategy && <p><strong>Guidance:</strong> {adaptiveSupport.supportStrategy}</p>}{adaptiveSupport?.successTarget && <p><strong>Success target:</strong> {adaptiveSupport.successTarget}</p>}</section>
-    {interpretations.map((interpretation,index)=><section key={`${interpretation.historian}-${index}`} className={styles.interpretationCard}><h3>{interpretation.historian}</h3><blockquote>{interpretation.argument}</blockquote><label><span>Evidence supporting this interpretation</span><textarea value={support[index] ?? ''} placeholder={supportPlaceholder(adaptiveSupport?.difficultyLevel)} onChange={(event)=>setSupport((previous)=>({...previous,[index]:event.target.value}))} /></label><label><span>Evidence challenging or limiting this interpretation</span><textarea value={challenge[index] ?? ''} placeholder={challengePlaceholder(adaptiveSupport?.difficultyLevel)} onChange={(event)=>setChallenge((previous)=>({...previous,[index]:event.target.value}))} /></label></section>)}
-    <section className={styles.finalJudgement}><label><span>Overall judgement</span><textarea value={overallJudgement} onChange={(event)=>setOverallJudgement(event.target.value)} placeholder={judgementPlaceholder(adaptiveSupport?.difficultyLevel)} /></label></section>
-    <section className={styles.footer}><p>{saveMessage || 'Your work saves automatically as you type.'}</p>{nextHref && <button type="button" className="button" disabled={!canComplete || saveStatus==='saving'} onClick={()=>void moveNext()}>{saveStatus==='saving' ? 'Saving...' : 'Next'}</button>}</section>
-  </div>;
+  async function saveInterpretations(status:'in_progress'|'complete'){if(!hasEvidence)return false;setSaveStatus('saving');setSaveMessage(status==='complete'?'Saving completed response...':'Saving...');const evaluation=interpretations.map((interpretation,index)=>`${interpretation.historian}\nSupport: ${support[index]?.trim()??''}\nChallenge: ${challenge[index]?.trim()??''}`).join('\n\n');const writtenResponse=`${evaluation}\n\nOverall judgement: ${overallJudgement.trim()}`;try{if(assignmentId){await saveAssignmentActivityProgress({assignmentId,activityType:'ao3_interpretation',status,position:{question,support,challenge,overallJudgement,judgement:overallJudgement,evaluation,writtenResponse,adaptiveSupport}});}else{const response=await fetch('/api/student-responses/activity',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({activityId,responseType:'ao3_interpretation',status,response:{support,challenge,overallJudgement,adaptiveSupport}}),keepalive:true});const result=await response.json().catch(()=>null);if(!response.ok)throw new Error(result?.error??'Interpretation response could not be saved.');}setSaveStatus('saved');setSaveMessage(status==='complete'?'Complete — saved automatically.':'Saved automatically.');return true;}catch(error){setSaveStatus('error');setSaveMessage(error instanceof Error?error.message:'Interpretation response could not be saved.');return false;}}
+  useEffect(()=>{if(!hydrated||!hasEvidence)return;if(timerRef.current)clearTimeout(timerRef.current);timerRef.current=setTimeout(()=>{void saveInterpretations(canComplete?'complete':'in_progress');},700);return()=>{if(timerRef.current)clearTimeout(timerRef.current);};/* eslint-disable-next-line react-hooks/exhaustive-deps */},[support,challenge,overallJudgement,canComplete,hasEvidence,hydrated]);
+  async function moveNext(){if(!nextHref||!canComplete)return;if(timerRef.current)clearTimeout(timerRef.current);const saved=await saveInterpretations('complete');if(saved)router.push(nextHref);}
+  return <div className={styles.shell}><section className={styles.header}><h2>AO3 interpretations</h2><p>{question}</p>{adaptiveSupport?.supportStrategy&&<p><strong>Guidance:</strong> {adaptiveSupport.supportStrategy}</p>}{adaptiveSupport?.successTarget&&<p><strong>Success target:</strong> {adaptiveSupport.successTarget}</p>}</section>{interpretations.map((interpretation,index)=><section key={`${interpretation.historian}-${index}`} className={styles.interpretationCard}><h3>{interpretation.historian}</h3><blockquote>{interpretation.argument}</blockquote><label><span>Evidence supporting this interpretation</span><textarea value={support[index]??''} placeholder={supportPlaceholder(adaptiveSupport?.difficultyLevel)} onChange={(event)=>setSupport((previous)=>({...previous,[index]:event.target.value}))} /></label><label><span>Evidence challenging or limiting this interpretation</span><textarea value={challenge[index]??''} placeholder={challengePlaceholder(adaptiveSupport?.difficultyLevel)} onChange={(event)=>setChallenge((previous)=>({...previous,[index]:event.target.value}))} /></label></section>)}<section className={styles.finalJudgement}><label><span>Overall judgement</span><textarea value={overallJudgement} onChange={(event)=>setOverallJudgement(event.target.value)} placeholder={judgementPlaceholder(adaptiveSupport?.difficultyLevel)} /></label></section><section className={styles.footer}><p>{saveMessage||'Your work saves automatically as you type.'}</p>{nextHref&&<button type="button" className="button" disabled={!canComplete||saveStatus==='saving'} onClick={()=>void moveNext()}>{saveStatus==='saving'?'Saving...':'Next'}</button>}</section></div>;
 }
