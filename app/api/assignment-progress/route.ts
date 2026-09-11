@@ -1,6 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
+export async function GET(request: NextRequest) {
+  const supabase = await createServerSupabaseClient();
+  if (!supabase) return NextResponse.json({ error: 'Supabase is not configured.' }, { status: 503 });
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'You must be signed in.' }, { status: 401 });
+
+  const assignmentId = request.nextUrl.searchParams.get('assignmentId');
+  const activityType = request.nextUrl.searchParams.get('activityType');
+  if (!assignmentId || !activityType) {
+    return NextResponse.json({ error: 'Assignment and activity are required.' }, { status: 400 });
+  }
+
+  const { data, error } = await supabase
+    .from('student_activity_progress')
+    .select('status,score,max_score,confidence,position,attempt_count,updated_at')
+    .eq('student_id', user.id)
+    .eq('assignment_id', assignmentId)
+    .eq('activity_type', activityType)
+    .maybeSingle();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  return NextResponse.json({ progress: data ?? null });
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createServerSupabaseClient();
   if (!supabase) return NextResponse.json({ error: 'Supabase is not configured.' }, { status: 503 });
