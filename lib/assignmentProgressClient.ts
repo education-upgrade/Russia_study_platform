@@ -11,18 +11,48 @@ type SaveAssignmentActivityProgressInput = {
   newAttempt?: boolean;
 };
 
-export async function saveAssignmentActivityProgress(input: SaveAssignmentActivityProgressInput) {
-  const response = await fetch('/api/assignment-progress', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-    keepalive: input.status === 'complete',
-  });
+const saveQueues = new Map<string, Promise<unknown>>();
 
-  const result = await response.json().catch(() => null);
-  if (!response.ok) {
-    throw new Error(result?.error ?? 'Assignment progress could not be saved.');
+function queueKey(input: SaveAssignmentActivityProgressInput) {
+  return `${input.assignmentId}:${input.activityType}`;
+}
+
+async function postProgress(input: SaveAssignmentActivityProgressInput) {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetch('/api/assignment-progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+        keepalive: true,
+      });
+
+      const result = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(result?.error ?? 'Assignment progress could not be saved.');
+      }
+
+      return result;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('Assignment progress could not be saved.');
+      if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 350));
+    }
   }
 
-  return result;
+  throw lastError ?? new Error('Assignment progress could not be saved.');
+}
+
+export function saveAssignmentActivityProgress(input: SaveAssignmentActivityProgressInput) {
+  const key = queueKey(input);
+  const previous = saveQueues.get(key) ?? Promise.resolve();
+  const next = previous.catch(() => undefined).then(() => postProgress(input));
+
+  saveQueues.set(key, next);
+  void next.finally(() => {
+    if (saveQueues.get(key) === next) saveQueues.delete(key);
+  });
+
+  return next;
 }
