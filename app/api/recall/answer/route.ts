@@ -9,6 +9,8 @@ type AnswerRequest = {
   answer?: unknown;
 };
 
+const REWARD_INTERVAL = 50;
+
 async function getStudent() {
   const supabase = await createServerSupabaseClient();
   if (!supabase) return { error: NextResponse.json({ error: 'Supabase is not configured.' }, { status: 503 }) } as const;
@@ -60,6 +62,7 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   let isCorrect = existing?.is_correct ?? gradeRecallAnswer(question, body.answer);
+  let insertedNew = false;
   const now = new Date().toISOString();
 
   if (!existing) {
@@ -83,6 +86,8 @@ export async function POST(request: Request) {
         .maybeSingle();
       if (!recovered) return NextResponse.json({ error: insertError.message }, { status: 500 });
       isCorrect = recovered.is_correct;
+    } else {
+      insertedNew = true;
     }
   }
 
@@ -136,6 +141,27 @@ export async function POST(request: Request) {
     .eq('student_id', user.id);
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
 
+  const { data: totals, error: totalsError } = await supabase
+    .from('student_recall_stats')
+    .select('total_correct, current_level')
+    .eq('student_id', user.id)
+    .maybeSingle();
+  if (totalsError) return NextResponse.json({ error: totalsError.message }, { status: 500 });
+
+  // Before the levels migration has recorded anything, fall back to immutable response totals.
+  let totalCorrect = totals?.total_correct;
+  let currentLevel = totals?.current_level;
+  if (totalCorrect === undefined || totalCorrect === null || currentLevel === undefined || currentLevel === null) {
+    const { data: allResponses, error: allResponsesError } = await supabase
+      .from('recall_responses')
+      .select('is_correct')
+      .eq('student_id', user.id);
+    if (allResponsesError) return NextResponse.json({ error: allResponsesError.message }, { status: 500 });
+    totalCorrect = (allResponses ?? []).filter((row) => row.is_correct).length;
+    currentLevel = Math.floor(totalCorrect / REWARD_INTERVAL) + 1;
+  }
+  const rewardUnlocked = insertedNew && isCorrect && totalCorrect > 0 && totalCorrect % REWARD_INTERVAL === 0;
+
   const answeredIds = new Set((sessionResponses ?? []).map((row) => row.question_id));
   const nextQuestionId = session.question_ids.find((id: string) => !answeredIds.has(id)) ?? null;
 
@@ -148,5 +174,8 @@ export async function POST(request: Request) {
     score,
     complete,
     nextQuestionId,
+    totalCorrect,
+    currentLevel,
+    rewardUnlocked,
   });
 }
