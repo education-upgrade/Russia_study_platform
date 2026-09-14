@@ -9,6 +9,7 @@ import styles from './StudentShell.module.css';
 const items = [
   { href: '/student/dashboard', label: 'Home', icon: '⌂' },
   { href: '/student/work', label: 'My work', icon: '✓' },
+  { href: '/student/recall', label: 'Recall', icon: '↻' },
   { href: '/student/join', label: 'My classes', icon: '▦' },
 ];
 

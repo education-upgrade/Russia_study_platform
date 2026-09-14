@@ -1,0 +1,1 @@
+Existing progress-data counts remain unchanged after the additive migration.
