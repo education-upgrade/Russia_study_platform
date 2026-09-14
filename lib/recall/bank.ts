@@ -1,5 +1,6 @@
 import { recallQuestions as coreRecallQuestions, recallTopics } from './questions';
 import { additionalRecallQuestions } from './questions-expanded';
+import { depthRecallQuestions } from './questions-depth';
 
 export type { RecallQuestion, RecallQuestionType, RecallTopic } from './questions';
 export { recallTopics };
@@ -9,6 +10,6 @@ const balancedQuestions = additionalRecallQuestions.map((question) => {
   return question;
 });
 
-export const recallQuestions = [...coreRecallQuestions, ...balancedQuestions];
+export const recallQuestions = [...coreRecallQuestions, ...balancedQuestions, ...depthRecallQuestions];
 export const recallQuestionById = new Map(recallQuestions.map((question) => [question.id, question]));
 export const recallTopicById = new Map(recallTopics.map((topic) => [topic.id, topic]));
