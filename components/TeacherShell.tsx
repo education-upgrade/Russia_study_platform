@@ -7,19 +7,21 @@ import { activeSubjectIdentity } from '@/subjects/activeIdentity';
 import styles from './TeacherShell.module.css';
 
 type TeacherShellProps = { children: ReactNode };
-type Section = 'home' | 'classes' | 'assignments' | 'progress';
+type Section = 'home' | 'classes' | 'assignments' | 'progress' | 'rewards';
 
 const navigation = [
   { id: 'home', label: 'Home', href: '/teacher/dashboard', icon: '⌂' },
   { id: 'classes', label: 'Classes', href: '/teacher/classes', icon: '▦' },
   { id: 'assignments', label: 'Assignments', href: '/teacher/assignments', icon: '✓' },
   { id: 'progress', label: 'Progress', href: '/teacher/progress', icon: '↗' },
+  { id: 'rewards', label: 'Levels & rewards', href: '/teacher/rewards', icon: '★' },
 ] as const;
 
 function sectionFor(pathname: string): Section {
   if (pathname.startsWith('/teacher/classes')) return 'classes';
   if (pathname.startsWith('/teacher/assignments') || pathname.startsWith('/teacher/set-study')) return 'assignments';
   if (pathname.startsWith('/teacher/progress') || pathname.startsWith('/teacher/analytics')) return 'progress';
+  if (pathname.startsWith('/teacher/rewards')) return 'rewards';
   return 'home';
 }
 
@@ -34,6 +36,7 @@ function topLevelMeta(section: Section) {
   if (section === 'classes') return { title: 'Classes', description: 'Who you teach, their assignments and class progress.' };
   if (section === 'assignments') return { title: 'Assignments', description: 'Manage active work, drafts and archived assignments.' };
   if (section === 'progress') return { title: 'Progress', description: 'See who needs attention, track completion and review patterns.' };
+  if (section === 'rewards') return { title: 'Levels & rewards', description: 'Review Russia Recall levels and see which student rewards are due.' };
   return { title: 'Teacher home', description: 'What needs your attention today.' };
 }
 
@@ -80,6 +83,7 @@ export default function TeacherShell({ children }: TeacherShellProps) {
         <Link href="/teacher/set-study" className={pathname.startsWith('/teacher/set-study') ? styles.mobileActive : styles.mobileSetWork} aria-current={pathname.startsWith('/teacher/set-study') ? 'page' : undefined}><span aria-hidden="true">＋</span><small>Set work</small></Link>
         <Link href="/teacher/assignments" className={section === 'assignments' && !pathname.startsWith('/teacher/set-study') ? styles.mobileActive : ''} aria-current={section === 'assignments' && !pathname.startsWith('/teacher/set-study') ? 'page' : undefined}><span aria-hidden="true">✓</span><small>Assignments</small></Link>
         <Link href="/teacher/progress" className={section === 'progress' ? styles.mobileActive : ''} aria-current={section === 'progress' ? 'page' : undefined}><span aria-hidden="true">↗</span><small>Progress</small></Link>
+        <Link href="/teacher/rewards" className={section === 'rewards' ? styles.mobileActive : ''} aria-current={section === 'rewards' ? 'page' : undefined}><span aria-hidden="true">★</span><small>Rewards</small></Link>
       </nav>
     </div>
   );
