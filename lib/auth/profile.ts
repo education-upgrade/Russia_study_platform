@@ -36,7 +36,7 @@ export async function getProfile(
 ): Promise<UserProfile | null> {
   let lastError: { message?: string } | null = null;
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
     const { data, error } = await supabase
       .from('profiles')
       .select('id, full_name, role, status, created_at, updated_at')
@@ -50,7 +50,7 @@ export async function getProfile(
     }
 
     lastError = error;
-    if (attempt < 2) await delay(150 * (attempt + 1));
+    if (attempt === 0) await delay(100);
   }
 
   console.error('Unable to load authenticated profile', lastError?.message ?? 'Unknown profile error');
