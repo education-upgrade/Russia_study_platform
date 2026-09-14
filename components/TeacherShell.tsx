@@ -49,7 +49,7 @@ export default function TeacherShell({ children }: TeacherShellProps) {
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
-        <Link className={styles.brand} href="/teacher/dashboard" aria-label={`${activeSubjectIdentity.platformName} teacher home`}>
+        <Link prefetch={false} className={styles.brand} href="/teacher/dashboard" aria-label={`${activeSubjectIdentity.platformName} teacher home`}>
           <span className={styles.brandMark}>{activeSubjectIdentity.brandMark}</span>
           <span><strong>{activeSubjectIdentity.platformName}</strong><small>Teacher workspace</small></span>
         </Link>
@@ -57,14 +57,14 @@ export default function TeacherShell({ children }: TeacherShellProps) {
         <nav className={styles.navigation} aria-label="Teacher navigation">
           {navigation.map((item) => {
             const active = item.id === section;
-            return <Link className={`${styles.navItem} ${active ? styles.active : ''}`} href={item.href} key={item.id} aria-current={active ? 'page' : undefined}>
+            return <Link prefetch={false} className={`${styles.navItem} ${active ? styles.active : ''}`} href={item.href} key={item.id} aria-current={active ? 'page' : undefined}>
               <span className={styles.navIcon} aria-hidden="true">{item.icon}</span><span>{item.label}</span>
             </Link>;
           })}
         </nav>
 
         <div className={styles.sidebarActions}>
-          <Link className={styles.primaryAction} href="/teacher/set-study">+ Set work</Link>
+          <Link prefetch={false} className={styles.primaryAction} href="/teacher/set-study">+ Set work</Link>
           <form action="/auth/signout" method="post"><button className={styles.signOut} type="submit">Sign out</button></form>
         </div>
       </aside>
@@ -78,12 +78,12 @@ export default function TeacherShell({ children }: TeacherShellProps) {
       </div>
 
       <nav className={styles.mobileNavigation} aria-label="Teacher mobile navigation">
-        <Link href="/teacher/dashboard" className={section === 'home' ? styles.mobileActive : ''} aria-current={section === 'home' ? 'page' : undefined}><span aria-hidden="true">⌂</span><small>Home</small></Link>
-        <Link href="/teacher/classes" className={section === 'classes' ? styles.mobileActive : ''} aria-current={section === 'classes' ? 'page' : undefined}><span aria-hidden="true">▦</span><small>Classes</small></Link>
-        <Link href="/teacher/set-study" className={pathname.startsWith('/teacher/set-study') ? styles.mobileActive : styles.mobileSetWork} aria-current={pathname.startsWith('/teacher/set-study') ? 'page' : undefined}><span aria-hidden="true">＋</span><small>Set work</small></Link>
-        <Link href="/teacher/assignments" className={section === 'assignments' && !pathname.startsWith('/teacher/set-study') ? styles.mobileActive : ''} aria-current={section === 'assignments' && !pathname.startsWith('/teacher/set-study') ? 'page' : undefined}><span aria-hidden="true">✓</span><small>Assignments</small></Link>
-        <Link href="/teacher/progress" className={section === 'progress' ? styles.mobileActive : ''} aria-current={section === 'progress' ? 'page' : undefined}><span aria-hidden="true">↗</span><small>Progress</small></Link>
-        <Link href="/teacher/rewards" className={section === 'rewards' ? styles.mobileActive : ''} aria-current={section === 'rewards' ? 'page' : undefined}><span aria-hidden="true">★</span><small>Rewards</small></Link>
+        <Link prefetch={false} href="/teacher/dashboard" className={section === 'home' ? styles.mobileActive : ''} aria-current={section === 'home' ? 'page' : undefined}><span aria-hidden="true">⌂</span><small>Home</small></Link>
+        <Link prefetch={false} href="/teacher/classes" className={section === 'classes' ? styles.mobileActive : ''} aria-current={section === 'classes' ? 'page' : undefined}><span aria-hidden="true">▦</span><small>Classes</small></Link>
+        <Link prefetch={false} href="/teacher/set-study" className={pathname.startsWith('/teacher/set-study') ? styles.mobileActive : styles.mobileSetWork} aria-current={pathname.startsWith('/teacher/set-study') ? 'page' : undefined}><span aria-hidden="true">＋</span><small>Set work</small></Link>
+        <Link prefetch={false} href="/teacher/assignments" className={section === 'assignments' && !pathname.startsWith('/teacher/set-study') ? styles.mobileActive : ''} aria-current={section === 'assignments' && !pathname.startsWith('/teacher/set-study') ? 'page' : undefined}><span aria-hidden="true">✓</span><small>Assignments</small></Link>
+        <Link prefetch={false} href="/teacher/progress" className={section === 'progress' ? styles.mobileActive : ''} aria-current={section === 'progress' ? 'page' : undefined}><span aria-hidden="true">↗</span><small>Progress</small></Link>
+        <Link prefetch={false} href="/teacher/rewards" className={section === 'rewards' ? styles.mobileActive : ''} aria-current={section === 'rewards' ? 'page' : undefined}><span aria-hidden="true">★</span><small>Rewards</small></Link>
       </nav>
     </div>
   );
