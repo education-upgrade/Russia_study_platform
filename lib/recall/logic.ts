@@ -20,13 +20,22 @@ export type PublicRecallQuestion = {
   options?: string[];
 };
 
-export function publicQuestion(question: RecallQuestion): PublicRecallQuestion {
+export function publicQuestion(question: RecallQuestion, desiredCorrectPosition = 0): PublicRecallQuestion {
+  let options = question.options;
+  if (question.type === 'mcq' && options && typeof question.correctOption === 'number') {
+    const target = Math.max(0, Math.min(options.length - 1, desiredCorrectPosition));
+    const reordered = [...options];
+    const currentCorrect = question.correctOption;
+    [reordered[currentCorrect], reordered[target]] = [reordered[target], reordered[currentCorrect]];
+    options = reordered;
+  }
+
   return {
     id: question.id,
     topicId: question.topicId,
     type: question.type,
     prompt: question.prompt,
-    options: question.options,
+    options,
   };
 }
 
@@ -80,8 +89,8 @@ function adjacentTranspositionAway(a: string, b: string) {
 
 export function gradeRecallAnswer(question: RecallQuestion, rawAnswer: unknown) {
   if (question.type === 'mcq') {
-    const selected = typeof rawAnswer === 'number' ? rawAnswer : Number(rawAnswer);
-    return Number.isInteger(selected) && selected === question.correctOption;
+    if (typeof rawAnswer !== 'string') return false;
+    return normalize(rawAnswer) === normalize(question.answerLabel);
   }
 
   if (typeof rawAnswer !== 'string') return false;
@@ -112,7 +121,6 @@ function priority(question: RecallQuestion, stat?: RecallQuestionStat) {
   score += Math.max(0, 35 - accuracy * 35);
   score -= Math.min(45, stat.consecutive_correct * 15);
   score += Math.min(30, daysSince(stat.last_seen_at));
-  // Small jitter prevents identical sessions while never outweighing mastery signals.
   score += Math.random() * 5;
   return score + (question.type === 'short_answer' ? 2 : 0);
 }
@@ -133,13 +141,12 @@ export function selectRecallQuestions({
   let candidates = recallQuestions.filter((question) => !topicId || question.topicId === topicId);
 
   if (mode === 'weak') {
-    const weak = candidates.filter((question) => {
+    candidates = candidates.filter((question) => {
       const stat = byQuestion.get(question.id);
       if (!stat) return false;
       const accuracy = stat.attempts ? stat.correct_count / stat.attempts : 0;
       return stat.last_result === false || stat.consecutive_correct < 2 || accuracy < 0.75;
     });
-    if (weak.length > 0) candidates = weak;
   }
 
   if (mode === 'recommended') {
@@ -154,19 +161,21 @@ export function selectRecallQuestions({
   const selected: RecallQuestion[] = [];
   const topicCounts = new Map<string, number>();
 
-  // For whole-course modes, avoid one topic crowding out the rest where possible.
   for (const question of ranked) {
     if (selected.length >= safeCount) break;
     if (!topicId && (mode === 'recommended' || mode === 'all')) {
       const used = topicCounts.get(question.topicId) ?? 0;
       const softCap = Math.max(2, Math.ceil(safeCount / 4));
-      if (used >= softCap && ranked.some((other) => (topicCounts.get(other.topicId) ?? 0) < softCap && !selected.includes(other))) continue;
+      const hasUnderCapAlternative = ranked.some((other) =>
+        !selected.some((item) => item.id === other.id)
+        && (topicCounts.get(other.topicId) ?? 0) < softCap,
+      );
+      if (used >= softCap && hasUnderCapAlternative) continue;
     }
     selected.push(question);
     topicCounts.set(question.topicId, (topicCounts.get(question.topicId) ?? 0) + 1);
   }
 
-  // Back-fill if the diversity cap left the session short.
   if (selected.length < safeCount) {
     for (const question of ranked) {
       if (selected.length >= safeCount) break;
