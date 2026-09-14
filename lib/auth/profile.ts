@@ -15,29 +15,46 @@ export type UserProfile = {
   updated_at: string;
 };
 
+export class AuthServiceUnavailableError extends Error {
+  constructor(message = 'Authentication service temporarily unavailable') {
+    super(message);
+    this.name = 'AuthServiceUnavailableError';
+  }
+}
+
 export function isAppRole(value: unknown): value is AppRole {
   return typeof value === 'string' && appRoles.includes(value as AppRole);
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function getProfile(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<UserProfile | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, full_name, role, status, created_at, updated_at')
-    .eq('id', userId)
-    .maybeSingle();
+  let lastError: { message?: string } | null = null;
 
-  if (error) {
-    console.error('Unable to load authenticated profile', error.message);
-    return null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, role, status, created_at, updated_at')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!error) {
+      if (!data || !isAppRole(data.role)) return null;
+      if (data.status !== 'active' && data.status !== 'suspended') return null;
+      return data as UserProfile;
+    }
+
+    lastError = error;
+    if (attempt < 2) await delay(150 * (attempt + 1));
   }
 
-  if (!data || !isAppRole(data.role)) return null;
-  if (data.status !== 'active' && data.status !== 'suspended') return null;
-
-  return data as UserProfile;
+  console.error('Unable to load authenticated profile', lastError?.message ?? 'Unknown profile error');
+  throw new AuthServiceUnavailableError(lastError?.message);
 }
 
 export function roleLabel(role: AppRole) {

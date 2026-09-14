@@ -1,15 +1,39 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getProfile, roleLabel } from '@/lib/auth/profile';
+import { AuthServiceUnavailableError, getProfile, roleLabel } from '@/lib/auth/profile';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export default async function AccountPage() {
   const supabase = await createServerSupabaseClient();
-  const { data: { user } } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
 
+  let user = null;
+  let authError: { message?: string } | null = null;
+
+  if (supabase) {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const result = await supabase.auth.getUser();
+      user = result.data.user;
+      authError = result.error;
+      if (user || !authError) break;
+      if (attempt < 2) await delay(150 * (attempt + 1));
+    }
+  }
+
+  if (supabase && authError && !user) redirect('/service-unavailable?source=auth');
   if (supabase && !user) redirect('/login?next=/account');
 
-  const profile = supabase && user ? await getProfile(supabase, user.id) : null;
+  let profile = null;
+  try {
+    profile = supabase && user ? await getProfile(supabase, user.id) : null;
+  } catch (error) {
+    if (error instanceof AuthServiceUnavailableError) redirect('/service-unavailable?source=profile');
+    throw error;
+  }
+
   const displayName = profile?.full_name || user?.user_metadata?.full_name || 'Your account';
 
   return (

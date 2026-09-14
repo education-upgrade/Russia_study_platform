@@ -69,6 +69,10 @@ export async function updateSupabaseSession(request: NextRequest) {
     request.nextUrl.pathname === prefix || request.nextUrl.pathname.startsWith(`${prefix}/`),
   );
 
+  // A transient gateway/auth lookup error is not evidence that the user is logged out.
+  // Let the server route perform retries and show the temporary-service page if needed.
+  if (authError && !staleSession) return response;
+
   if (!user && isProtected) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = '/login';
