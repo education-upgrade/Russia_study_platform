@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { AuthServiceUnavailableError, getProfile, type AppRole, type UserProfile } from '@/lib/auth/profile';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
@@ -25,14 +26,13 @@ function isStaleSessionError(error: { code?: string; message?: string } | null) 
     code.includes('refresh_token') ||
     code === 'session_not_found' ||
     message.includes('refresh token') ||
-    message.includes('session not found')
+    message.includes('session not found') ||
+    message.includes('auth session missing')
   );
 }
 
-export async function getAuthenticatedProfile(): Promise<AuthenticatedProfile | null> {
+async function loadAuthenticatedProfile(): Promise<AuthenticatedProfile | null> {
   const supabase = await createServerSupabaseClient();
-
-  // Preserve the existing local/demo behaviour when Supabase is not configured.
   if (!supabase) return null;
 
   let user = null;
@@ -72,6 +72,10 @@ export async function getAuthenticatedProfile(): Promise<AuthenticatedProfile | 
     throw error;
   }
 }
+
+// React request memoisation means nested layouts/pages share one verified auth/profile lookup
+// during the same server render instead of independently hitting Supabase.
+export const getAuthenticatedProfile = cache(loadAuthenticatedProfile);
 
 export async function requireRoles(allowedRoles: readonly AppRole[]) {
   const authenticated = await getAuthenticatedProfile();
