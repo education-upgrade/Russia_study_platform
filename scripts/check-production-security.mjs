@@ -57,7 +57,20 @@ if (!fs.existsSync(path.join(root, migration))) {
 const loginForm = 'app/login/LoginForm.tsx';
 requireText(loginForm, 'safeLocalPath', 'Login redirects must be sanitised to a local path.');
 requireText(loginForm, 'if (data.session)', 'Student signup must handle confirmation-off sessions without asking for email confirmation.');
+requireText(loginForm, 'href="/privacy"', 'Login and signup must provide a visible privacy-notice link.');
+forbidText(loginForm, 'SUPABASE_SERVICE_ROLE_KEY', 'Client authentication code must never reference the Supabase service-role key.');
 forbidText(loginForm, 'body: JSON.stringify({ email, password, fullName, staffCode, callbackUrl })', 'Staff signup must not trust a client-supplied callback URL.');
+
+const browserSupabase = 'lib/supabase/browser.ts';
+forbidText(browserSupabase, 'SUPABASE_SERVICE_ROLE_KEY', 'Browser Supabase client must never expose the service-role key.');
+
+const privacyPage = 'app/privacy/page.tsx';
+if (!fs.existsSync(path.join(root, privacyPage))) {
+  failures.push('Public privacy notice page is missing.');
+} else {
+  requireText(privacyPage, 'controlled educational pilot', 'Privacy notice must explain the controlled educational pilot.');
+  requireText(privacyPage, 'Do not enter safeguarding information', 'Privacy notice must warn against entering sensitive safeguarding/medical data.');
+}
 
 const staffSignup = 'app/api/auth/staff-signup/route.ts';
 requireText(staffSignup, 'consume_staff_signup_rate_limit', 'Staff signup must remain rate limited.');
