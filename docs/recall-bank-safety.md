@@ -1,0 +1,1 @@
+No database schema or saved-progress migration is required for this bank expansion. Existing question IDs are preserved. New questions only add new possible `question_id` values to future Recall sessions and responses.
