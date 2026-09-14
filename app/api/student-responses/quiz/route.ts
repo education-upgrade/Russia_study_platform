@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getLegacySelfStudyAccess } from '@/lib/legacySelfStudyServer';
 
-const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
 const DEMO_ASSIGNMENT_ID = '44444444-4444-4444-4444-444444444444';
 
 type QuizSaveRequest = {
@@ -18,68 +17,23 @@ export async function POST(request: Request) {
   const access = await getLegacySelfStudyAccess();
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   const supabase = access.client;
-
   const body = (await request.json()) as QuizSaveRequest;
-
-  if (!body.activityId) {
-    return NextResponse.json({ error: 'Missing activityId.' }, { status: 400 });
-  }
+  if (!body.activityId) return NextResponse.json({ error: 'Missing activityId.' }, { status: 400 });
 
   const responseStatus = body.status === 'complete' ? 'complete' : 'in_progress';
   const now = new Date().toISOString();
-
-  const responsePayload = {
-    answers: body.answers,
-    score: body.score,
-    maxScore: body.maxScore,
-    percentage: body.percentage,
-    incorrectQuestionIds: body.incorrectQuestionIds,
-    status: responseStatus,
-  };
-
-  const { data: existing } = await supabase
-    .from('student_responses')
-    .select('id')
-    .eq('student_id', DEMO_STUDENT_ID)
-    .eq('assignment_id', DEMO_ASSIGNMENT_ID)
-    .eq('activity_id', body.activityId)
-    .maybeSingle();
-
-  const rowPayload = {
-    response_type: 'quiz',
-    response_json: responsePayload,
-    score: body.score,
-    status: responseStatus,
-    last_saved_at: now,
-    submitted_at: responseStatus === 'complete' ? now : null,
-  };
+  const responsePayload = { answers: body.answers, score: body.score, maxScore: body.maxScore, percentage: body.percentage, incorrectQuestionIds: body.incorrectQuestionIds, status: responseStatus };
+  const { data: existing } = await supabase.from('student_responses').select('id')
+    .eq('student_id', access.legacyUserId).eq('assignment_id', DEMO_ASSIGNMENT_ID).eq('activity_id', body.activityId).maybeSingle();
+  const rowPayload = { response_type: 'quiz', response_json: responsePayload, score: body.score, status: responseStatus, last_saved_at: now, submitted_at: responseStatus === 'complete' ? now : null };
 
   if (existing?.id) {
-    const { error } = await supabase
-      .from('student_responses')
-      .update(rowPayload)
-      .eq('id', existing.id);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
+    const { error } = await supabase.from('student_responses').update(rowPayload).eq('id', existing.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ status: 'updated', savedAt: now, responseStatus });
   }
 
-  const { error } = await supabase
-    .from('student_responses')
-    .insert({
-      student_id: DEMO_STUDENT_ID,
-      assignment_id: DEMO_ASSIGNMENT_ID,
-      activity_id: body.activityId,
-      started_at: now,
-      ...rowPayload,
-    });
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
+  const { error } = await supabase.from('student_responses').insert({ student_id: access.legacyUserId, assignment_id: DEMO_ASSIGNMENT_ID, activity_id: body.activityId, started_at: now, ...rowPayload });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ status: 'created', savedAt: now, responseStatus });
 }
