@@ -39,6 +39,7 @@ export default async function AccountPage() {
         <div className="button-row">
           <Link className="button" href="/student">Open student area</Link>
           <Link className="button secondary" href="/teacher/dashboard">Open teacher area</Link>
+          <Link className="button ghost" href="/privacy">Privacy & data protection</Link>
           {user && (
             <form action="/auth/signout" method="post">
               <button className="button ghost" type="submit">Sign out</button>
