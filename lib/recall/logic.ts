@@ -23,7 +23,7 @@ export type PublicRecallQuestion = {
 export function publicQuestion(question: RecallQuestion, desiredCorrectPosition = 0): PublicRecallQuestion {
   let options = question.options;
   if (question.type === 'mcq' && options && typeof question.correctOption === 'number') {
-    const target = Math.max(0, Math.min(options.length - 1, desiredCorrectPosition));
+    const target = ((desiredCorrectPosition % options.length) + options.length) % options.length;
     const reordered = [...options];
     const currentCorrect = question.correctOption;
     [reordered[currentCorrect], reordered[target]] = [reordered[target], reordered[currentCorrect]];
@@ -100,8 +100,6 @@ export function gradeRecallAnswer(question: RecallQuestion, rawAnswer: unknown) 
   return (question.acceptedAnswers ?? []).some((accepted) => {
     const target = normalize(accepted);
     if (candidate === target) return true;
-    // Mirror the GCSE app's forgiving short-answer principle without accepting
-    // very short guesses: allow one typo/transposition for answers of 5+ characters.
     if (target.length < 5 || candidate.length < 5) return false;
     return oneEditAway(candidate, target) || adjacentTranspositionAway(candidate, target);
   });
