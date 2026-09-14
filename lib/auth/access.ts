@@ -18,6 +18,17 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function isStaleSessionError(error: { code?: string; message?: string } | null) {
+  const code = error?.code?.toLowerCase() ?? '';
+  const message = error?.message?.toLowerCase() ?? '';
+  return (
+    code.includes('refresh_token') ||
+    code === 'session_not_found' ||
+    message.includes('refresh token') ||
+    message.includes('session not found')
+  );
+}
+
 export async function getAuthenticatedProfile(): Promise<AuthenticatedProfile | null> {
   const supabase = await createServerSupabaseClient();
 
@@ -25,17 +36,19 @@ export async function getAuthenticatedProfile(): Promise<AuthenticatedProfile | 
   if (!supabase) return null;
 
   let user = null;
-  let authError: { message?: string } | null = null;
+  let authError: { code?: string; message?: string } | null = null;
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
     const result = await supabase.auth.getUser();
     user = result.data.user;
     authError = result.error;
     if (user || !authError) break;
-    if (attempt < 2) await delay(150 * (attempt + 1));
+    if (isStaleSessionError(authError)) break;
+    if (attempt === 0) await delay(100);
   }
 
   if (authError && !user) {
+    if (isStaleSessionError(authError)) redirect('/login');
     console.error('Unable to validate authenticated session', authError.message);
     redirect('/service-unavailable?source=auth');
   }
