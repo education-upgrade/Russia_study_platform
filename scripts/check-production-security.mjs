@@ -91,9 +91,17 @@ requireText(assignmentForm, "useState(initialTopic?.pathwaySlug ?? '')", 'Generi
 requireText(assignmentForm, 'disabled={!canConfigure}', 'Assignment configuration must stay locked until class and topic are chosen.');
 forbidText(assignmentForm, '?? classOptions[0]', 'Assignment builder must not restore a silent first-class fallback.');
 
-const proxy = 'lib/supabase/proxy.ts';
-requireText(proxy, 'clearSupabaseAuthCookies', 'Stale Supabase sessions must clear invalid auth cookies.');
-requireText(proxy, 'isStaleSessionError', 'Stale-session handling must remain limited to auth-session errors.');
+const authAccess = 'lib/auth/access.ts';
+const clearSessionRoute = 'app/auth/clear-session/route.ts';
+requireText(authAccess, 'isStaleSessionError', 'Stale-session handling must remain limited to auth-session errors.');
+requireText(authAccess, "redirect('/auth/clear-session')", 'Stale Supabase sessions must route through cookie cleanup.');
+if (!fs.existsSync(path.join(root, clearSessionRoute))) {
+  failures.push('Stale-session cookie cleanup route is missing.');
+} else {
+  requireText(clearSessionRoute, "cookie.name.startsWith('sb-')", 'Stale-session cleanup must only target Supabase cookies.');
+  requireText(clearSessionRoute, "cookie.name.includes('auth-token')", 'Stale-session cleanup must only target Supabase auth cookies.');
+  requireText(clearSessionRoute, 'maxAge: 0', 'Stale Supabase auth cookies must be expired during cleanup.');
+}
 
 const schoolTime = 'lib/dateTime.ts';
 requireText(schoolTime, "SCHOOL_TIME_ZONE = 'Europe/London'", 'School-facing dates must remain pinned to Europe/London.');
