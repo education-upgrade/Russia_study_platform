@@ -100,10 +100,14 @@ for (const marker of ['DEMO_STUDENT_ID', 'guided_study_assignments']) {
   assertNotContains(activityRuntimePath, marker, `Modular activity runtime restored legacy assignment state: ${marker}.`);
 }
 
+const joinPage = 'app/student/join/page.tsx';
+assertContains(joinPage, "rpc('join_class_by_code'", 'Student class joining must use the authenticated join RPC.');
+assertContains(joinPage, "rpc('sync_my_assignment_recipients')", 'Joining a class must repair recipient links for assignments published before the student joined.');
+
 for (const file of ['app/student/dashboard/page.tsx', 'app/student/work/page.tsx']) {
   const source = read(file);
-  if (!source.includes("rpc('sync_my_assignment_recipients')")) {
-    fail(`${file} must repair missing published assignment recipient links before loading work.`);
+  if (source.includes("rpc('sync_my_assignment_recipients')")) {
+    fail(`${file} must not block normal page rendering on recipient repair.`);
   }
   if (!source.includes('?assignment=${assignment.id}')) {
     fail(`${file} must launch each classroom assignment with its exact assignment ID.`);
