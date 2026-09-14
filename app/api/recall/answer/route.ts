@@ -1,0 +1,152 @@
+import { NextResponse } from 'next/server';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { gradeRecallAnswer } from '@/lib/recall/logic';
+import { recallQuestionById } from '@/lib/recall/questions';
+
+type AnswerRequest = {
+  sessionId?: string;
+  questionId?: string;
+  answer?: unknown;
+};
+
+async function getStudent() {
+  const supabase = await createServerSupabaseClient();
+  if (!supabase) return { error: NextResponse.json({ error: 'Supabase is not configured.' }, { status: 503 }) } as const;
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) return { error: NextResponse.json({ error: 'Not signed in.' }, { status: 401 }) } as const;
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  if (!profile || profile.role !== 'student') return { error: NextResponse.json({ error: 'Student access is required.' }, { status: 403 }) } as const;
+  return { supabase, user } as const;
+}
+
+function consecutiveCorrect(resultsNewestFirst: boolean[]) {
+  let count = 0;
+  for (const result of resultsNewestFirst) {
+    if (!result) break;
+    count += 1;
+  }
+  return count;
+}
+
+export async function POST(request: Request) {
+  const access = await getStudent();
+  if ('error' in access) return access.error;
+  const { supabase, user } = access;
+  const body = (await request.json().catch(() => ({}))) as AnswerRequest;
+
+  if (!body.sessionId || !body.questionId) {
+    return NextResponse.json({ error: 'Missing session or question.' }, { status: 400 });
+  }
+
+  const question = recallQuestionById.get(body.questionId);
+  if (!question) return NextResponse.json({ error: 'Unknown recall question.' }, { status: 400 });
+
+  const { data: session, error: sessionError } = await supabase
+    .from('recall_sessions')
+    .select('id, student_id, question_ids, question_count, status')
+    .eq('id', body.sessionId)
+    .eq('student_id', user.id)
+    .single();
+
+  if (sessionError || !session) return NextResponse.json({ error: 'Recall session was not found.' }, { status: 404 });
+  if (!session.question_ids.includes(question.id)) return NextResponse.json({ error: 'This question is not part of the session.' }, { status: 400 });
+
+  const { data: existing } = await supabase
+    .from('recall_responses')
+    .select('is_correct')
+    .eq('session_id', session.id)
+    .eq('student_id', user.id)
+    .eq('question_id', question.id)
+    .maybeSingle();
+
+  let isCorrect = existing?.is_correct ?? gradeRecallAnswer(question, body.answer);
+  const now = new Date().toISOString();
+
+  if (!existing) {
+    const { error: insertError } = await supabase.from('recall_responses').insert({
+      session_id: session.id,
+      student_id: user.id,
+      question_id: question.id,
+      topic_id: question.topicId,
+      response_json: { answer: body.answer ?? null },
+      is_correct: isCorrect,
+      answered_at: now,
+    });
+    if (insertError) {
+      // A duplicate caused by a double tap is safe: recover the saved result rather than creating another attempt.
+      const { data: recovered } = await supabase
+        .from('recall_responses')
+        .select('is_correct')
+        .eq('session_id', session.id)
+        .eq('student_id', user.id)
+        .eq('question_id', question.id)
+        .maybeSingle();
+      if (!recovered) return NextResponse.json({ error: insertError.message }, { status: 500 });
+      isCorrect = recovered.is_correct;
+    }
+  }
+
+  // Rebuild the per-question statistic from immutable saved responses. This makes retries idempotent.
+  const { data: questionResponses, error: questionResponseError } = await supabase
+    .from('recall_responses')
+    .select('is_correct, answered_at')
+    .eq('student_id', user.id)
+    .eq('question_id', question.id)
+    .order('answered_at', { ascending: false });
+  if (questionResponseError) return NextResponse.json({ error: questionResponseError.message }, { status: 500 });
+
+  const attempts = questionResponses?.length ?? 0;
+  const correctCount = (questionResponses ?? []).filter((row) => row.is_correct).length;
+  const streak = consecutiveCorrect((questionResponses ?? []).map((row) => row.is_correct));
+  const lastSeenAt = questionResponses?.[0]?.answered_at ?? now;
+  const { error: statError } = await supabase.from('student_recall_question_stats').upsert({
+    student_id: user.id,
+    question_id: question.id,
+    topic_id: question.topicId,
+    attempts,
+    correct_count: correctCount,
+    consecutive_correct: streak,
+    last_result: questionResponses?.[0]?.is_correct ?? isCorrect,
+    last_seen_at: lastSeenAt,
+    updated_at: now,
+  }, { onConflict: 'student_id,question_id' });
+  if (statError) return NextResponse.json({ error: statError.message }, { status: 500 });
+
+  // Recalculate session totals from saved rows rather than incrementing counters client-side.
+  const { data: sessionResponses, error: sessionResponseError } = await supabase
+    .from('recall_responses')
+    .select('question_id, is_correct')
+    .eq('student_id', user.id)
+    .eq('session_id', session.id);
+  if (sessionResponseError) return NextResponse.json({ error: sessionResponseError.message }, { status: 500 });
+
+  const answeredCount = sessionResponses?.length ?? 0;
+  const score = (sessionResponses ?? []).filter((row) => row.is_correct).length;
+  const complete = answeredCount >= session.question_count;
+  const { error: updateError } = await supabase
+    .from('recall_sessions')
+    .update({
+      answered_count: answeredCount,
+      score,
+      status: complete ? 'complete' : 'in_progress',
+      last_activity_at: now,
+      completed_at: complete ? now : null,
+    })
+    .eq('id', session.id)
+    .eq('student_id', user.id);
+  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
+
+  const answeredIds = new Set((sessionResponses ?? []).map((row) => row.question_id));
+  const nextQuestionId = session.question_ids.find((id: string) => !answeredIds.has(id)) ?? null;
+
+  return NextResponse.json({
+    saved: true,
+    isCorrect,
+    correctAnswer: question.answerLabel,
+    feedback: question.feedback,
+    answeredCount,
+    score,
+    complete,
+    nextQuestionId,
+  });
+}
