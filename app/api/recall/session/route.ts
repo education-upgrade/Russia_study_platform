@@ -1,0 +1,154 @@
+import { NextResponse } from 'next/server';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { publicQuestion, selectRecallQuestions, type RecallMode, type RecallQuestionStat } from '@/lib/recall/logic';
+import { recallQuestionById, recallTopicById } from '@/lib/recall/questions';
+
+async function getStudent() {
+  const supabase = await createServerSupabaseClient();
+  if (!supabase) return { error: NextResponse.json({ error: 'Supabase is not configured.' }, { status: 503 }) } as const;
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) return { error: NextResponse.json({ error: 'Not signed in.' }, { status: 401 }) } as const;
+  const { data: profile, error: profileError } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  if (profileError || !profile || profile.role !== 'student') return { error: NextResponse.json({ error: 'Student access is required.' }, { status: 403 }) } as const;
+  return { supabase, user } as const;
+}
+
+function serializeSession(session: {
+  id: string;
+  mode: string;
+  topic_id: string | null;
+  question_ids: string[];
+  question_count: number;
+  answered_count: number;
+  score: number;
+  status: string;
+  started_at: string;
+  last_activity_at: string;
+  completed_at: string | null;
+}, answeredQuestionIds: string[] = []) {
+  const answered = new Set(answeredQuestionIds);
+  const questions = session.question_ids
+    .map((id) => recallQuestionById.get(id))
+    .filter((question): question is NonNullable<typeof question> => Boolean(question))
+    .map(publicQuestion);
+  return {
+    id: session.id,
+    mode: session.mode,
+    topicId: session.topic_id,
+    topicTitle: session.topic_id ? recallTopicById.get(session.topic_id)?.title ?? null : null,
+    questionCount: session.question_count,
+    answeredCount: session.answered_count,
+    score: session.score,
+    status: session.status,
+    startedAt: session.started_at,
+    lastActivityAt: session.last_activity_at,
+    completedAt: session.completed_at,
+    questions,
+    answeredQuestionIds: [...answered],
+    nextQuestionId: session.question_ids.find((id) => !answered.has(id)) ?? null,
+  };
+}
+
+export async function GET() {
+  const access = await getStudent();
+  if ('error' in access) return access.error;
+  const { supabase, user } = access;
+
+  const { data: session, error } = await supabase
+    .from('recall_sessions')
+    .select('id, mode, topic_id, question_ids, question_count, answered_count, score, status, started_at, last_activity_at, completed_at')
+    .eq('student_id', user.id)
+    .eq('status', 'in_progress')
+    .order('last_activity_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!session) return NextResponse.json({ session: null });
+
+  const { data: responses, error: responseError } = await supabase
+    .from('recall_responses')
+    .select('question_id')
+    .eq('student_id', user.id)
+    .eq('session_id', session.id);
+
+  if (responseError) return NextResponse.json({ error: responseError.message }, { status: 500 });
+  return NextResponse.json({ session: serializeSession(session, (responses ?? []).map((row) => row.question_id)) });
+}
+
+type StartRequest = {
+  mode?: RecallMode;
+  topicId?: string | null;
+  count?: number;
+  forceNew?: boolean;
+};
+
+export async function POST(request: Request) {
+  const access = await getStudent();
+  if ('error' in access) return access.error;
+  const { supabase, user } = access;
+  const body = (await request.json().catch(() => ({}))) as StartRequest;
+  const mode: RecallMode = body.mode && ['recommended', 'weak', 'topic', 'all'].includes(body.mode) ? body.mode : 'recommended';
+  const topicId = body.topicId ?? null;
+  const count = Number.isFinite(body.count) ? Math.max(1, Math.min(20, Number(body.count))) : 10;
+
+  if (mode === 'topic' && (!topicId || !recallTopicById.has(topicId))) {
+    return NextResponse.json({ error: 'Choose a valid recall topic.' }, { status: 400 });
+  }
+
+  if (!body.forceNew) {
+    const { data: existing } = await supabase
+      .from('recall_sessions')
+      .select('id, mode, topic_id, question_ids, question_count, answered_count, score, status, started_at, last_activity_at, completed_at')
+      .eq('student_id', user.id)
+      .eq('status', 'in_progress')
+      .order('last_activity_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existing) {
+      const { data: existingResponses } = await supabase
+        .from('recall_responses')
+        .select('question_id')
+        .eq('student_id', user.id)
+        .eq('session_id', existing.id);
+      return NextResponse.json({ session: serializeSession(existing, (existingResponses ?? []).map((row) => row.question_id)), resumed: true });
+    }
+  }
+
+  const { data: statRows, error: statsError } = await supabase
+    .from('student_recall_question_stats')
+    .select('question_id, topic_id, attempts, correct_count, consecutive_correct, last_result, last_seen_at')
+    .eq('student_id', user.id);
+  if (statsError) return NextResponse.json({ error: statsError.message }, { status: 500 });
+
+  const questions = selectRecallQuestions({
+    stats: (statRows ?? []) as RecallQuestionStat[],
+    mode,
+    topicId: mode === 'topic' ? topicId : null,
+    count,
+  });
+
+  if (questions.length === 0) {
+    return NextResponse.json({ error: mode === 'weak' ? 'No weak-area questions are available yet. Complete a general recall session first.' : 'No recall questions are available for this selection.' }, { status: 409 });
+  }
+
+  const now = new Date().toISOString();
+  const { data: session, error: insertError } = await supabase
+    .from('recall_sessions')
+    .insert({
+      student_id: user.id,
+      mode,
+      topic_id: mode === 'topic' ? topicId : null,
+      question_ids: questions.map((question) => question.id),
+      question_count: questions.length,
+      answered_count: 0,
+      score: 0,
+      status: 'in_progress',
+      last_activity_at: now,
+    })
+    .select('id, mode, topic_id, question_ids, question_count, answered_count, score, status, started_at, last_activity_at, completed_at')
+    .single();
+
+  if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });
+  return NextResponse.json({ session: serializeSession(session), resumed: false }, { status: 201 });
+}
