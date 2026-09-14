@@ -154,7 +154,9 @@ export default function RecallHub() {
         answeredQuestionIds: [...new Set([...current.answeredQuestionIds, answeredQuestion.id])],
       } : current);
       if (result.rewardUnlocked) setLevelUpLevel(result.currentLevel);
-      await loadProgress();
+      // The answer API already persists and returns the live session/level result.
+      // Full topic/accuracy progress only needs refreshing once, at session completion.
+      if (result.complete) await loadProgress();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Your answer could not be saved.');
     } finally {
