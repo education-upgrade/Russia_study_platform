@@ -9,11 +9,9 @@ async function joinClass(formData: FormData) {
   if (value.length !== 6) redirect('/student/join?error=code&join=1');
   const supabase = await createServerSupabaseClient();
   if (!supabase) redirect('/student/join?error=configuration&join=1');
+  // join_class_by_code atomically activates membership and links any already-published work.
   const { error } = await supabase.rpc('join_class_by_code', { code_input: value });
   if (error) redirect('/student/join?error=not-found&join=1');
-  // A student joining after work was published still needs recipient rows for that prior work.
-  // Do this once at join time rather than blocking every dashboard/My Work render.
-  await supabase.rpc('sync_my_assignment_recipients');
   redirect('/student/join?joined=1');
 }
 

@@ -154,9 +154,13 @@ export default function RecallHub() {
         answeredQuestionIds: [...new Set([...current.answeredQuestionIds, answeredQuestion.id])],
       } : current);
       if (result.rewardUnlocked) setLevelUpLevel(result.currentLevel);
-      // The answer API already persists and returns the live session/level result.
-      // Full topic/accuracy progress only needs refreshing once, at session completion.
-      if (result.complete) await loadProgress();
+      if (result.complete) {
+        // The answer has already been saved. A secondary progress-refresh failure must
+        // not be reported to the student as a failed answer save.
+        void loadProgress().catch((reason) => {
+          console.warn('Recall answer saved but progress refresh failed', reason);
+        });
+      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Your answer could not be saved.');
     } finally {
