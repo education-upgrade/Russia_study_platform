@@ -1,4 +1,4 @@
-import { recallQuestions, type RecallQuestion } from './questions';
+import { recallQuestions, type RecallQuestion } from './bank';
 
 export type RecallMode = 'recommended' | 'weak' | 'topic' | 'all';
 
@@ -29,50 +29,23 @@ export function publicQuestion(question: RecallQuestion, desiredCorrectPosition 
     [reordered[currentCorrect], reordered[target]] = [reordered[target], reordered[currentCorrect]];
     options = reordered;
   }
-
-  return {
-    id: question.id,
-    topicId: question.topicId,
-    type: question.type,
-    prompt: question.prompt,
-    options,
-  };
+  return { id: question.id, topicId: question.topicId, type: question.type, prompt: question.prompt, options };
 }
 
 function normalize(value: string) {
-  return value
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[’']/g, '')
-    .replace(/[^a-z0-9\s-]/g, ' ')
-    .replace(/-/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return value.toLowerCase().normalize('NFKD').replace(/[’']/g, '').replace(/[^a-z0-9\s-]/g, ' ').replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function oneEditAway(a: string, b: string) {
-  if (a === b) return true;
-  if (Math.abs(a.length - b.length) > 1) return false;
-  let i = 0;
-  let j = 0;
-  let edits = 0;
-  while (i < a.length && j < b.length) {
-    if (a[i] === b[j]) {
-      i += 1;
-      j += 1;
-      continue;
+function editDistance(a: string, b: string) {
+  const previous = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i += 1) {
+    const current = [i];
+    for (let j = 1; j <= b.length; j += 1) {
+      current[j] = Math.min(current[j - 1] + 1, previous[j] + 1, previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
     }
-    edits += 1;
-    if (edits > 1) return false;
-    if (a.length > b.length) i += 1;
-    else if (b.length > a.length) j += 1;
-    else {
-      i += 1;
-      j += 1;
-    }
+    for (let j = 0; j <= b.length; j += 1) previous[j] = current[j];
   }
-  if (i < a.length || j < b.length) edits += 1;
-  return edits <= 1;
+  return previous[b.length];
 }
 
 function adjacentTranspositionAway(a: string, b: string) {
@@ -92,16 +65,16 @@ export function gradeRecallAnswer(question: RecallQuestion, rawAnswer: unknown) 
     if (typeof rawAnswer !== 'string') return false;
     return normalize(rawAnswer) === normalize(question.answerLabel);
   }
-
   if (typeof rawAnswer !== 'string') return false;
   const candidate = normalize(rawAnswer);
   if (!candidate) return false;
-
   return (question.acceptedAnswers ?? []).some((accepted) => {
     const target = normalize(accepted);
     if (candidate === target) return true;
     if (target.length < 5 || candidate.length < 5) return false;
-    return oneEditAway(candidate, target) || adjacentTranspositionAway(candidate, target);
+    if (adjacentTranspositionAway(candidate, target)) return true;
+    const allowance = target.length >= 10 ? 2 : 1;
+    return Math.abs(candidate.length - target.length) <= allowance && editDistance(candidate, target) <= allowance;
   });
 }
 
@@ -123,21 +96,10 @@ function priority(question: RecallQuestion, stat?: RecallQuestionStat) {
   return score + (question.type === 'short_answer' ? 2 : 0);
 }
 
-export function selectRecallQuestions({
-  stats,
-  mode,
-  topicId,
-  count = 10,
-}: {
-  stats: RecallQuestionStat[];
-  mode: RecallMode;
-  topicId?: string | null;
-  count?: number;
-}) {
+export function selectRecallQuestions({ stats, mode, topicId, count = 10 }: { stats: RecallQuestionStat[]; mode: RecallMode; topicId?: string | null; count?: number; }) {
   const safeCount = Math.max(1, Math.min(20, count));
   const byQuestion = new Map(stats.map((stat) => [stat.question_id, stat]));
   let candidates = recallQuestions.filter((question) => !topicId || question.topicId === topicId);
-
   if (mode === 'weak') {
     candidates = candidates.filter((question) => {
       const stat = byQuestion.get(question.id);
@@ -146,7 +108,6 @@ export function selectRecallQuestions({
       return stat.last_result === false || stat.consecutive_correct < 2 || accuracy < 0.75;
     });
   }
-
   if (mode === 'recommended') {
     const notSecure = candidates.filter((question) => {
       const stat = byQuestion.get(question.id);
@@ -154,32 +115,25 @@ export function selectRecallQuestions({
     });
     if (notSecure.length >= Math.min(5, safeCount)) candidates = notSecure;
   }
-
   const ranked = [...candidates].sort((a, b) => priority(b, byQuestion.get(b.id)) - priority(a, byQuestion.get(a.id)));
   const selected: RecallQuestion[] = [];
   const topicCounts = new Map<string, number>();
-
   for (const question of ranked) {
     if (selected.length >= safeCount) break;
     if (!topicId && (mode === 'recommended' || mode === 'all')) {
       const used = topicCounts.get(question.topicId) ?? 0;
       const softCap = Math.max(2, Math.ceil(safeCount / 4));
-      const hasUnderCapAlternative = ranked.some((other) =>
-        !selected.some((item) => item.id === other.id)
-        && (topicCounts.get(other.topicId) ?? 0) < softCap,
-      );
+      const hasUnderCapAlternative = ranked.some((other) => !selected.some((item) => item.id === other.id) && (topicCounts.get(other.topicId) ?? 0) < softCap);
       if (used >= softCap && hasUnderCapAlternative) continue;
     }
     selected.push(question);
     topicCounts.set(question.topicId, (topicCounts.get(question.topicId) ?? 0) + 1);
   }
-
   if (selected.length < safeCount) {
     for (const question of ranked) {
       if (selected.length >= safeCount) break;
       if (!selected.some((item) => item.id === question.id)) selected.push(question);
     }
   }
-
   return selected;
 }

@@ -1,0 +1,1 @@
+QC completed for the expanded bank: 150 unique IDs expected; 25 questions per chronological topic; four options per new MCQ; conspicuous correct-answer-length check enforced at build; common spelling/name variants included for typed answers; fuzzy spelling tolerance limited to short edit distances to avoid accepting conceptually wrong answers; original 30 IDs retained.

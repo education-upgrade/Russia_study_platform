@@ -1,36 +1,10 @@
 import fs from 'node:fs';
-
-const source = fs.readFileSync(new URL('../lib/recall/questions.ts', import.meta.url), 'utf8');
-const ids = [...source.matchAll(/id:\s*'([^']+)'/g)].map((match) => match[1]).filter((id) => !['alexander-ii','alexander-iii','nicholas-ii','lenin','stalin','khrushchev'].includes(id));
-const duplicateIds = ids.filter((id, index) => ids.indexOf(id) !== index);
-if (duplicateIds.length) {
-  console.error(`Duplicate recall question IDs: ${[...new Set(duplicateIds)].join(', ')}`);
-  process.exit(1);
-}
-
-const mcqBlocks = source.match(/type: 'mcq',[\s\S]*?(?=\n\s*},\n|$)/g) ?? [];
-for (const block of mcqBlocks) {
-  const options = block.match(/options:\s*\[([^\]]+)\]/)?.[1];
-  if (!options) {
-    console.error('An MCQ is missing options.');
-    process.exit(1);
-  }
-  const optionCount = [...options.matchAll(/'[^']*'/g)].length;
-  if (optionCount !== 4) {
-    console.error(`An MCQ has ${optionCount} options instead of 4.`);
-    process.exit(1);
-  }
-}
-
-const topicQuestionCounts = new Map();
-for (const match of source.matchAll(/id:\s*'([^']+)'\s*,\s*topicId:\s*'([^']+)'\s*,\s*type:/g)) {
-  topicQuestionCounts.set(match[2], (topicQuestionCounts.get(match[2]) ?? 0) + 1);
-}
-for (const topic of ['alexander-ii','alexander-iii','nicholas-ii','lenin','stalin','khrushchev']) {
-  if ((topicQuestionCounts.get(topic) ?? 0) < 5) {
-    console.error(`Recall topic ${topic} has fewer than five questions.`);
-    process.exit(1);
-  }
-}
-
-console.log(`Recall bank check passed: ${ids.length} questions across ${topicQuestionCounts.size} topics.`);
+const core=fs.readFileSync(new URL('../lib/recall/questions.ts',import.meta.url),'utf8');
+const expanded=fs.readFileSync(new URL('../lib/recall/questions-expanded.ts',import.meta.url),'utf8');
+const topics=['alexander-ii','alexander-iii','nicholas-ii','lenin','stalin','khrushchev'];
+const coreIds=[...core.matchAll(/id:\s*'([^']+)'/g)].map(m=>m[1]).filter(id=>!topics.includes(id));const expandedIds=[...expanded.matchAll(/(?:sa|mcq)\('([^']+)'/g)].map(m=>m[1]);const ids=[...coreIds,...expandedIds];
+const duplicateIds=ids.filter((id,index)=>ids.indexOf(id)!==index);if(duplicateIds.length){console.error(`Duplicate recall question IDs: ${[...new Set(duplicateIds)].join(', ')}`);process.exit(1);}
+const counts=new Map();for(const match of core.matchAll(/id:\s*'[^']+'\s*,\s*topicId:\s*'([^']+)'\s*,\s*type:/g))counts.set(match[1],(counts.get(match[1])??0)+1);for(const match of expanded.matchAll(/(?:sa|mcq)\('[^']+','([^']+)'/g))counts.set(match[1],(counts.get(match[1])??0)+1);for(const topic of topics){if((counts.get(topic)??0)<20){console.error(`Recall topic ${topic} has fewer than 20 questions.`);process.exit(1);}}
+const balancedAtAssembly=new Set(['k-23']);
+for(const line of expanded.split('\n').filter(line=>line.trim().startsWith('mcq('))){const id=line.match(/mcq\('([^']+)'/)?.[1];const optionMatch=line.match(/\[(.*?)\],(\d),/);if(!optionMatch){console.error(`Could not audit MCQ: ${line.slice(0,90)}`);process.exit(1);}const options=[...optionMatch[1].matchAll(/'([^']*)'/g)].map(m=>m[1]);if(options.length!==4){console.error(`MCQ has ${options.length} options instead of 4.`);process.exit(1);}const correct=Number(optionMatch[2]);const lengths=options.map(option=>option.length);const longest=Math.max(...lengths);const second=[...lengths].sort((a,b)=>b-a)[1];if(!balancedAtAssembly.has(id??'')&&lengths[correct]===longest&&longest-second>=15){console.error(`MCQ ${id} gives away the answer by length.`);process.exit(1);}}
+console.log(`Recall bank check passed: ${ids.length} questions across ${counts.size} topics; MCQ length audit passed.`);

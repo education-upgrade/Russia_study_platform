@@ -1,0 +1,1 @@
+The expanded Recall bank was mapped against the connected `Russia A-Level 1H Curriculum Map 2026-27`, especially the Y12 Curriculum, Y13 Curriculum and Spec Coverage tabs. It retains the app's six existing chronological Recall topic IDs so existing student progress remains compatible while increasing each topic from 5 to 25 questions.

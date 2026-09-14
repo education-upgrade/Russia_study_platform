@@ -1,0 +1,1 @@
+Release target: expand the live Recall pool from 30 to 150 questions without database migration. Existing response/stat rows continue to reference unchanged original IDs; new IDs become available immediately after deployment.
