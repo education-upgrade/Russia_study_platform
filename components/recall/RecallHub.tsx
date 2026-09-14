@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import LevelUpCelebration from './LevelUpCelebration';
 import styles from './RecallHub.module.css';
 
 type Question = {
@@ -44,6 +45,11 @@ type Progress = {
   correct: number;
   accuracy: number | null;
   completedSessions: number;
+  level: number;
+  rewardInterval: number;
+  nextRewardAt: number;
+  correctToNextReward: number;
+  rewardProgressPercent: number;
   topicProgress: TopicProgress[];
 };
 
@@ -56,6 +62,9 @@ type AnswerResult = {
   score: number;
   complete: boolean;
   nextQuestionId: string | null;
+  totalCorrect: number;
+  currentLevel: number;
+  rewardUnlocked: boolean;
 };
 
 export default function RecallHub() {
@@ -65,6 +74,7 @@ export default function RecallHub() {
   const [shortAnswer, setShortAnswer] = useState('');
   const [feedback, setFeedback] = useState<AnswerResult | null>(null);
   const [feedbackQuestion, setFeedbackQuestion] = useState<Question | null>(null);
+  const [levelUpLevel, setLevelUpLevel] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -143,6 +153,7 @@ export default function RecallHub() {
         nextQuestionId: result.nextQuestionId,
         answeredQuestionIds: [...new Set([...current.answeredQuestionIds, answeredQuestion.id])],
       } : current);
+      if (result.rewardUnlocked) setLevelUpLevel(result.currentLevel);
       await loadProgress();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Your answer could not be saved.');
@@ -170,6 +181,7 @@ export default function RecallHub() {
     const percentage = session.questionCount ? Math.round((session.answeredCount / session.questionCount) * 100) : 0;
     const completed = session.status === 'complete';
     return <div className={styles.sessionPage}>
+      {levelUpLevel !== null && <LevelUpCelebration level={levelUpLevel} onContinue={() => setLevelUpLevel(null)} />}
       <header className={styles.sessionHeader}>
         <div><p className={styles.eyebrow}>Adaptive Recall</p><h1>{session.topicTitle ?? 'Whole-course recall'}</h1></div>
         <div className={styles.sessionScore}><strong>{session.score}</strong><span>correct so far</span></div>
@@ -183,7 +195,10 @@ export default function RecallHub() {
         <p className={styles.eyebrow}>Session complete</p>
         <h2>{session.score} / {session.questionCount}</h2>
         <p>Every answer in this session has been saved. Your next adaptive session will use these results to change what appears.</p>
-        {progress && <div className={styles.completeStats}><span><strong>{progress.accuracy ?? '—'}{progress.accuracy !== null ? '%' : ''}</strong> overall accuracy</span><span><strong>{progress.secureQuestions}</strong> secure questions</span><span><strong>{progress.weakQuestions}</strong> weak questions</span></div>}
+        {progress && <>
+          <div className={styles.completeStats}><span><strong>{progress.accuracy ?? '—'}{progress.accuracy !== null ? '%' : ''}</strong> overall accuracy</span><span><strong>{progress.correct}</strong> total correct</span><span><strong>Level {progress.level}</strong> Russia Recall</span></div>
+          <div className={styles.rewardProgress}><div><strong>{progress.correct} / {progress.nextRewardAt} correct</strong><span>{progress.correctToNextReward} to next teacher reward</span></div><div className={styles.rewardTrack}><span style={{ width: `${progress.rewardProgressPercent}%` }} /></div></div>
+        </>}
         <button className={styles.primaryButton} type="button" onClick={finishSessionView}>Back to Recall</button>
       </section> : displayQuestion ? <section className={styles.questionCard}>
         <div className={styles.questionTop}><span>{displayQuestion.type === 'mcq' ? 'Multiple choice' : 'Short answer'}</span><span>Saved after every answer</span></div>
@@ -210,7 +225,7 @@ export default function RecallHub() {
   return <div className={styles.page}>
     <header className={styles.hero}>
       <div><p className={styles.eyebrow}>Knowledge retrieval</p><h1>Recall</h1><p>Ten-question adaptive practice across AQA Tsarist and Communist Russia. Questions you miss return sooner; secure knowledge appears less often.</p></div>
-      {progress && <div className={styles.heroStat}><strong>{progress.accuracy ?? '—'}{progress.accuracy !== null ? '%' : ''}</strong><span>overall accuracy</span></div>}
+      {progress && <div className={styles.levelCard}><span>Level {progress.level}</span><strong>{progress.correct}</strong><small>correct answers</small><div className={styles.rewardTrack}><span style={{ width: `${progress.rewardProgressPercent}%` }} /></div><p>{progress.correctToNextReward} to next teacher reward</p></div>}
     </header>
 
     {error && <div className={styles.error} role="alert">{error}</div>}
@@ -219,7 +234,7 @@ export default function RecallHub() {
       <article><span>Questions seen</span><strong>{progress?.questionsSeen ?? 0}<small> / {progress?.totalQuestions ?? 0}</small></strong></article>
       <article><span>Secure</span><strong>{progress?.secureQuestions ?? 0}</strong></article>
       <article><span>Weak areas</span><strong>{progress?.weakQuestions ?? 0}</strong></article>
-      <article><span>Sessions</span><strong>{progress?.completedSessions ?? 0}</strong></article>
+      <article><span>Accuracy</span><strong>{progress?.accuracy ?? '—'}{progress?.accuracy !== null && progress?.accuracy !== undefined ? '%' : ''}</strong></article>
     </section>
 
     <section className={styles.startGrid}>
