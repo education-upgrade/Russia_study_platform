@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { FormEvent, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createBrowserSupabaseClient, isSupabaseAuthConfigured } from '@/lib/supabase/browser';
@@ -200,6 +201,17 @@ export default function LoginForm() {
           </button>
         )}
       </form>
+
+      {mode === 'sign-up' && (
+        <p className={styles.privacyText}>
+          This is a controlled school pilot. By creating an account, you acknowledge that your account and learning activity will be processed for educational purposes as explained in the <Link href="/privacy">privacy notice</Link>. Do not enter safeguarding, medical or other highly sensitive personal information into the platform.
+        </p>
+      )}
+      {mode !== 'sign-up' && (
+        <p className={styles.privacyText}>
+          <Link href="/privacy">Privacy & data protection</Link>
+        </p>
+      )}
 
       {displayedStatus && <p className={styles.message} role="status">{displayedStatus}</p>}
       {!configured && <p className={`${styles.message} ${styles.warning}`}>Authentication is not configured for this deployment.</p>}
