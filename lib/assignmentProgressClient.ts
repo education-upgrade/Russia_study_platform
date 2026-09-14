@@ -39,21 +39,29 @@ export async function loadAssignmentActivityProgress(assignmentId: string, activ
 
 async function postProgress(input: SaveAssignmentActivityProgressInput) {
   let lastError: Error | null = null;
+  const preparedInput = input.newAttempt
+    ? {
+        ...input,
+        position: {
+          ...(input.position ?? {}),
+          attemptEventId: crypto.randomUUID(),
+        },
+      }
+    : input;
 
+  // The same prepared payload (including attemptEventId) is reused if the transport
+  // retries, allowing the database to recognise it as the same logical attempt.
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const response = await fetch('/api/assignment-progress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input),
+        body: JSON.stringify(preparedInput),
         keepalive: true,
       });
 
       const result = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(result?.error ?? 'Assignment progress could not be saved.');
-      }
-
+      if (!response.ok) throw new Error(result?.error ?? 'Assignment progress could not be saved.');
       return result;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Assignment progress could not be saved.');
