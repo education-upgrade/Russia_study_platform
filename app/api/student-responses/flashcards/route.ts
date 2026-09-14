@@ -1,25 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getLegacySelfStudyAccess } from '@/lib/legacySelfStudyServer';
 
-const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
 const DEMO_ASSIGNMENT_ID = '44444444-4444-4444-4444-444444444444';
 
 type FlashcardRating = 'secure' | 'nearly' | 'revisit';
-
-type FlashcardSaveRequest = {
-  activityId: string;
-  ratings: Record<string, FlashcardRating>;
-  revealedCardIds: string[];
-  totalCards: number;
-};
+type FlashcardSaveRequest = { activityId: string; ratings: Record<string, FlashcardRating>; revealedCardIds: string[]; totalCards: number; };
 
 export async function POST(request: Request) {
   const access = await getLegacySelfStudyAccess();
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   const supabase = access.client;
-
   const body = (await request.json()) as FlashcardSaveRequest;
-
   if (!body.activityId) return NextResponse.json({ error: 'Missing activityId.' }, { status: 400 });
   if (!body.totalCards || body.totalCards < 1) return NextResponse.json({ error: 'Missing flashcard count.' }, { status: 400 });
 
@@ -34,38 +25,11 @@ export async function POST(request: Request) {
   const revisitCardIds = Object.entries(ratings).filter(([, rating]) => rating === 'revisit').map(([cardId]) => cardId);
   const status = ratedCount >= body.totalCards ? 'complete' : 'in_progress';
   const now = new Date().toISOString();
+  const responsePayload = { ratings, revealedCardIds: body.revealedCardIds ?? [], totalCards: body.totalCards, ratedCount, secureCount, nearlyCount, revisitCount, revisitCardIds, completionPercentage, securePercentage };
+  const savePayload = { assignment_id: DEMO_ASSIGNMENT_ID, response_type: 'flashcards', response_json: responsePayload, score: secureCount, status, last_saved_at: now, submitted_at: status === 'complete' ? now : null };
 
-  const responsePayload = {
-    ratings,
-    revealedCardIds: body.revealedCardIds ?? [],
-    totalCards: body.totalCards,
-    ratedCount,
-    secureCount,
-    nearlyCount,
-    revisitCount,
-    revisitCardIds,
-    completionPercentage,
-    securePercentage,
-  };
-
-  const savePayload = {
-    assignment_id: DEMO_ASSIGNMENT_ID,
-    response_type: 'flashcards',
-    response_json: responsePayload,
-    score: secureCount,
-    status,
-    last_saved_at: now,
-    submitted_at: status === 'complete' ? now : null,
-  };
-
-  const { data: existingRows, error: existingError } = await supabase
-    .from('student_responses')
-    .select('id')
-    .eq('student_id', DEMO_STUDENT_ID)
-    .eq('activity_id', body.activityId);
-
+  const { data: existingRows, error: existingError } = await supabase.from('student_responses').select('id').eq('student_id', access.legacyUserId).eq('activity_id', body.activityId);
   if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 });
-
   const existingIds = (existingRows ?? []).map((row) => row.id);
 
   if (existingIds.length > 0) {
@@ -74,11 +38,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: 'updated', savedAt: now, updatedRows: existingIds.length, ...responsePayload });
   }
 
-  const { error } = await supabase
-    .from('student_responses')
-    .insert({ student_id: DEMO_STUDENT_ID, activity_id: body.activityId, started_at: now, ...savePayload });
-
+  const { error } = await supabase.from('student_responses').insert({ student_id: access.legacyUserId, activity_id: body.activityId, started_at: now, ...savePayload });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
   return NextResponse.json({ status: 'created', savedAt: now, updatedRows: 1, ...responsePayload });
 }
