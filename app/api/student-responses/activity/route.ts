@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getLegacySelfStudyAccess } from '@/lib/legacySelfStudyServer';
 import { resolveVirtualActivityId } from '@/lib/resolveVirtualActivityId';
 
-const DEMO_STUDENT_ID = '22222222-2222-2222-2222-222222222222';
 const DEMO_ASSIGNMENT_ID = '44444444-4444-4444-4444-444444444444';
 
 type ActivitySaveRequest = {
@@ -21,16 +20,10 @@ export async function POST(request: Request) {
 
   const body = (await request.json()) as ActivitySaveRequest;
 
-  if (!body.activityId) {
-    return NextResponse.json({ error: 'Missing activityId.' }, { status: 400 });
-  }
-
-  if (!body.responseType) {
-    return NextResponse.json({ error: 'Missing responseType.' }, { status: 400 });
-  }
+  if (!body.activityId) return NextResponse.json({ error: 'Missing activityId.' }, { status: 400 });
+  if (!body.responseType) return NextResponse.json({ error: 'Missing responseType.' }, { status: 400 });
 
   const resolvedActivityId = await resolveVirtualActivityId(body.activityId, supabase);
-
   if (resolvedActivityId.startsWith('virtual-')) {
     return NextResponse.json({ error: `Could not resolve activity: ${body.activityId}` }, { status: 500 });
   }
@@ -38,15 +31,10 @@ export async function POST(request: Request) {
   const responseStatus = body.status ?? 'complete';
   const now = new Date().toISOString();
   const responsePayload = body.response ?? body.responseJson ?? {};
-
   const rowPayload = {
     assignment_id: DEMO_ASSIGNMENT_ID,
     response_type: body.responseType,
-    response_json: {
-      ...responsePayload,
-      status: responseStatus,
-      originalActivityId: body.activityId,
-    },
+    response_json: { ...responsePayload, status: responseStatus, originalActivityId: body.activityId },
     score: typeof body.score === 'number' ? body.score : null,
     status: responseStatus,
     last_saved_at: now,
@@ -56,40 +44,24 @@ export async function POST(request: Request) {
   const { data: existingRows, error: existingError } = await supabase
     .from('student_responses')
     .select('id')
-    .eq('student_id', DEMO_STUDENT_ID)
+    .eq('student_id', access.legacyUserId)
     .eq('activity_id', resolvedActivityId);
-
-  if (existingError) {
-    return NextResponse.json({ error: existingError.message }, { status: 500 });
-  }
+  if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 });
 
   const existingIds = (existingRows ?? []).map((row) => row.id);
-
   if (existingIds.length > 0) {
-    const { error } = await supabase
-      .from('student_responses')
-      .update(rowPayload)
-      .in('id', existingIds);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
+    const { error } = await supabase.from('student_responses').update(rowPayload).in('id', existingIds);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ status: 'updated', savedAt: now, updatedRows: existingIds.length, responseStatus, activityId: resolvedActivityId });
   }
 
-  const { error } = await supabase
-    .from('student_responses')
-    .insert({
-      student_id: DEMO_STUDENT_ID,
-      activity_id: resolvedActivityId,
-      started_at: now,
-      ...rowPayload,
-    });
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  const { error } = await supabase.from('student_responses').insert({
+    student_id: access.legacyUserId,
+    activity_id: resolvedActivityId,
+    started_at: now,
+    ...rowPayload,
+  });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ status: 'created', savedAt: now, updatedRows: 1, responseStatus, activityId: resolvedActivityId });
 }
