@@ -48,7 +48,7 @@ export async function getAuthenticatedProfile(): Promise<AuthenticatedProfile | 
   }
 
   if (authError && !user) {
-    if (isStaleSessionError(authError)) redirect('/login');
+    if (isStaleSessionError(authError)) redirect('/auth/clear-session');
     console.error('Unable to validate authenticated session', authError.message);
     redirect('/service-unavailable?source=auth');
   }
