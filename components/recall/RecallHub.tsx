@@ -64,6 +64,7 @@ export default function RecallHub() {
   const [selectedTopic, setSelectedTopic] = useState('alexander-ii');
   const [shortAnswer, setShortAnswer] = useState('');
   const [feedback, setFeedback] = useState<AnswerResult | null>(null);
+  const [feedbackQuestion, setFeedbackQuestion] = useState<Question | null>(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -93,11 +94,13 @@ export default function RecallHub() {
     if (!session || session.status === 'complete') return null;
     return session.questions.find((question) => question.id === session.nextQuestionId) ?? null;
   }, [session]);
+  const displayQuestion = feedbackQuestion ?? currentQuestion;
 
   async function startSession(mode: 'recommended' | 'weak' | 'topic' | 'all') {
     setStarting(true);
     setError('');
     setFeedback(null);
+    setFeedbackQuestion(null);
     setShortAnswer('');
     try {
       const response = await fetch('/api/recall/session', {
@@ -115,20 +118,22 @@ export default function RecallHub() {
     }
   }
 
-  async function submitAnswer(answer: string | number) {
+  async function submitAnswer(answer: string) {
     if (!session || !currentQuestion || submitting || feedback) return;
-    if (currentQuestion.type === 'short_answer' && !String(answer).trim()) return;
+    if (!answer.trim()) return;
     setSubmitting(true);
     setError('');
     try {
+      const answeredQuestion = currentQuestion;
       const response = await fetch('/api/recall/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: session.id, questionId: currentQuestion.id, answer }),
+        body: JSON.stringify({ sessionId: session.id, questionId: answeredQuestion.id, answer }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? 'Your answer could not be saved.');
       const result = data as AnswerResult;
+      setFeedbackQuestion(answeredQuestion);
       setFeedback(result);
       setSession((current) => current ? {
         ...current,
@@ -136,7 +141,7 @@ export default function RecallHub() {
         score: result.score,
         status: result.complete ? 'complete' : 'in_progress',
         nextQuestionId: result.nextQuestionId,
-        answeredQuestionIds: [...new Set([...current.answeredQuestionIds, currentQuestion.id])],
+        answeredQuestionIds: [...new Set([...current.answeredQuestionIds, answeredQuestion.id])],
       } : current);
       await loadProgress();
     } catch (reason) {
@@ -147,14 +152,14 @@ export default function RecallHub() {
   }
 
   function continueAfterFeedback() {
-    const wasComplete = feedback?.complete ?? false;
     setFeedback(null);
+    setFeedbackQuestion(null);
     setShortAnswer('');
-    if (wasComplete) return;
   }
 
   function finishSessionView() {
     setFeedback(null);
+    setFeedbackQuestion(null);
     setShortAnswer('');
     setSession(null);
   }
@@ -170,22 +175,22 @@ export default function RecallHub() {
         <div className={styles.sessionScore}><strong>{session.score}</strong><span>correct so far</span></div>
       </header>
       <div className={styles.progressTrack} aria-label={`${percentage}% of recall session complete`}><div style={{ width: `${percentage}%` }} /></div>
-      <div className={styles.progressMeta}><span>Question {Math.min(session.answeredCount + 1, session.questionCount)} of {session.questionCount}</span><span>{percentage}% saved</span></div>
+      <div className={styles.progressMeta}><span>Question {Math.min(session.answeredCount + (feedback ? 0 : 1), session.questionCount)} of {session.questionCount}</span><span>{percentage}% saved</span></div>
 
       {error && <div className={styles.error} role="alert">{error}</div>}
 
-      {completed ? <section className={styles.completeCard}>
+      {completed && !feedback ? <section className={styles.completeCard}>
         <p className={styles.eyebrow}>Session complete</p>
         <h2>{session.score} / {session.questionCount}</h2>
         <p>Every answer in this session has been saved. Your next adaptive session will use these results to change what appears.</p>
-        {progress && <div className={styles.completeStats}><span><strong>{progress.accuracy ?? '—'}%</strong> overall accuracy</span><span><strong>{progress.secureQuestions}</strong> secure questions</span><span><strong>{progress.weakQuestions}</strong> weak questions</span></div>}
+        {progress && <div className={styles.completeStats}><span><strong>{progress.accuracy ?? '—'}{progress.accuracy !== null ? '%' : ''}</strong> overall accuracy</span><span><strong>{progress.secureQuestions}</strong> secure questions</span><span><strong>{progress.weakQuestions}</strong> weak questions</span></div>}
         <button className={styles.primaryButton} type="button" onClick={finishSessionView}>Back to Recall</button>
-      </section> : currentQuestion ? <section className={styles.questionCard}>
-        <div className={styles.questionTop}><span>{currentQuestion.type === 'mcq' ? 'Multiple choice' : 'Short answer'}</span><span>Saved after every answer</span></div>
-        <h2>{currentQuestion.prompt}</h2>
+      </section> : displayQuestion ? <section className={styles.questionCard}>
+        <div className={styles.questionTop}><span>{displayQuestion.type === 'mcq' ? 'Multiple choice' : 'Short answer'}</span><span>Saved after every answer</span></div>
+        <h2>{displayQuestion.prompt}</h2>
 
-        {currentQuestion.type === 'mcq' ? <div className={styles.options}>
-          {(currentQuestion.options ?? []).map((option, index) => <button key={option} disabled={submitting || Boolean(feedback)} type="button" onClick={() => submitAnswer(index)}>{option}</button>)}
+        {displayQuestion.type === 'mcq' ? <div className={styles.options}>
+          {(displayQuestion.options ?? []).map((option) => <button key={option} disabled={submitting || Boolean(feedback)} type="button" onClick={() => submitAnswer(option)}>{option}</button>)}
         </div> : <form className={styles.shortForm} onSubmit={(event) => { event.preventDefault(); void submitAnswer(shortAnswer); }}>
           <label htmlFor="recall-short-answer">Your answer</label>
           <input id="recall-short-answer" value={shortAnswer} onChange={(event) => setShortAnswer(event.target.value)} disabled={submitting || Boolean(feedback)} autoComplete="off" />
