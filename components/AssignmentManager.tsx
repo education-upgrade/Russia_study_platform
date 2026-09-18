@@ -57,7 +57,7 @@ export default function AssignmentManager({ assignmentId, instructions: initialI
 
   async function deleteAssignment() {
     const confirmed = window.confirm(
-      'Permanently delete this assignment?\n\nThis removes it from students and permanently deletes all progress, responses/evidence, recipient links, attached resource links and assignment notes connected to it. This cannot be undone.',
+      'Permanently delete this empty assignment?\n\nAssignments containing student progress or evidence are protected and cannot be deleted; archive those instead. This action is only available for assignments with no saved student progress.',
     );
     if (!confirmed) return;
 
