@@ -35,7 +35,7 @@ function formatDate(value: string | null) { return value ? formatSchoolDateTime(
 function trackingState(assigned: boolean, progress?: Progress): TrackingState {
   if (!assigned) return 'not_assigned';
   if (progress?.status === 'complete') return 'complete';
-  if (!progress || progress.status === 'not_started' || progress.progress_percent === 0) return 'not_attempted';
+  if (!progress || progress.status === 'not_started') return 'not_attempted';
   return 'incomplete';
 }
 function stateLabel(state: TrackingState) {

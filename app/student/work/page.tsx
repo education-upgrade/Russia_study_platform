@@ -13,7 +13,7 @@ type Progress = { assignment_id:string; status:'not_started'|'in_progress'|'comp
 type WorkItem = { assignment:Assignment; progress?:Progress; routeBase:string };
 
 function deadline(value:string|null){return value?formatSchoolDateTime(value,{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'No deadline'}
-function status(progress?:Progress){if(progress?.status==='complete')return 'Complete';if(!progress||progress.status==='not_started'||progress.progress_percent===0)return 'Not attempted';return 'Incomplete'}
+function status(progress?:Progress){if(progress?.status==='complete')return 'Complete';if(!progress||progress.status==='not_started')return 'Not attempted';return 'Incomplete'}
 
 export const dynamic='force-dynamic';
 export const revalidate=0;

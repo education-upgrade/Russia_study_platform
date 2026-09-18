@@ -20,7 +20,7 @@ function formatDeadline(value:string|null){if(!value)return'No deadline';return 
 function formatShortDate(value:string|null){if(!value)return'Not yet';return formatSchoolDateTime(value,{day:'numeric',month:'short'})}
 function assignmentState(dueAt:string|null,progress?:ProgressRow):AssignmentView['state']{if(progress?.status==='complete')return'complete';if(!dueAt)return'open';const difference=new Date(dueAt).getTime()-Date.now();if(difference<0)return'overdue';if(difference<=48*60*60*1000)return'due_soon';return'upcoming'}
 function stateLabel(state:AssignmentView['state']){if(state==='overdue')return'Overdue';if(state==='due_soon')return'Due soon';if(state==='complete')return'Complete';if(state==='open')return'No deadline';return'Upcoming'}
-function assignmentStatus(progress?:ProgressRow){if(progress?.status==='complete')return'Complete';if(!progress||progress.status==='not_started'||progress.progress_percent===0)return'Not attempted';return'Incomplete'}
+function assignmentStatus(progress?:ProgressRow){if(progress?.status==='complete')return'Complete';if(!progress||progress.status==='not_started')return'Not attempted';return'Incomplete'}
 
 export default async function StudentDashboardPage(){
   const auth=await getAuthenticatedProfile();if(!auth)redirect('/account');

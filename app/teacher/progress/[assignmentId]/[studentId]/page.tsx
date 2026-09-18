@@ -16,7 +16,7 @@ type ActivityProgress = { activity_type: string; status: 'not_started' | 'in_pro
 
 function firstRelation<T>(value: T | T[] | null) { return Array.isArray(value) ? value[0] ?? null : value; }
 function formatDate(value: string | null) { return value ? formatSchoolDateTime(value, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Not yet'; }
-function assignmentStatus(summary: Summary | null) { if (summary?.status === 'complete') return 'Complete'; if (!summary || summary.status === 'not_started' || summary.progress_percent === 0) return 'Not attempted'; return 'Incomplete'; }
+function assignmentStatus(summary: Summary | null) { if (summary?.status === 'complete') return 'Complete'; if (!summary || summary.status === 'not_started') return 'Not attempted'; return 'Incomplete'; }
 function activityStatus(row?: ActivityProgress) { if (row?.status === 'complete') return 'Complete'; if (!row || row.status === 'not_started') return 'Not attempted'; return 'Incomplete'; }
 function statusClass(status: string) { if (status === 'Complete') return styles.complete; if (status === 'Incomplete') return styles.incomplete; return styles.notAttempted; }
 function scorePercent(row: ActivityProgress) { return row.score !== null && row.max_score ? Math.round((row.score / row.max_score) * 100) : null; }
