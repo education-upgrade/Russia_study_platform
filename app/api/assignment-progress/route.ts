@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabase
     .from('student_activity_progress')
-    .select('status,score,max_score,confidence,position,attempt_count,updated_at')
+    .select('status,score,max_score,confidence,position,attempt_count,last_saved_at')
     .eq('student_id', user.id)
     .eq('assignment_id', assignmentId)
     .eq('activity_type', activityType)

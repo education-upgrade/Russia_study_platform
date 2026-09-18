@@ -7,7 +7,7 @@ export type AssignmentActivityProgress = {
   confidence: number | null;
   position: Record<string, unknown> | null;
   attempt_count: number;
-  updated_at: string | null;
+  last_saved_at: string | null;
 };
 
 type SaveAssignmentActivityProgressInput = {
