@@ -23,7 +23,7 @@ function firstRelation<T>(value: T | T[] | null) { return Array.isArray(value) ?
 function formatDate(value: string | null) { if (!value) return 'No deadline'; return formatSchoolDateTime(value, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
 function assignmentStatus(progress?: Progress) {
   if (progress?.status === 'complete') return 'Complete';
-  if (!progress || progress.status === 'not_started' || progress.progress_percent === 0) return 'Not attempted';
+  if (!progress || progress.status === 'not_started') return 'Not attempted';
   return 'Incomplete';
 }
 function attentionReason(assignment: Assignment, progress: Progress | undefined, confidence: number | undefined) {
