@@ -15,6 +15,7 @@ type AssignmentRow = {
   status: string;
   pathway_slug: string;
   title: string;
+  created_at: string;
 };
 
 export const dynamic = 'force-dynamic';
@@ -52,13 +53,15 @@ export default async function SetStudyPage({ searchParams }: { searchParams?: Pr
 
     classOptions = activeClasses.map((item: any) => ({ id: item.id, className: item.name, yearGroup: item.academic_year || 'Class', studentCount: membershipCounts.get(item.id) ?? 0 }));
 
-    const { data: assignmentData, error: assignmentError } = await supabase
-      .from('classroom_assignments')
-      .select('id, class_id, title, mode, required_activity_types, due_at, instructions, status, pathway_slug')
-      .order('created_at', { ascending: false })
-      .limit(30);
-    if (assignmentError) setupWarning = setupWarning || assignmentError.message;
-    assignments = (assignmentData ?? []) as AssignmentRow[];
+    if (classIds.length) {
+      const { data: assignmentData, error: assignmentError } = await supabase
+        .from('classroom_assignments')
+        .select('id, class_id, title, mode, required_activity_types, due_at, instructions, status, pathway_slug, created_at')
+        .in('class_id', classIds)
+        .order('created_at', { ascending: false });
+      if (assignmentError) setupWarning = setupWarning || assignmentError.message;
+      assignments = (assignmentData ?? []) as AssignmentRow[];
+    }
   }
 
   const duplicateSource = query.duplicate ? assignments.find((item) => item.id === query.duplicate) ?? null : null;
@@ -71,6 +74,16 @@ export default async function SetStudyPage({ searchParams }: { searchParams?: Pr
     instructions: duplicateSource.instructions,
   } : null;
   const existingDeadlines = assignments.filter((item) => item.status === 'published' && item.due_at).map((item) => ({ classId: item.class_id, assignmentId: item.id, title: item.title, dueAt: item.due_at! }));
+  const assignmentHistory = assignments
+    .filter((item) => item.status !== 'draft')
+    .map((item) => ({
+      classId: item.class_id,
+      pathwaySlug: item.pathway_slug,
+      assignmentId: item.id,
+      title: item.title,
+      createdAt: item.created_at,
+      status: item.status,
+    }));
 
   return (
     <main className={styles.shell}>
@@ -79,7 +92,7 @@ export default async function SetStudyPage({ searchParams }: { searchParams?: Pr
       {classOptions.length === 0 ? (
         <section className={styles.notice}>No active classes are connected to your account yet. <Link href="/teacher/classes">Create a class first</Link>.</section>
       ) : (
-        <GuidedStudyAssignmentForm classOptions={classOptions} initialClassId={query.classId} existingDeadlines={existingDeadlines} template={template} />
+        <GuidedStudyAssignmentForm classOptions={classOptions} initialClassId={query.classId} existingDeadlines={existingDeadlines} assignmentHistory={assignmentHistory} template={template} />
       )}
     </main>
   );
