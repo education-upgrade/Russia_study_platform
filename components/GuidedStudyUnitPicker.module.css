@@ -91,6 +91,29 @@
   min-width: 0;
 }
 
+.lessonBadges {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.selectedBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: var(--navy);
+  color: #fff;
+  font-size: 0.66rem;
+  font-weight: 950;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .lessonButton strong {
   font-weight: 950;
   line-height: 1.25;
@@ -139,6 +162,7 @@
   color: rgba(255, 255, 255, 0.78);
 }
 
+.selectedLesson .selectedBadge,
 .selectedLesson .previousBadge {
   border: 1px solid rgba(255, 255, 255, 0.28);
   background: rgba(255, 255, 255, 0.16);
