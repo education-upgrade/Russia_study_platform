@@ -13,8 +13,10 @@ import unitStyles from './GuidedStudyUnitPicker.module.css';
 type BuilderStep = 1 | 2 | 3;
 type ClassOption = { id: string; className: string; yearGroup: string; studentCount: number };
 type ExistingDeadline = { classId: string; assignmentId: string; title: string; dueAt: string };
+type AssignmentHistoryItem = { classId: string; pathwaySlug: string; assignmentId: string; title: string; createdAt: string; status: string };
+type AssignmentHistorySummary = { count: number; lastSetAt: string };
 type Template = { classId: string; pathwaySlug: string; mode: StudyMode; requiredActivityTypes: string[]; dueAt: string | null; instructions: string | null } | null;
-type Props = { classOptions: ClassOption[]; initialClassId?: string; existingDeadlines?: ExistingDeadline[]; template?: Template };
+type Props = { classOptions: ClassOption[]; initialClassId?: string; existingDeadlines?: ExistingDeadline[]; assignmentHistory?: AssignmentHistoryItem[]; template?: Template };
 
 const pathwayOptions = activeSubjectPack.pathways;
 const activityOptions = activeSubjectPack.activityOptions;
@@ -33,8 +35,12 @@ function deadlineText(value: string) {
     ? formatSchoolDateTime(schoolLocalInputToIso(value), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
     : 'No deadline';
 }
+function previouslySetText(summary: AssignmentHistorySummary) {
+  const lastSet = formatSchoolDateTime(summary.lastSetAt, { day: 'numeric', month: 'short', year: 'numeric' });
+  return summary.count === 1 ? `Set once · ${lastSet}` : `Set ${summary.count}× · last ${lastSet}`;
+}
 
-export default function GuidedStudyAssignmentForm({ classOptions, initialClassId, existingDeadlines = [], template = null }: Props) {
+export default function GuidedStudyAssignmentForm({ classOptions, initialClassId, existingDeadlines = [], assignmentHistory = [], template = null }: Props) {
   const router = useRouter();
   const initialClass = classOptions.find((item) => item.id === (template?.classId || initialClassId)) ?? null;
   const initialTopic = template ? pathwayOptions.find((item) => item.pathwaySlug === template.pathwaySlug) ?? null : null;
@@ -70,6 +76,26 @@ export default function GuidedStudyAssignmentForm({ classOptions, initialClassId
       item.classId === classId && toSchoolDateTimeInput(item.dueAt).slice(0, 10) === selectedDate
     ));
   }, [classId, deadlineAt, existingDeadlines]);
+
+  const assignmentHistoryByPathway = useMemo(() => {
+    const summaries = new Map<string, AssignmentHistorySummary>();
+    if (!classId) return summaries;
+
+    assignmentHistory.filter((item) => item.classId === classId).forEach((item) => {
+      const current = summaries.get(item.pathwaySlug);
+      if (!current) {
+        summaries.set(item.pathwaySlug, { count: 1, lastSetAt: item.createdAt });
+        return;
+      }
+
+      summaries.set(item.pathwaySlug, {
+        count: current.count + 1,
+        lastSetAt: new Date(item.createdAt).getTime() > new Date(current.lastSetAt).getTime() ? item.createdAt : current.lastSetAt,
+      });
+    });
+
+    return summaries;
+  }, [assignmentHistory, classId]);
 
   function chooseTopic(slug: string) {
     const next = pathwayOptions.find((item) => item.pathwaySlug === slug);
@@ -142,7 +168,10 @@ export default function GuidedStudyAssignmentForm({ classOptions, initialClassId
     {step === 1 && <section className={styles.panel}>
       <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Step 1</p><h3>What do you want this class to study?</h3></div><span>{selectedClass ? `${selectedClass.studentCount} recipients` : 'Choose a class'}</span></div>
       <div className={styles.classGrid}>{classOptions.map((item) => <button type="button" key={item.id} onClick={() => setClassId(item.id)} className={classId === item.id ? styles.selectedCard : styles.choiceCard}><strong>{item.className}</strong><span>{item.yearGroup}</span><small>{item.studentCount} student{item.studentCount === 1 ? '' : 's'}</small></button>)}</div>
-      <div className={unitStyles.unitList}>{organisedUnits.map((unit) => <details className={unitStyles.unitGroup} key={`${unit.yearGroup}-${unit.unitNumber}`} open={unit.lessons.some((item) => item.pathwaySlug === topicSlug)}><summary className={unitStyles.unitSummary}><span className={unitStyles.unitSummaryText}><span>{unit.yearGroup} · Unit {unit.unitNumber}</span><strong>{unit.unitTitle}</strong></span><span className={unitStyles.chevron}>⌄</span></summary><div className={unitStyles.lessonGrid}>{unit.lessons.map((topic) => <button type="button" className={`${unitStyles.lessonButton} ${topicSlug === topic.pathwaySlug ? unitStyles.selectedLesson : ''}`} key={topic.pathwaySlug} onClick={() => chooseTopic(topic.pathwaySlug)}><strong>{topic.lessonNumber}. {topic.displayTitle}</strong><small>{topic.subtitle}</small></button>)}</div></details>)}</div>
+      <div className={unitStyles.unitList}>{organisedUnits.map((unit) => <details className={unitStyles.unitGroup} key={`${unit.yearGroup}-${unit.unitNumber}`} open={unit.lessons.some((item) => item.pathwaySlug === topicSlug)}><summary className={unitStyles.unitSummary}><span className={unitStyles.unitSummaryText}><span>{unit.yearGroup} · Unit {unit.unitNumber}</span><strong>{unit.unitTitle}</strong></span><span className={unitStyles.chevron}>⌄</span></summary><div className={unitStyles.lessonGrid}>{unit.lessons.map((topic) => {
+        const history = assignmentHistoryByPathway.get(topic.pathwaySlug);
+        return <button type="button" className={`${unitStyles.lessonButton} ${topicSlug === topic.pathwaySlug ? unitStyles.selectedLesson : ''}`} key={topic.pathwaySlug} onClick={() => chooseTopic(topic.pathwaySlug)}><span className={unitStyles.lessonHeading}><strong>{topic.lessonNumber}. {topic.displayTitle}</strong>{history && <span className={unitStyles.previousBadge}>Previously set</span>}</span><small>{topic.subtitle}</small>{history && <span className={unitStyles.historyMeta}>{previouslySetText(history)}</span>}</button>;
+      })}</div></details>)}</div>
       <div className={styles.footer}><span>{selectedClass?.className ?? 'Choose a class'} · {topicTitle}</span><button type="button" onClick={() => goToStep(2)} disabled={!canConfigure}>Configure assignment →</button></div>
     </section>}
 
