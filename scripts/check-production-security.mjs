@@ -87,7 +87,7 @@ if (!fs.existsSync(path.join(root, rateLimitMigration))) {
 
 const assignmentForm = 'components/GuidedStudyAssignmentForm.tsx';
 requireText(assignmentForm, "useState(initialClass?.id ?? '')", 'Generic Set Work must not silently preselect the newest class.');
-requireText(assignmentForm, "useState(initialTopic?.pathwaySlug ?? '')", 'Generic Set Work must not silently preselect a topic.');
+requireText(assignmentForm, "useState<string[]>(initialTopic ? [initialTopic.pathwaySlug] : [])", 'Generic Set Work must not silently preselect topics.');
 requireText(assignmentForm, 'disabled={!canConfigure}', 'Assignment configuration must stay locked until class and topic are chosen.');
 forbidText(assignmentForm, '?? classOptions[0]', 'Assignment builder must not restore a silent first-class fallback.');
 
