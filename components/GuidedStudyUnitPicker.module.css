@@ -79,6 +79,18 @@
   display: block;
 }
 
+.lessonHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.lessonHeading strong {
+  flex: 1;
+  min-width: 0;
+}
+
 .lessonButton strong {
   font-weight: 950;
   line-height: 1.25;
@@ -92,6 +104,30 @@
   line-height: 1.25;
 }
 
+.previousBadge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  min-height: 24px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: var(--green);
+  color: var(--navy);
+  font-size: 0.66rem;
+  font-weight: 950;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.historyMeta {
+  display: block;
+  margin-top: 8px;
+  color: var(--navy);
+  font-size: 0.7rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
 .selectedLesson {
   border: 3px solid var(--navy);
   background: var(--navy);
@@ -101,6 +137,16 @@
 
 .selectedLesson small {
   color: rgba(255, 255, 255, 0.78);
+}
+
+.selectedLesson .previousBadge {
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.selectedLesson .historyMeta {
+  color: rgba(255, 255, 255, 0.86);
 }
 
 @media (max-width: 700px) {
